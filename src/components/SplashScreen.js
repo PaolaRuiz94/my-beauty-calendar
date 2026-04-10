@@ -8,11 +8,11 @@ export default function SplashScreen({ onFinish }) {
     }, 2500); // ⏱ duración (2.5 segundos)
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [onFinish]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>MALMA</Text>
+      <Text style={styles.logo}>MY BEAUTY CALENDAR</Text>
       <Text style={styles.tagline}>Hair Care Ritual ✨</Text>
     </View>
   );

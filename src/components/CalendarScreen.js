@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   Button,
-  FlatList,
   ScrollView,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
@@ -57,17 +56,20 @@ export default function CalendarScreen() {
   const tips = [
     {
       title: 'Rutina de hoy',
-      desc: 'Aplica tu mascarilla capilar 💆‍♀️',
+      desc: 'Aplica tu mascarilla capilar',
+      icon: '💆‍♀️',
       color: '#E9D5FF',
     },
     {
       title: 'Tip anti-frizz',
-      desc: 'Usa funda de satín esta noche ✨',
+      desc: 'Usa funda de satín esta noche',
+      icon: '✨',
       color: '#FBCFE8',
     },
     {
       title: 'Hidratación',
-      desc: 'No olvides tu aceite en puntas 💧',
+      desc: 'No olvides tu aceite en puntas',
+      icon: '💧',
       color: '#BFDBFE',
     },
   ];
@@ -90,6 +92,7 @@ export default function CalendarScreen() {
             key={index}
             style={[styles.tipCard, { backgroundColor: tip.color }]}
           >
+            <Text style={styles.tipIcon}>{tip.icon}</Text>
             <Text style={styles.tipTitle}>{tip.title}</Text>
             <Text style={styles.tipDesc}>{tip.desc}</Text>
           </View>
@@ -111,13 +114,13 @@ export default function CalendarScreen() {
 
       <Button title="Agregar producto" onPress={addEntry} />
 
-      <FlatList
-        data={entries[selectedDate] || []}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => (
-          <Text style={styles.item}>• {item}</Text>
-        )}
-      />
+      <View style={styles.entriesContainer}>
+        {(entries[selectedDate] || []).map((item, index) => (
+          <Text key={index} style={styles.item}>
+            • {item}
+          </Text>
+        ))}
+      </View>
     </ScrollView>
   );
 }
@@ -154,6 +157,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 5,
   },
+  tipIcon: {
+    fontSize: 32,
+    marginBottom: 12,
+  },
   tipDesc: {
     fontSize: 13,
   },
@@ -161,6 +168,9 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 15,
     fontSize: 16,
+  },
+  entriesContainer: {
+    marginTop: 10,
   },
   input: {
     borderWidth: 1,

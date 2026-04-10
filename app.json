@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "tu-diario-capilar",
-    "slug": "tu-diario-capilar",
+    "name": "My Beauty Calendar",
+    "slug": "my-beauty-calendar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

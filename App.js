@@ -1,20 +1,24 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
+import CalendarScreen from './src/components/CalendarScreen';
+import ProductsScreen from './src/components/ProductsScreen';
+import DiagnosisScreen from './src/components/DiagnosisScreen';
+import RecommendationsScreen from './src/components/RecommendationsScreen';
+import SplashScreen from './src/components/SplashScreen';
+
+const Tab = createBottomTabNavigator();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Tab.Navigator>
+        <Tab.Screen name="Calendario" component={CalendarScreen} />
+        <Tab.Screen name="Productos" component={ProductsScreen} />
+        <Tab.Screen name="Diagnóstico" component={DiagnosisScreen} />
+        <Tab.Screen name="Recomendaciones" component={RecommendationsScreen} />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

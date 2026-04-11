@@ -10,6 +10,7 @@ import {
   Platform,
   ImageBackground,
 } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 
 const initialPosts = [
   {
@@ -36,6 +37,9 @@ const initialPosts = [
 ];
 
 export default function MessagesScreen() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
+
   const [posts, setPosts] = useState(initialPosts);
   const [selectedPost, setSelectedPost] = useState(null);
   const [postTopic, setPostTopic] = useState('');
@@ -377,326 +381,344 @@ export default function MessagesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5DC',
-  },
-  header: {
-    padding: 20,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 6,
-  },
-  subtitle: {
-    color: '#444',
-    fontSize: 15,
-  },
-  feedContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  newPostContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E0D9BF',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  input: {
-    backgroundColor: '#F8F2E4',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#DDD',
-    marginBottom: 10,
-    fontSize: 15,
-  },
-  topicLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#333',
-  },
-  topicRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  categoryLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8B5E3C',
-    marginBottom: 8,
-  },
-  postTopic: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  topicOption: {
-    flex: 1,
-    backgroundColor: '#FFF7E8',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E0D9BF',
-    paddingVertical: 12,
-    marginRight: 10,
-    alignItems: 'center',
-  },
-  topicOptionSelected: {
-    backgroundColor: '#D4AF37',
-    borderColor: '#C49A24',
-  },
-  topicOptionText: {
-    fontSize: 15,
-    color: '#333',
-  },
-  topicOptionTextSelected: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  textArea: {
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-  newPostScreen: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  createButton: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-    backgroundColor: '#000',
-    borderRadius: 24,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  createButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  cancelButton: {
-    marginTop: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#000',
-    fontWeight: '600',
-  },
-  sendButton: {
-    backgroundColor: '#000',
-    borderRadius: 20,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  sendText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  postCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E0D9BF',
-  },
-  postHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  postAuthor: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  commentCount: {
-    fontSize: 13,
-    color: '#666',
-  },
-  categoryLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#8B5E3C',
-    marginBottom: 8,
-  },
-  postBody: {
-    fontSize: 15,
-    color: '#333',
-  },
-  detailContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  backButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-  },
-  backText: {
-    color: '#000',
-    fontSize: 15,
-  },
-  postCardDetail: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E0D9BF',
-  },
-  commentList: {
-    paddingBottom: 20,
-  },
-  commentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E0D9BF',
-  },
-  commentAuthor: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  commentText: {
-    color: '#333',
-    fontSize: 15,
-  },
-  emptyText: {
-    color: '#666',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginTop: 10,
-  },
-  commentInputRow: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderTopWidth: 1,
-    borderColor: '#E0D9BF',
-    backgroundColor: '#F5F5DC',
-  },
-  commentInput: {
-    marginBottom: 10,
-    minHeight: 50,
-  },
-  transitionCardOuter: {
-    width: '100%',
-    marginHorizontal: -16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E0D9BF',
-    overflow: 'hidden',
-  },
-  transitionCard: {
-    height: 220,
-    width: '100%',
-    backgroundColor: '#000',
-  },
-  transitionImage: {
-    resizeMode: 'cover',
-  },
-  transitionOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    padding: 20,
-    justifyContent: 'flex-end',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 14,
-  },
-  likeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  likedButton: {
-    backgroundColor: '#FDEDEC',
-  },
-  likeButtonText: {
-    fontSize: 18,
-  },
-  commentIconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  commentIconText: {
-    fontSize: 18,
-  },
-  transitionCommentsPage: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E0D9BF',
-    padding: 16,
-  },
-  commentsScreen: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    backgroundColor: '#F5F5DC',
-  },
-  commentPageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  commentPageTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  commentPageClose: {
-    color: '#8B5E3C',
-    fontWeight: '700',
-  },
-  transitionInput: {
-    minHeight: 90,
-    marginBottom: 10,
-  },
-  transitionCommentList: {
-    marginTop: 10,
-  },
-  transitionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#fff',
-  },
-  transitionBody: {
-    fontSize: 15,
-    color: '#fff',
-    marginBottom: 12,
-  },
-});
+const makeStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      padding: 20,
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+      marginBottom: 6,
+    },
+    subtitle: {
+      color: colors.textSecondary,
+      fontSize: 15,
+    },
+    feedContainer: {
+      paddingHorizontal: 16,
+      paddingBottom: 20,
+    },
+    newPostContainer: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 10,
+      color: colors.textPrimary,
+    },
+    input: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 10,
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+    topicLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 10,
+      color: colors.textPrimary,
+    },
+    topicRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    categoryLabel: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.secondary,
+      marginBottom: 8,
+    },
+    postTopic: {
+      fontSize: 18,
+      fontWeight: '700',
+      marginBottom: 8,
+      color: colors.textPrimary,
+    },
+    topicOption: {
+      flex: 1,
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 12,
+      marginRight: 10,
+      alignItems: 'center',
+    },
+    topicOptionSelected: {
+      backgroundColor: colors.primary,
+      borderColor: colors.secondary,
+    },
+    topicOptionText: {
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+    topicOptionTextSelected: {
+      color: colors.white,
+      fontWeight: '700',
+    },
+    textArea: {
+      minHeight: 120,
+      textAlignVertical: 'top',
+    },
+    newPostScreen: {
+      flex: 1,
+      padding: 16,
+      backgroundColor: colors.surface,
+    },
+    createButton: {
+      marginHorizontal: 16,
+      marginBottom: 20,
+      backgroundColor: colors.primary,
+      borderRadius: 24,
+      paddingVertical: 16,
+      alignItems: 'center',
+    },
+    createButtonText: {
+      color: colors.white,
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    cancelButton: {
+      marginTop: 10,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.textPrimary,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    cancelButtonText: {
+      color: colors.textPrimary,
+      fontWeight: '600',
+    },
+    sendButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 20,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    sendText: {
+      color: colors.white,
+      fontWeight: 'bold',
+    },
+    postCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    postHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    postAuthor: {
+      fontSize: 14,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+    },
+    commentCount: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    categoryLabel: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.secondary,
+      marginBottom: 8,
+    },
+    postBody: {
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+    detailContainer: {
+      flex: 1,
+      paddingHorizontal: 16,
+    },
+    backButton: {
+      paddingVertical: 12,
+      paddingHorizontal: 10,
+    },
+    backText: {
+      color: colors.textPrimary,
+      fontSize: 15,
+    },
+    postCardDetail: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    commentList: {
+      paddingBottom: 20,
+    },
+    commentCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    commentAuthor: {
+      fontWeight: 'bold',
+      marginBottom: 4,
+      color: colors.textPrimary,
+    },
+    commentText: {
+      color: colors.textPrimary,
+      fontSize: 15,
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      fontStyle: 'italic',
+      textAlign: 'center',
+      marginTop: 10,
+    },
+    commentInputRow: {
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+      borderTopWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    commentInput: {
+      marginBottom: 10,
+      minHeight: 50,
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      color: colors.textPrimary,
+    },
+    transitionCardOuter: {
+      width: '100%',
+      marginHorizontal: -16,
+      marginBottom: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    transitionCard: {
+      height: 220,
+      width: '100%',
+      backgroundColor: colors.primary,
+    },
+    transitionImage: {
+      resizeMode: 'cover',
+    },
+    transitionOverlay: {
+      flex: 1,
+      backgroundColor: 'transparent',
+      padding: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    actionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 14,
+    },
+    likeButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.softWhite,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    likedButton: {
+      backgroundColor: 'rgba(194, 140, 168, 0.22)',
+    },
+    likeButtonText: {
+      fontSize: 18,
+      color: colors.textPrimary,
+    },
+    commentIconButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.softWhite,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    commentIconText: {
+      fontSize: 18,
+    },
+    transitionCommentsPage: {
+      marginHorizontal: 16,
+      marginBottom: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 16,
+    },
+    commentsScreen: {
+      flex: 1,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      backgroundColor: colors.background,
+    },
+    commentPageHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    commentPageTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+    },
+    commentPageClose: {
+      color: colors.secondary,
+      fontWeight: '700',
+    },
+    transitionInput: {
+      minHeight: 90,
+      marginBottom: 10,
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      color: colors.textPrimary,
+    },
+    transitionCommentList: {
+      marginTop: 10,
+    },
+    transitionTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 8,
+      color: colors.softWhite,
+      textAlign: 'center',
+    },
+    transitionBody: {
+      fontSize: 15,
+      color: colors.softWhite,
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+  });

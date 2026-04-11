@@ -1,7 +1,11 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 
 export default function SplashScreen({ onFinish }) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       onFinish();
@@ -18,24 +22,25 @@ export default function SplashScreen({ onFinish }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5DC',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logo: {
-    fontSize: 36,
-    fontWeight: '300',
-    fontStyle: 'italic',
-    letterSpacing: 0.6,
-    color: '#2D1B3C',
-    textAlign: 'center',
-  },
-  tagline: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#888',
-  },
-});
+const makeStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    logo: {
+      fontSize: 36,
+      fontWeight: '300',
+      fontStyle: 'italic',
+      letterSpacing: 0.6,
+      color: colors.textPrimary,
+      textAlign: 'center',
+    },
+    tagline: {
+      marginTop: 10,
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+  });

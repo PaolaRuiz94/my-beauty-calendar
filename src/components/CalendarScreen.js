@@ -8,8 +8,12 @@ import {
   ScrollView,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import { useTheme } from '../hooks/useTheme';
 
 export default function CalendarScreen() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
+
   const [selectedDate, setSelectedDate] = useState('');
   const [product, setProduct] = useState('');
   const [entries, setEntries] = useState({});
@@ -35,8 +39,8 @@ export default function CalendarScreen() {
     Object.keys(entries).forEach((date) => {
       marked[date] = {
         selected: true,
-        selectedColor: '#FDE68A',
-        selectedTextColor: '#000',
+        selectedColor: colors.accent,
+        selectedTextColor: colors.white,
       };
     });
 
@@ -44,8 +48,8 @@ export default function CalendarScreen() {
       marked[selectedDate] = {
         ...(marked[selectedDate] || {}),
         selected: true,
-        selectedColor: '#D4AF37',
-        selectedTextColor: '#fff',
+        selectedColor: colors.accent,
+        selectedTextColor: colors.white,
       };
     }
 
@@ -58,19 +62,19 @@ export default function CalendarScreen() {
       title: 'Rutina de hoy',
       desc: 'Aplica tu mascarilla capilar',
       icon: '💆‍♀️',
-      color: '#E9D5FF',
+      color: colors.primary,
     },
     {
       title: 'Tip anti-frizz',
       desc: 'Usa funda de satín esta noche',
       icon: '✨',
-      color: '#FBCFE8',
+      color: colors.secondary,
     },
     {
       title: 'Hidratación',
       desc: 'No olvides tu aceite en puntas',
       icon: '💧',
-      color: '#BFDBFE',
+      color: colors.accent,
     },
   ];
 
@@ -125,66 +129,74 @@ export default function CalendarScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#F5F5DC',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '300',
-    fontStyle: 'italic',
-    letterSpacing: 0.6,
-    marginBottom: 10,
-    textAlign: 'center',
-    color: '#2D1B3C',
-  },
+const makeStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: 20,
+      backgroundColor: colors.background,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: '300',
+      fontStyle: 'italic',
+      letterSpacing: 0.6,
+      marginBottom: 10,
+      textAlign: 'center',
+      color: colors.textPrimary,
+    },
 
-  // 💡 TIPS
-  tipsTitle: {
-    marginTop: 20,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  tipCard: {
-    width: 180,
-    minHeight: 180,
-    padding: 15,
-    borderRadius: 15,
-    marginRight: 10,
-    marginTop: 10,
-    justifyContent: 'space-between',
-  },
-  tipTitle: {
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  tipIcon: {
-    fontSize: 32,
-    marginBottom: 12,
-  },
-  tipDesc: {
-    fontSize: 13,
-  },
+    // 💡 TIPS
+    tipsTitle: {
+      marginTop: 20,
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+    },
+    tipCard: {
+      width: 180,
+      minHeight: 180,
+      padding: 15,
+      borderRadius: 15,
+      marginRight: 10,
+      marginTop: 10,
+      justifyContent: 'space-between',
+      backgroundColor: colors.card,
+    },
+    tipTitle: {
+      fontWeight: 'bold',
+      marginBottom: 5,
+      color: colors.textPrimary,
+    },
+    tipIcon: {
+      fontSize: 32,
+      marginBottom: 12,
+    },
+    tipDesc: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
 
-  subtitle: {
-    marginTop: 15,
-    fontSize: 16,
-  },
-  entriesContainer: {
-    marginTop: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    marginTop: 10,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-  },
-  item: {
-    marginTop: 5,
-    fontSize: 16,
-  },
-});
+    subtitle: {
+      marginTop: 15,
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    entriesContainer: {
+      marginTop: 10,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 10,
+      marginTop: 10,
+      borderRadius: 8,
+      backgroundColor: colors.surface,
+      color: colors.textPrimary,
+    },
+    item: {
+      marginTop: 5,
+      fontSize: 16,
+      color: colors.textPrimary,
+    },
+  });

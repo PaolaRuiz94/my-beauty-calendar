@@ -9,6 +9,7 @@ import {
   Linking,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from '../hooks/useTheme';
 
 const questions = [
   {
@@ -55,6 +56,8 @@ const productDB = {
 };
 
 export default function DiagnosisScreen() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [selectedOption, setSelectedOption] = useState(null);
@@ -220,83 +223,94 @@ export default function DiagnosisScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#F5F5DC',
-  },
-  title: {
-    fontSize: 24,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  uploadButton: {
-    backgroundColor: '#000',
-    padding: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  uploadText: { color: '#fff' },
-  image: {
-    width: 200,
-    height: 200,
-    borderRadius: 15,
-    alignSelf: 'center',
-    marginBottom: 10,
-  },
-  question: {
-    fontSize: 18,
-    marginVertical: 10,
-    textAlign: 'center',
-  },
-  option: {
-    padding: 15,
-    backgroundColor: '#fff',
-    marginVertical: 5,
-    borderRadius: 10,
-  },
-  optionSelected: {
-    backgroundColor: '#D4AF37',
-  },
-  nextButton: {
-    backgroundColor: '#000',
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10,
-    alignItems: 'center',
-  },
-  nextText: { color: '#fff' },
-  resultTitle: {
-    fontSize: 22,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  resultText: {
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  productCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10,
-  },
-  productText: {
-    fontSize: 16,
-  },
-  buy: {
-    marginTop: 5,
-    color: '#D4AF37',
-  },
-  resetButton: {
-    marginTop: 20,
-    backgroundColor: '#D4AF37',
-    padding: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-});
+const makeStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      padding: 20,
+      backgroundColor: colors.background,
+    },
+    title: {
+      fontSize: 24,
+      textAlign: 'center',
+      marginBottom: 20,
+      color: colors.textPrimary,
+    },
+    uploadButton: {
+      backgroundColor: colors.primary,
+      padding: 10,
+      borderRadius: 10,
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    uploadText: { color: colors.white },
+    image: {
+      width: 200,
+      height: 200,
+      borderRadius: 15,
+      alignSelf: 'center',
+      marginBottom: 10,
+    },
+    question: {
+      fontSize: 18,
+      marginVertical: 10,
+      textAlign: 'center',
+      color: colors.textPrimary,
+    },
+    option: {
+      padding: 15,
+      backgroundColor: colors.surface,
+      marginVertical: 5,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    optionSelected: {
+      backgroundColor: colors.accent,
+    },
+    nextButton: {
+      backgroundColor: colors.primary,
+      padding: 15,
+      borderRadius: 10,
+      marginTop: 10,
+      alignItems: 'center',
+    },
+    nextText: { color: colors.white },
+    resultTitle: {
+      fontSize: 22,
+      textAlign: 'center',
+      marginBottom: 10,
+      color: colors.textPrimary,
+    },
+    resultText: {
+      marginBottom: 10,
+      color: colors.textPrimary,
+    },
+    subtitle: {
+      fontWeight: 'bold',
+      marginTop: 10,
+      color: colors.textPrimary,
+    },
+    productCard: {
+      backgroundColor: colors.surface,
+      padding: 15,
+      borderRadius: 10,
+      marginTop: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    productText: {
+      fontSize: 16,
+      color: colors.textPrimary,
+    },
+    buy: {
+      marginTop: 5,
+      color: colors.accent,
+    },
+    resetButton: {
+      marginTop: 20,
+      backgroundColor: colors.accent,
+      padding: 10,
+      borderRadius: 10,
+      alignItems: 'center',
+    },
+  });

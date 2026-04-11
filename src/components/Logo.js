@@ -1,7 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 
 export default function Logo() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
+
   return (
     <View style={styles.container}>
       <View style={styles.mark}>
@@ -15,39 +19,40 @@ export default function Logo() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
-  },
-  mark: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: '#F7E7D5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E1C6A3',
-  },
-  markText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8B5E3C',
-  },
-  textContainer: {
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#7A5A3B',
-    marginTop: 2,
-  },
-});
+const makeStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 24,
+    },
+    mark: {
+      width: 64,
+      height: 64,
+      borderRadius: 20,
+      backgroundColor: colors.card,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    markText: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    textContainer: {
+      justifyContent: 'center',
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    subtitle: {
+      fontSize: 12,
+      color: colors.secondary,
+      marginTop: 2,
+    },
+  });

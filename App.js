@@ -8,6 +8,7 @@ import DiagnosisScreen from './src/components/DiagnosisScreen';
 import RecommendationsScreen from './src/components/RecommendationsScreen';
 import MessagesScreen from './src/components/MessagesScreen';
 import SplashScreen from './src/components/SplashScreen';
+import { ThemeProvider } from './src/hooks/useTheme';
 
 const Tab = createBottomTabNavigator();
 
@@ -19,14 +20,16 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Tab.Navigator>
-        <Tab.Screen name="Calendario" component={CalendarScreen} />
-        <Tab.Screen name="Productos" component={ProductsScreen} />
-        <Tab.Screen name="Diagnóstico" component={DiagnosisScreen} />
-        <Tab.Screen name="Recomendaciones" component={RecommendationsScreen} />
-        <Tab.Screen name="Messages" component={MessagesScreen} />
-      </Tab.Navigator>
-    </NavigationContainer>
+    <ThemeProvider>
+      <NavigationContainer>
+        <Tab.Navigator>
+          <Tab.Screen name="Calendario" component={CalendarScreen} />
+          <Tab.Screen name="Productos" component={ProductsScreen} />
+          <Tab.Screen name="Diagnóstico" component={DiagnosisScreen} />
+          <Tab.Screen name="Recomendaciones" component={RecommendationsScreen} />
+          <Tab.Screen name="Messages" component={MessagesScreen} />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </ThemeProvider>
   );
 }

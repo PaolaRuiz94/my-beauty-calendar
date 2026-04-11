@@ -1,151 +1,163 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
+  Dimensions,
+  TouchableOpacity,
+  ImageBackground,
 } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 
-const blocks = [
+const categories = [
   {
-    id: 'rutina',
-    title: 'Rutina Capilar',
-    subtitle: 'Crea tu camino de cuidado diario',
-    content: [
-      'Lava tu cabello cada 2-3 días con shampoo suave.',
-      'Aplica mascarilla nutritiva una vez por semana.',
-      'Termina con un acondicionador ligero en las puntas.',
-    ],
+    title: 'Para rizadas',
+    image:
+      'https://images.unsplash.com/photo-1516802273409-68526ee1bdd6?auto=format&fit=crop&w=900&q=80',
+    data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }],
   },
   {
-    id: 'hidrata',
-    title: 'Hidratación Profunda',
-    subtitle: 'Recupera brillo, suavidad y fuerza',
-    content: [
-      'Usa tratamientos intensivos una vez por semana.',
-      'Elige productos con aceites naturales y glicerina.',
-      'Evita agua muy caliente al enjuagar.',
-    ],
+    title: 'Para lisas',
+    image:
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=80',
+    data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }],
   },
   {
-    id: 'protege',
-    title: 'Protección Diaria',
-    subtitle: 'Cuida tu cabello del sol y del calor',
-    content: [
-      'Aplica protector térmico antes de secar o planchar.',
-      'Usa sombreros o pañuelos en exposiciones largas al sol.',
-      'No duermas con el cabello húmedo.',
-    ],
+    title: 'Transición capilar',
+    image:
+      'https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=900&q=80',
+    data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }],
+  },
+  {
+    title: 'Skincare',
+    image:
+      'https://images.unsplash.com/photo-1491553895911-0055eca6402d?auto=format&fit=crop&w=900&q=80',
+    data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }],
+  },
+  {
+    title: 'Mejores peluquerías',
+    image:
+      'https://images.unsplash.com/photo-1514996937319-344454492b37?auto=format&fit=crop&w=900&q=80',
+    data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }],
+  },
+  {
+    title: 'Colorimetría',
+    image:
+      'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=900&q=80',
+    data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }],
   },
 ];
 
-export default function RecommendationsScreen() {
-  const [selectedBlock, setSelectedBlock] = useState(null);
+const CARD_WIDTH = 170;
+const CARD_HEIGHT = 220;
+const SCREEN_PADDING = 20;
 
-  const handleBack = () => setSelectedBlock(null);
+export default function RecommendationsScreen() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
 
   return (
     <View style={styles.wrapper}>
       <ScrollView contentContainerStyle={styles.container}>
-        {!selectedBlock ? (
-          <>
-            <Text style={styles.title}>Recomendaciones</Text>
-            <Text style={styles.subtitle}>
-              Elige un bloque para ver pasos y consejos capilares.
-            </Text>
+        <Text style={styles.screenTitle}>Recomendaciones capilares</Text>
 
-            {blocks.map((block) => (
-              <TouchableOpacity
-                key={block.id}
-                style={styles.card}
-                onPress={() => setSelectedBlock(block)}
-              >
-                <Text style={styles.cardTitle}>{block.title}</Text>
-                <Text style={styles.cardSubtitle}>{block.subtitle}</Text>
-              </TouchableOpacity>
-            ))}
-          </>
-        ) : (
-          <View style={styles.detailContainer}>
-            <Text style={styles.title}>{selectedBlock.title}</Text>
-            <Text style={styles.subtitle}>{selectedBlock.subtitle}</Text>
-
-            {selectedBlock.content.map((line, index) => (
-              <Text key={index} style={styles.detailText}>
-                • {line}
-              </Text>
-            ))}
-
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Text style={styles.backText}>Volver</Text>
-            </TouchableOpacity>
+        {categories.map((section) => (
+          <View key={section.title} style={styles.section}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.carousel}
+            >
+              {section.data.map((item) => (
+                <TouchableOpacity key={item.id} style={styles.card} activeOpacity={0.85}>
+                  <ImageBackground
+                    source={{ uri: section.image }}
+                    style={styles.cardBackground}
+                    imageStyle={styles.cardImage}
+                  >
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardLabel}>Consejo {item.id}</Text>
+                      <Text style={styles.cardText} numberOfLines={2}>
+                        Tips para mejorar tu rutina y cuidar tu cabello con calma.
+                      </Text>
+                    </View>
+                  </ImageBackground>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
-        )}
+        ))}
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    backgroundColor: '#F5F5DC',
-  },
-  container: {
-    padding: 20,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#444',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  detailContainer: {
-    paddingBottom: 40,
-  },
-  detailText: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 10,
-  },
-  backButton: {
-    marginTop: 20,
-    alignSelf: 'center',
-    backgroundColor: '#D4AF37',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-  },
-  backText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-});
+const makeStyles = (colors) =>
+  StyleSheet.create({
+    wrapper: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    container: {
+      paddingTop: 24,
+      paddingBottom: 40,
+    },
+    screenTitle: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 18,
+      paddingHorizontal: SCREEN_PADDING,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 14,
+      paddingHorizontal: SCREEN_PADDING,
+    },
+    carousel: {
+      paddingLeft: SCREEN_PADDING,
+    },
+    card: {
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT,
+      borderRadius: 24,
+      marginRight: 18,
+      backgroundColor: colors.surface,
+      shadowColor: colors.textPrimary,
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 4,
+      overflow: 'hidden',
+    },
+    cardBackground: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    cardImage: {
+      borderRadius: 24,
+    },
+    cardContent: {
+      flex: 1,
+      padding: 18,
+      justifyContent: 'space-between',
+    },
+    cardLabel: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.white,
+      marginBottom: 6,
+    },
+    cardText: {
+      fontSize: 13,
+      color: colors.white,
+      lineHeight: 19,
+    },
+  });

@@ -8,6 +8,7 @@ import {
   Linking,
   Image,
 } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 
 const defaultProductImage = require('../../assets/icon.png');
 
@@ -100,6 +101,8 @@ const productDB = {
 };
 
 export default function ProductsScreen() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [remoteProductImages, setRemoteProductImages] = useState({});
   const [fetchErrors, setFetchErrors] = useState({});
@@ -255,99 +258,102 @@ export default function ProductsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#F5F5DC',
-    flexGrow: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#444',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 20,
-  },
-  filterButton: {
-    backgroundColor: '#FFF7E8',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E0D9BF',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    margin: 4,
-  },
-  filterButtonSelected: {
-    backgroundColor: '#D4AF37',
-    borderColor: '#C49A24',
-  },
-  filterText: {
-    color: '#333',
-    fontWeight: '600',
-  },
-  filterTextSelected: {
-    color: '#fff',
-  },
-  productCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E0D9BF',
-  },
-  productCardTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 14,
-  },
-  productImage: {
-    width: 96,
-    height: 96,
-    borderRadius: 16,
-    marginRight: 14,
-    backgroundColor: '#F0E6D6',
-    resizeMode: 'cover',
-  },
-  productInfo: {
-    flex: 1,
-  },
-  productName: {
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  productDescription: {
-    fontSize: 15,
-    color: '#555',
-  },
-  buyButton: {
-    backgroundColor: '#000',
-    paddingVertical: 12,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  buyText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  emptyText: {
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 16,
-  },
-});
+const makeStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      padding: 20,
+      backgroundColor: colors.background,
+      flexGrow: 1,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: 10,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 20,
+    },
+    filterRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: 10,
+      marginBottom: 20,
+    },
+    filterButton: {
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      margin: 4,
+    },
+    filterButtonSelected: {
+      backgroundColor: colors.accent,
+      borderColor: colors.primary,
+    },
+    filterText: {
+      color: colors.textPrimary,
+      fontWeight: '600',
+    },
+    filterTextSelected: {
+      color: colors.white,
+    },
+    productCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    productCardTop: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 14,
+    },
+    productImage: {
+      width: 96,
+      height: 96,
+      borderRadius: 16,
+      marginRight: 14,
+      backgroundColor: colors.card,
+      resizeMode: 'cover',
+    },
+    productInfo: {
+      flex: 1,
+    },
+    productName: {
+      fontSize: 17,
+      fontWeight: '700',
+      marginBottom: 6,
+      color: colors.textPrimary,
+    },
+    productDescription: {
+      fontSize: 15,
+      color: colors.textSecondary,
+    },
+    buyButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 12,
+      borderRadius: 16,
+      alignItems: 'center',
+    },
+    buyText: {
+      color: colors.white,
+      fontWeight: '700',
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 20,
+      fontSize: 16,
+    },
+  });
+

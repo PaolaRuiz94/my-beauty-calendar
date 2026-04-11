@@ -76,7 +76,7 @@ export default function CalendarScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Diario Capilar</Text>
+      <Text style={styles.title}>My Beauty Calendar</Text>
 
       <Calendar
         onDayPress={(day) => setSelectedDate(day.dateString)}
@@ -133,9 +133,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '300',
+    fontStyle: 'italic',
+    letterSpacing: 0.6,
     marginBottom: 10,
     textAlign: 'center',
+    color: '#2D1B3C',
   },
 
   // 💡 TIPS

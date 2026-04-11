@@ -12,7 +12,7 @@ export default function SplashScreen({ onFinish }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>MY BEAUTY CALENDAR</Text>
+      <Text style={styles.logo}>My Beauty Calendar</Text>
       <Text style={styles.tagline}>Hair Care Ritual ✨</Text>
     </View>
   );
@@ -27,9 +27,11 @@ const styles = StyleSheet.create({
   },
   logo: {
     fontSize: 36,
-    fontWeight: 'bold',
-    letterSpacing: 3,
-    color: '#000',
+    fontWeight: '300',
+    fontStyle: 'italic',
+    letterSpacing: 0.6,
+    color: '#2D1B3C',
+    textAlign: 'center',
   },
   tagline: {
     marginTop: 10,

@@ -8,13 +8,15 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ImageBackground,
 } from 'react-native';
 
 const initialPosts = [
   {
     id: '1',
     author: 'María',
-    topic: 'Rutina para cabello seco',
+    topic: 'Hair',
+    category: 'hair',
     body: '¿Alguien tiene tips para hidratar cabello muy seco sin usar siliconas?',
     comments: [
       { id: '1', author: 'Ana', text: 'Prueba la mascarilla de aguacate una vez por semana.' },
@@ -24,7 +26,8 @@ const initialPosts = [
   {
     id: '2',
     author: 'Claudia',
-    topic: 'Cuidado de la piel',
+    topic: 'Skincare',
+    category: 'skincare',
     body: 'Busco un serum ligero para piel mixta y sensible.',
     comments: [
       { id: '1', author: 'Laura', text: 'Busca productos con niacinamida y sin fragancia.' },
@@ -38,6 +41,13 @@ export default function MessagesScreen() {
   const [postTopic, setPostTopic] = useState('');
   const [postBody, setPostBody] = useState('');
   const [commentText, setCommentText] = useState('');
+  const [transitionCommentText, setTransitionCommentText] = useState('');
+  const [transitionComments, setTransitionComments] = useState([]);
+  const [transitionLiked, setTransitionLiked] = useState(false);
+  const [transitionLikes, setTransitionLikes] = useState(12);
+  const [showTransitionComments, setShowTransitionComments] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [creatingPost, setCreatingPost] = useState(false);
   const flatListRef = useRef(null);
 
   const addPost = () => {
@@ -46,7 +56,8 @@ export default function MessagesScreen() {
     const newPost = {
       id: String(posts.length + 1),
       author: 'Tú',
-      topic: postTopic.trim(),
+      topic: postTopic === 'hair' ? 'Hair' : 'Skincare',
+      category: postTopic,
       body: postBody.trim(),
       comments: [],
     };
@@ -54,6 +65,7 @@ export default function MessagesScreen() {
     setPosts((prev) => [newPost, ...prev]);
     setPostTopic('');
     setPostBody('');
+    setCreatingPost(false);
   };
 
   const addComment = () => {
@@ -80,11 +92,34 @@ export default function MessagesScreen() {
     setCommentText('');
   };
 
+  const addTransitionComment = () => {
+    if (!transitionCommentText.trim()) return;
+
+    const newComment = {
+      id: String(transitionComments.length + 1),
+      author: 'Tú',
+      text: transitionCommentText.trim(),
+    };
+
+    setTransitionComments((prev) => [...prev, newComment]);
+    setTransitionCommentText('');
+  };
+
+  const toggleTransitionLike = () => {
+    setTransitionLiked((prev) => !prev);
+    setTransitionLikes((prev) => prev + (transitionLiked ? -1 : 1));
+  };
+
+  const filteredPosts =
+    selectedFilter === 'all'
+      ? posts
+      : posts.filter((post) => post.category === selectedFilter);
+
   useEffect(() => {
     if (flatListRef.current) {
       flatListRef.current.scrollToOffset({ offset: 0, animated: true });
     }
-  }, [posts]);
+  }, [posts, selectedFilter]);
 
   const renderPost = ({ item }) => (
     <TouchableOpacity style={styles.postCard} onPress={() => setSelectedPost(item)}>
@@ -92,7 +127,7 @@ export default function MessagesScreen() {
         <Text style={styles.postAuthor}>{item.author}</Text>
         <Text style={styles.commentCount}>{item.comments.length} comentarios</Text>
       </View>
-      <Text style={styles.postTopic}>{item.topic}</Text>
+      <Text style={styles.categoryLabel}>{item.topic}</Text>
       <Text style={styles.postBody}>{item.body}</Text>
     </TouchableOpacity>
   );
@@ -116,34 +151,194 @@ export default function MessagesScreen() {
       </View>
 
       {!selectedPost ? (
-        <FlatList
-          ref={flatListRef}
-          data={posts}
-          keyExtractor={(item) => item.id}
-          renderItem={renderPost}
-          contentContainerStyle={styles.feedContainer}
-          ListHeaderComponent={
-            <View style={styles.newPostContainer}>
-              <Text style={styles.sectionTitle}>Crear un nuevo post</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Tema (ej. Rutina hidratación)"
-                value={postTopic}
-                onChangeText={setPostTopic}
-              />
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Escribe tu pregunta o comentario..."
-                value={postBody}
-                onChangeText={setPostBody}
-                multiline
-              />
-              <TouchableOpacity style={styles.sendButton} onPress={addPost}>
-                <Text style={styles.sendText}>Publicar</Text>
+        creatingPost ? (
+          <View style={styles.newPostScreen}>
+            <Text style={styles.sectionTitle}>Nueva publicación</Text>
+            <Text style={styles.topicLabel}>Tema</Text>
+            <View style={styles.topicRow}>
+              <TouchableOpacity
+                style={[
+                  styles.topicOption,
+                  postTopic === 'hair' && styles.topicOptionSelected,
+                ]}
+                onPress={() => setPostTopic('hair')}
+              >
+                <Text
+                  style={[
+                    styles.topicOptionText,
+                    postTopic === 'hair' && styles.topicOptionTextSelected,
+                  ]}
+                >
+                  Hair
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.topicOption,
+                  postTopic === 'skincare' && styles.topicOptionSelected,
+                ]}
+                onPress={() => setPostTopic('skincare')}
+              >
+                <Text
+                  style={[
+                    styles.topicOptionText,
+                    postTopic === 'skincare' && styles.topicOptionTextSelected,
+                  ]}
+                >
+                  Skincare
+                </Text>
               </TouchableOpacity>
             </View>
-          }
-        />
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Escribe tu pregunta o comentario..."
+              value={postBody}
+              onChangeText={setPostBody}
+              multiline
+            />
+            <TouchableOpacity style={styles.sendButton} onPress={addPost}>
+              <Text style={styles.sendText}>Publicar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setCreatingPost(false)}>
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : showTransitionComments ? (
+          <View style={styles.commentsScreen}>
+            <View style={styles.commentPageHeader}>
+              <Text style={styles.commentPageTitle}>Comentarios</Text>
+              <TouchableOpacity onPress={() => setShowTransitionComments(false)}>
+                <Text style={styles.commentPageClose}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={transitionComments}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.commentCard}>
+                  <Text style={styles.commentAuthor}>{item.author}</Text>
+                  <Text style={styles.commentText}>{item.text}</Text>
+                </View>
+              )}
+              ListEmptyComponent={<Text style={styles.emptyText}>Aún no hay comentarios.</Text>}
+            />
+            <TextInput
+              style={[styles.input, styles.transitionInput]}
+              placeholder="Escribe un comentario"
+              value={transitionCommentText}
+              onChangeText={setTransitionCommentText}
+              multiline
+            />
+            <TouchableOpacity style={styles.sendButton} onPress={addTransitionComment}>
+              <Text style={styles.sendText}>Enviar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <FlatList
+              ref={flatListRef}
+              data={filteredPosts}
+              keyExtractor={(item) => item.id}
+              renderItem={renderPost}
+              contentContainerStyle={styles.feedContainer}
+              ListHeaderComponent={
+                <>
+                      <View style={styles.transitionCardOuter}>
+                    <ImageBackground
+                      source={{
+                        uri: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
+                      }}
+                      style={styles.transitionCard}
+                      imageStyle={styles.transitionImage}
+                    >
+                      <View style={styles.transitionOverlay}>
+                        <Text style={styles.transitionTitle}>
+                          ¿Estás pasando por una transición capilar?
+                        </Text>
+                        <Text style={styles.transitionBody}>
+                          ¿Quieres contarnos cómo ha sido el proceso?
+                        </Text>
+                        <View style={styles.actionRow}> 
+                          <TouchableOpacity
+                            style={[
+                              styles.likeButton,
+                              transitionLiked && styles.likedButton,
+                            ]}
+                            onPress={toggleTransitionLike}
+                          >
+                            <Text style={styles.likeButtonText}>
+                              ❤️
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.commentIconButton}
+                            onPress={() => setShowTransitionComments(true)}
+                          >
+                            <Text style={styles.commentIconText}>💬</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </ImageBackground>
+                  </View>
+
+                  <View style={styles.topicRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.topicOption,
+                        selectedFilter === 'all' && styles.topicOptionSelected,
+                      ]}
+                      onPress={() => setSelectedFilter('all')}
+                    >
+                    <Text
+                      style={[
+                        styles.topicOptionText,
+                        selectedFilter === 'all' && styles.topicOptionTextSelected,
+                      ]}
+                    >
+                      Todos
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.topicOption,
+                      selectedFilter === 'hair' && styles.topicOptionSelected,
+                    ]}
+                    onPress={() => setSelectedFilter('hair')}
+                  >
+                    <Text
+                      style={[
+                        styles.topicOptionText,
+                        selectedFilter === 'hair' && styles.topicOptionTextSelected,
+                      ]}
+                    >
+                      Hair
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.topicOption,
+                      selectedFilter === 'skincare' && styles.topicOptionSelected,
+                    ]}
+                    onPress={() => setSelectedFilter('skincare')}
+                  >
+                    <Text
+                      style={[
+                        styles.topicOptionText,
+                        selectedFilter === 'skincare' && styles.topicOptionTextSelected,
+                      ]}
+                    >
+                      Skincare
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                </>
+              }
+            />
+            <TouchableOpacity style={styles.createButton} onPress={() => setCreatingPost(true)}>
+              <Text style={styles.createButtonText}>Nueva publicación</Text>
+            </TouchableOpacity>
+          </>
+        )
       ) : (
         <View style={styles.detailContainer}>
           <TouchableOpacity style={styles.backButton} onPress={() => setSelectedPost(null)}>
@@ -238,6 +433,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  categoryLabel: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#8B5E3C',
+    marginBottom: 8,
+  },
+  postTopic: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
   topicOption: {
     flex: 1,
     backgroundColor: '#FFF7E8',
@@ -259,6 +465,40 @@ const styles = StyleSheet.create({
   topicOptionTextSelected: {
     color: '#fff',
     fontWeight: '700',
+  },
+  textArea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  newPostScreen: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+  createButton: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    backgroundColor: '#000',
+    borderRadius: 24,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  createButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  cancelButton: {
+    marginTop: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#000',
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#000',
+    fontWeight: '600',
   },
   sendButton: {
     backgroundColor: '#000',
@@ -291,9 +531,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
   },
-  postTopic: {
-    fontSize: 18,
+  categoryLabel: {
+    fontSize: 16,
     fontWeight: '700',
+    color: '#8B5E3C',
     marginBottom: 8,
   },
   postBody: {
@@ -355,5 +596,107 @@ const styles = StyleSheet.create({
   commentInput: {
     marginBottom: 10,
     minHeight: 50,
+  },
+  transitionCardOuter: {
+    width: '100%',
+    marginHorizontal: -16,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E0D9BF',
+    overflow: 'hidden',
+  },
+  transitionCard: {
+    height: 220,
+    width: '100%',
+    backgroundColor: '#000',
+  },
+  transitionImage: {
+    resizeMode: 'cover',
+  },
+  transitionOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    padding: 20,
+    justifyContent: 'flex-end',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  likeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  likedButton: {
+    backgroundColor: '#FDEDEC',
+  },
+  likeButtonText: {
+    fontSize: 18,
+  },
+  commentIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  commentIconText: {
+    fontSize: 18,
+  },
+  transitionCommentsPage: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E0D9BF',
+    padding: 16,
+  },
+  commentsScreen: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    backgroundColor: '#F5F5DC',
+  },
+  commentPageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  commentPageTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  commentPageClose: {
+    color: '#8B5E3C',
+    fontWeight: '700',
+  },
+  transitionInput: {
+    minHeight: 90,
+    marginBottom: 10,
+  },
+  transitionCommentList: {
+    marginTop: 10,
+  },
+  transitionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#fff',
+  },
+  transitionBody: {
+    fontSize: 15,
+    color: '#fff',
+    marginBottom: 12,
   },
 });

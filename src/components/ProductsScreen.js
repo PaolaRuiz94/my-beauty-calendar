@@ -9,6 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
+import AppHeader from './AppHeader';
 
 const defaultProductImage = require('../../assets/icon.png');
 
@@ -197,7 +198,7 @@ export default function ProductsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Productos recomendados</Text>
+      <AppHeader />
       <Text style={styles.subtitle}>
         Selecciona la categoría y encuentra productos reales con opción de compra.
       </Text>
@@ -261,7 +262,9 @@ export default function ProductsScreen() {
 const makeStyles = (colors) =>
   StyleSheet.create({
     container: {
-      padding: 20,
+      paddingHorizontal: 20,
+      paddingTop: 0,
+      paddingBottom: 20,
       backgroundColor: colors.background,
       flexGrow: 1,
     },
@@ -271,6 +274,20 @@ const makeStyles = (colors) =>
       color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 10,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 50,
+      marginBottom: 16,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#C48A95',
+      flex: 1,
     },
     subtitle: {
       fontSize: 16,
@@ -288,15 +305,12 @@ const makeStyles = (colors) =>
     filterButton: {
       backgroundColor: colors.card,
       borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
       paddingVertical: 10,
       paddingHorizontal: 14,
       margin: 4,
     },
     filterButtonSelected: {
-      backgroundColor: colors.accent,
-      borderColor: colors.primary,
+      backgroundColor: colors.primary,
     },
     filterText: {
       color: colors.textPrimary,
@@ -310,8 +324,6 @@ const makeStyles = (colors) =>
       borderRadius: 18,
       padding: 18,
       marginBottom: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     productCardTop: {
       flexDirection: 'row',

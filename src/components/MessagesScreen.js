@@ -11,6 +11,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
+import AppHeader from './AppHeader';
 
 const initialPosts = [
   {
@@ -149,10 +150,8 @@ export default function MessagesScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>Comunidad Capilar</Text>
-        <Text style={styles.subtitle}>Publica un tema o comenta sobre cuidado capilar y skin care.</Text>
-      </View>
+      <AppHeader />
+      <Text style={styles.subtitle}>Publica un tema o comenta sobre cuidado capilar y skin care.</Text>
 
       {!selectedPost ? (
         creatingPost ? (
@@ -396,6 +395,14 @@ const makeStyles = (colors) =>
       color: colors.textPrimary,
       marginBottom: 6,
     },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 50,
+      marginBottom: 10,
+    },
     subtitle: {
       color: colors.textSecondary,
       fontSize: 15,
@@ -409,8 +416,6 @@ const makeStyles = (colors) =>
       borderRadius: 18,
       padding: 18,
       marginBottom: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     sectionTitle: {
       fontSize: 18,
@@ -423,8 +428,6 @@ const makeStyles = (colors) =>
       borderRadius: 16,
       paddingHorizontal: 14,
       paddingVertical: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
       marginBottom: 10,
       fontSize: 15,
       color: colors.textPrimary,
@@ -456,15 +459,12 @@ const makeStyles = (colors) =>
       flex: 1,
       backgroundColor: colors.card,
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
       paddingVertical: 12,
       marginRight: 10,
       alignItems: 'center',
     },
     topicOptionSelected: {
       backgroundColor: colors.primary,
-      borderColor: colors.secondary,
     },
     topicOptionText: {
       fontSize: 15,
@@ -499,8 +499,6 @@ const makeStyles = (colors) =>
     cancelButton: {
       marginTop: 10,
       borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.textPrimary,
       paddingVertical: 14,
       alignItems: 'center',
     },
@@ -523,8 +521,6 @@ const makeStyles = (colors) =>
       borderRadius: 18,
       padding: 18,
       marginBottom: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     postHeader: {
       flexDirection: 'row',
@@ -567,8 +563,6 @@ const makeStyles = (colors) =>
       borderRadius: 18,
       padding: 18,
       marginBottom: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     commentList: {
       paddingBottom: 20,
@@ -578,8 +572,6 @@ const makeStyles = (colors) =>
       borderRadius: 16,
       padding: 14,
       marginBottom: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     commentAuthor: {
       fontWeight: 'bold',
@@ -616,8 +608,6 @@ const makeStyles = (colors) =>
       marginBottom: 16,
       backgroundColor: colors.surface,
       borderRadius: 24,
-      borderWidth: 1,
-      borderColor: colors.border,
       overflow: 'hidden',
     },
     transitionCard: {
@@ -672,8 +662,6 @@ const makeStyles = (colors) =>
       marginBottom: 16,
       backgroundColor: colors.surface,
       borderRadius: 24,
-      borderWidth: 1,
-      borderColor: colors.border,
       padding: 16,
     },
     commentsScreen: {

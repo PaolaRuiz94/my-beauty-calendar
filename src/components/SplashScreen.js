@@ -1,23 +1,25 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../hooks/useTheme';
 
-export default function SplashScreen({ onFinish }) {
+export default function SplashScreen() {
+  const navigation = useNavigation();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onFinish();
-    }, 2500); // ⏱ duración (2.5 segundos)
-
-    return () => clearTimeout(timer);
-  }, [onFinish]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.logo}>My Beauty Calendar</Text>
-      <Text style={styles.tagline}>Hair Care Ritual ✨</Text>
+      <Text style={styles.tagline}>Hair care ritual ✨</Text>
+
+      <TouchableOpacity
+        style={[styles.ctaButton, { backgroundColor: colors.primary }]}
+        onPress={() => navigation.navigate('OnboardingDiagnosis')}
+        activeOpacity={0.85}
+      >
+        <Text style={[styles.ctaButtonText, { color: colors.white }]}>Comenzar</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -42,5 +44,15 @@ const makeStyles = (colors) =>
       marginTop: 10,
       fontSize: 14,
       color: colors.textSecondary,
+    },
+    ctaButton: {
+      marginTop: 32,
+      paddingVertical: 14,
+      paddingHorizontal: 40,
+      borderRadius: 28,
+    },
+    ctaButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
     },
   });

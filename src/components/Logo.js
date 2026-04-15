@@ -34,8 +34,6 @@ const makeStyles = (colors) =>
       backgroundColor: colors.card,
       justifyContent: 'center',
       alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     markText: {
       fontSize: 18,

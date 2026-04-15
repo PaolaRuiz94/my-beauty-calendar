@@ -9,6 +9,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
+import AppHeader from './AppHeader';
 
 const categories = [
   {
@@ -51,6 +52,7 @@ const categories = [
 
 const CARD_WIDTH = 170;
 const CARD_HEIGHT = 220;
+const FEATURED_HEIGHT = 260;
 const SCREEN_PADDING = 20;
 
 export default function RecommendationsScreen() {
@@ -60,30 +62,45 @@ export default function RecommendationsScreen() {
   return (
     <View style={styles.wrapper}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.screenTitle}>Recomendaciones capilares</Text>
+        <AppHeader />
 
-        {categories.map((section) => (
+        {categories.map((section, index) => (
           <View key={section.title} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
+
+            <View style={styles.featuredWrapper}>
+              <View style={[styles.featuredBackground, index % 2 === 0 && styles.featuredBackgroundAlt]} />
+              <TouchableOpacity style={styles.featuredCard} activeOpacity={0.9}>
+                <ImageBackground
+                  source={{ uri: section.image }}
+                  style={styles.featuredImage}
+                  imageStyle={styles.featuredImageStyle}
+                >
+                  <View style={styles.featuredContent}>
+                    <Text style={styles.featuredPreTitle}>Destacado</Text>
+                    <Text style={styles.featuredTitle}>{section.title}</Text>
+                    <Text style={styles.featuredSubtitle} numberOfLines={2}>
+                      Descubre consejos editoriales y rutinas premium para tu tipo de cabello.
+                    </Text>
+                  </View>
+                </ImageBackground>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.splitRow} />
+
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.carousel}
             >
               {section.data.map((item) => (
-                <TouchableOpacity key={item.id} style={styles.card} activeOpacity={0.85}>
-                  <ImageBackground
-                    source={{ uri: section.image }}
-                    style={styles.cardBackground}
-                    imageStyle={styles.cardImage}
-                  >
-                    <View style={styles.cardContent}>
-                      <Text style={styles.cardLabel}>Consejo {item.id}</Text>
-                      <Text style={styles.cardText} numberOfLines={2}>
-                        Tips para mejorar tu rutina y cuidar tu cabello con calma.
-                      </Text>
-                    </View>
-                  </ImageBackground>
+                <TouchableOpacity key={item.id} style={styles.smallCard} activeOpacity={0.85}>
+                  <Text style={styles.smallCardTag}>Consejo {item.id}</Text>
+                  <Text style={styles.smallCardLabel}>Rutina suave</Text>
+                  <Text style={styles.smallCardText} numberOfLines={3}>
+                    Inspiración liviana para mantener tu cabello sano y con brillo editorial.
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -101,7 +118,7 @@ const makeStyles = (colors) =>
       backgroundColor: colors.background,
     },
     container: {
-      paddingTop: 24,
+      paddingTop: 0,
       paddingBottom: 40,
     },
     screenTitle: {
@@ -112,52 +129,128 @@ const makeStyles = (colors) =>
       paddingHorizontal: SCREEN_PADDING,
     },
     section: {
-      marginBottom: 24,
+      marginBottom: 32,
     },
     sectionTitle: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 14,
+      marginBottom: 18,
       paddingHorizontal: SCREEN_PADDING,
+    },
+    featuredWrapper: {
+      paddingHorizontal: SCREEN_PADDING,
+      marginBottom: 16,
+    },
+    featuredBackground: {
+      position: 'absolute',
+      top: 10,
+      left: 0,
+      right: 0,
+      height: FEATURED_HEIGHT,
+      borderRadius: 40,
+      backgroundColor: colors.softWhite,
+      transform: [{ scaleX: 1.05 }],
+    },
+    featuredBackgroundAlt: {
+      backgroundColor: colors.surface,
+    },
+    featuredCard: {
+      height: FEATURED_HEIGHT,
+      borderRadius: 32,
+      overflow: 'hidden',
+      backgroundColor: colors.card,
+      shadowColor: colors.textPrimary,
+      shadowOpacity: 0.12,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 14 },
+      elevation: 5,
+    },
+    featuredImage: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    featuredImageStyle: {
+      borderRadius: 32,
+    },
+    featuredContent: {
+      padding: 24,
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      borderTopLeftRadius: 32,
+      borderTopRightRadius: 32,
+    },
+    featuredPreTitle: {
+      color: colors.white,
+      fontSize: 12,
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+      marginBottom: 8,
+    },
+    featuredTitle: {
+      color: colors.white,
+      fontSize: 24,
+      fontWeight: '800',
+      lineHeight: 32,
+      marginBottom: 8,
+    },
+    featuredSubtitle: {
+      color: colors.white,
+      fontSize: 14,
+      lineHeight: 20,
+      maxWidth: '80%',
+    },
+    splitRow: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginHorizontal: SCREEN_PADDING,
+      marginBottom: 18,
     },
     carousel: {
       paddingLeft: SCREEN_PADDING,
     },
-    card: {
-      width: CARD_WIDTH,
-      height: CARD_HEIGHT,
-      borderRadius: 24,
-      marginRight: 18,
-      backgroundColor: colors.surface,
-      shadowColor: colors.textPrimary,
-      shadowOpacity: 0.12,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 4,
-      overflow: 'hidden',
-    },
-    cardBackground: {
-      flex: 1,
-      justifyContent: 'flex-end',
-    },
-    cardImage: {
-      borderRadius: 24,
-    },
-    cardContent: {
-      flex: 1,
-      padding: 18,
+    headerRow: {
+      flexDirection: 'row',
       justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: SCREEN_PADDING,
+      paddingTop: 50,
+      marginBottom: 16,
     },
-    cardLabel: {
+    smallCard: {
+      width: CARD_WIDTH,
+      minHeight: CARD_HEIGHT,
+      borderRadius: 28,
+      padding: 18,
+      marginRight: 18,
+      backgroundColor: colors.white,
+      shadowColor: colors.textPrimary,
+      shadowOpacity: 0.08,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 4,
+    },
+    smallCardTag: {
+      alignSelf: 'flex-start',
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 18,
+      backgroundColor: colors.accent,
+      marginBottom: 14,
+    },
+    smallCardTagText: {
+      color: colors.white,
+      fontWeight: '700',
+      fontSize: 12,
+    },
+    smallCardLabel: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.white,
-      marginBottom: 6,
+      color: colors.textPrimary,
+      marginBottom: 8,
     },
-    cardText: {
+    smallCardText: {
       fontSize: 13,
-      color: colors.white,
-      lineHeight: 19,
+      lineHeight: 20,
+      color: colors.textSecondary,
     },
   });

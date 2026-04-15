@@ -174,6 +174,9 @@ export default function OnboardingDiagnosisScreen() {
 
     return (
       <View style={[styles.slideInner, { backgroundColor: colors.card, height: innerSlideHeight }]}>      
+        {isNumeric && name.trim().length > 0 ? (
+          <Text style={[styles.greetingTitle, { color: colors.textPrimary }]}>Hola {name.trim()}</Text>
+        ) : null}
         <Text style={[styles.inputTitle, { color: colors.textPrimary }]}>{slide.question}</Text>
         {isNumeric ? (
           <YearPicker value={age} onChange={setAge} minYear={1950} maxYear={new Date().getFullYear()} />
@@ -324,6 +327,12 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlign: 'center',
     color: '#8F7181',
+  },
+  greetingTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   inputTitle: {
     fontSize: 22,

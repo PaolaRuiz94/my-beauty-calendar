@@ -226,58 +226,193 @@ export default function DiagnosisScreen({ navigation }) {
     return `${answersObject.texture} ${densityLabel} / ${treatedLabel}`;
   };
 
-  const getRecommendations = (answersObject) => {
-    const recs = [];
+  const getRecommendedProducts = (answersObject) => {
     const productSet = [];
 
     if (answersObject.scalp === 'Grasa') {
-      recs.push('Equilibra la raíz con un shampoo suave libre de sulfatos.');
       productSet.push(...productDB.balance);
     }
 
     if (answersObject.porosity === 'Alta') {
-      recs.push('Sella la fibra con tratamientos nutritivos y evita el exceso de calor.');
       productSet.push(...productDB.hydra, ...productDB.repair);
     }
 
     if (answersObject.porosity === 'Baja') {
-      recs.push('Usa fórmulas ligeras y deja que los productos penetren lentamente.');
       productSet.push(...productDB.volume);
     }
 
     if (answersObject.density === 'Fina') {
-      recs.push('Elige productos ligeros que no pesen el cabello.');
       productSet.push(...productDB.volume);
     }
 
     if (answersObject.texture === 'Rizado') {
-      recs.push('Hidrata y define cada rizo con crema nutritiva.');
       productSet.push(...productDB.curl);
     }
 
     if (answersObject.chemical === 'Químico') {
-      recs.push('Prioriza reparadores y mascarillas profundas.');
       productSet.push(...productDB.repair);
     }
 
-    if (!recs.length) {
-      recs.push('Sigue una rutina equilibrada con limpieza suave e hidratación regular.');
+    return Array.from(new Set(productSet));
+  };
+
+  const getRoutineSteps = (answersObject, damageLevel) => {
+    const shampoo =
+      answersObject.scalp === 'Grasa'
+        ? 'Shampoo equilibrante sin sulfatos'
+        : answersObject.scalp === 'Seco'
+        ? 'Shampoo nutritivo suave'
+        : 'Shampoo hidratante ligero';
+
+    const treatment =
+      damageLevel === 'Alto'
+        ? 'Mascarilla reparadora profunda'
+        : damageLevel === 'Moderado'
+        ? 'Tratamiento fortalecedor con proteínas'
+        : 'Mascarilla nutritiva ligera';
+
+    const leaveIn =
+      answersObject.porosity === 'Alta'
+        ? 'Leave-in sellador con ceramidas'
+        : answersObject.porosity === 'Baja'
+        ? 'Crema ligera para baja porosidad'
+        : 'Crema hidratante ligera';
+
+    const styling =
+      answersObject.texture === 'Rizado'
+        ? 'Crema definidora de rizos'
+        : answersObject.texture === 'Ondulado'
+        ? 'Spray de definición ligera'
+        : answersObject.density === 'Fina'
+        ? 'Aceite ligero anti-frizz'
+        : 'Sérum suavizante de acabado';
+
+    return [
+      { label: 'Shampoo', value: shampoo },
+      { label: 'Tratamiento', value: treatment },
+      { label: 'Leave-in', value: leaveIn },
+      { label: 'Styling', value: styling },
+    ];
+  };
+
+  const getPersonalizedTips = (answersObject, damageLevel) => {
+    const tips = [];
+
+    if (answersObject.scalp === 'Grasa') {
+      tips.push({
+        title: 'Evita sulfatos fuertes',
+        description:
+          'Los sulfatos agresivos pueden aumentar la oleosidad y resecar el cuero cabelludo. Opta por fórmulas suaves que limpien sin irritar.',
+      });
+    } else if (answersObject.scalp === 'Seco') {
+      tips.push({
+        title: 'Prioriza fórmulas cremosas',
+        description:
+          'Un cuero cabelludo seco se beneficia de productos nutritivos. Evita lavados muy frecuentes y usa ingredientes hidratantes.',
+      });
+    } else {
+      tips.push({
+        title: 'Mantén una limpieza suave',
+        description:
+          'Un equilibrio ligero mantiene sano el cuero cabelludo normal. Usa productos que limpien sin eliminar los aceites naturales.',
+      });
     }
 
-    return { recs, products: Array.from(new Set(productSet)) };
+    if (damageLevel === 'Alto') {
+      tips.push({
+        title: 'Reduce el uso de calor',
+        description:
+          'El calor frecuente daña la estructura del cabello. Alterna herramientas térmicas con secados al aire y usa protectores térmicos.',
+      });
+    } else if (damageLevel === 'Moderado') {
+      tips.push({
+        title: 'Usa protección térmica',
+        description:
+          'Protege tu cabello antes de peinarlo con calor y acompaña los tratamientos con mascarillas reparadoras.',
+      });
+    } else {
+      tips.push({
+        title: 'No sobrecargues tu fibra',
+        description:
+          'Si tu cabello está poco dañado, elige productos ligeros y evita tratamientos innecesarios para conservar su salud.',
+      });
+    }
+
+    if (answersObject.porosity === 'Alta') {
+      tips.push({
+        title: 'Sella la cutícula',
+        description:
+          'La porosidad alta necesita retener hidratación. Usa aceites ligeros y evita el agua demasiado caliente para evitar pérdida de humedad.',
+      });
+    } else if (answersObject.porosity === 'Baja') {
+      tips.push({
+        title: 'Deja actuar los productos',
+        description:
+          'La porosidad baja necesita más tiempo para absorber nutrientes. Aplica tratamientos y déjalos actuar antes de enjuagar.',
+      });
+    } else {
+      tips.push({
+        title: 'Equilibra hidratación y nutrición',
+        description:
+          'La porosidad media responde bien a fórmulas equilibradas que aportan hidratación sin dejar peso.',
+      });
+    }
+
+    return tips;
+  };
+
+  const getFrequencyRecommendations = (answersObject, damageLevel) => {
+    return [
+      {
+        label: 'Lavado semanal',
+        value:
+          answersObject.scalp === 'Grasa'
+            ? '3 veces por semana'
+            : answersObject.scalp === 'Seco'
+            ? '1-2 veces por semana'
+            : '2-3 veces por semana',
+      },
+      {
+        label: 'Tratamientos',
+        value:
+          damageLevel === 'Alto'
+            ? 'Una vez por semana'
+            : damageLevel === 'Moderado'
+            ? 'Cada 10-12 días'
+            : '2 veces al mes',
+      },
+      {
+        label: 'Hidratación',
+        value:
+          answersObject.porosity === 'Alta'
+            ? '2 veces por semana'
+            : answersObject.porosity === 'Baja'
+            ? '1 vez por semana'
+            : '1-2 veces por semana',
+      },
+    ];
   };
 
   const generateResult = (answersObject) => {
+    const damageLevel = getDamageLevel(answersObject);
     const resultObject = {
       hairType: getHairType(answersObject),
       porosity: getPorosity(answersObject.porosity),
       density: answersObject.density,
       scalpCondition: getScalpCondition(answersObject.scalp),
-      damageLevel: getDamageLevel(answersObject),
+      damageLevel,
     };
-    const { recs, products: recommendedProducts } = getRecommendations(answersObject);
+    const recommendedProducts = getRecommendedProducts(answersObject);
     setProducts(recommendedProducts);
-    setResult({ ...resultObject, recommendations: recs });
+    setResult({
+      ...resultObject,
+      recommendations: {
+        routine: getRoutineSteps(answersObject, damageLevel),
+        products: recommendedProducts,
+        tips: getPersonalizedTips(answersObject, damageLevel),
+        frequency: getFrequencyRecommendations(answersObject, damageLevel),
+      },
+    });
   };
 
   const openLink = (url) => {
@@ -323,20 +458,61 @@ export default function DiagnosisScreen({ navigation }) {
             </View>
           </View>
           <Text style={styles.subtitle}>Recomendaciones</Text>
-          {result.recommendations.map((item, index) => (
-            <Text key={index} style={styles.recommendationText}>• {item}</Text>
-          ))}
-          <Text style={styles.subtitle}>Productos recomendados</Text>
-          {products.map((product, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.productCard}
-              onPress={() => openLink(product.link)}
-            >
-              <Text style={styles.productText}>{product.name}</Text>
-              <Text style={styles.buy}>Comprar →</Text>
-            </TouchableOpacity>
-          ))}
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionHeading}>Rutina recomendada</Text>
+            {result.recommendations.routine.map((step) => (
+              <View key={step.label} style={styles.routineRow}>
+                <Text style={styles.routineLabel}>{step.label}</Text>
+                <Text style={styles.routineValue}>{step.value}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionHeading}>Productos sugeridos</Text>
+            {result.recommendations.products.map((product, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.productSuggestionCard}
+                onPress={() => openLink(product.link)}
+              >
+                <Text style={styles.productSuggestionName}>{product.name}</Text>
+                <Text style={styles.productSuggestionAction}>Ver</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionHeading}>Tips personalizados</Text>
+            {result.recommendations.tips.map((tip, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.tipCard}
+                onPress={() =>
+                  navigation.navigate('TipDetail', {
+                    title: tip.title,
+                    description: tip.description,
+                  })
+                }
+              >
+                <Text style={styles.tipCardTitle}>{tip.title}</Text>
+                <Text style={styles.tipCardPreview} numberOfLines={2}>
+                  {tip.description}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionHeading}>Frecuencia de uso</Text>
+            {result.recommendations.frequency.map((item) => (
+              <View key={item.label} style={styles.frequencyRow}>
+                <Text style={styles.frequencyLabel}>{item.label}</Text>
+                <Text style={styles.frequencyValue}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
           <TouchableOpacity
             style={styles.resetButton}
             onPress={() => {
@@ -655,6 +831,81 @@ const makeStyles = (colors) =>
       color: colors.textSecondary,
       lineHeight: 22,
       marginBottom: 8,
+    },
+    sectionCard: {
+      width: '100%',
+      backgroundColor: '#FFFFFF',
+      borderRadius: 24,
+      padding: 18,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: '#ECE0DD',
+      shadowColor: '#CFAEB7',
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 1,
+    },
+    sectionHeading: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 12,
+    },
+    routineRow: {
+      marginBottom: 12,
+    },
+    routineLabel: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    routineValue: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      marginTop: 4,
+      lineHeight: 22,
+    },
+    productSuggestionCard: {
+      backgroundColor: '#F7ECEE',
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 12,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    productSuggestionName: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      flex: 1,
+      marginRight: 12,
+    },
+    productSuggestionAction: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#D6A4A4',
+    },
+    tipText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      lineHeight: 22,
+      marginBottom: 10,
+    },
+    frequencyRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    frequencyLabel: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    frequencyValue: {
+      fontSize: 15,
+      color: colors.textSecondary,
     },
     productCard: {
       backgroundColor: '#F7ECEE',

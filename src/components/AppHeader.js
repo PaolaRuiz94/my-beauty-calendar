@@ -27,7 +27,7 @@ export default function AppHeader() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>      
+    <View style={[styles.container, { backgroundColor: '#FAF8F6', paddingTop: insets.top }]}>      
       <View style={styles.header}>
         <Text style={styles.title}>My Beauty Calendar</Text>
 

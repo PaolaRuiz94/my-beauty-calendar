@@ -265,7 +265,7 @@ const makeStyles = (colors) =>
       paddingHorizontal: 20,
       paddingTop: 0,
       paddingBottom: 20,
-      backgroundColor: colors.background,
+      backgroundColor: '#FAF8F6',
       flexGrow: 1,
     },
     title: {
@@ -303,14 +303,17 @@ const makeStyles = (colors) =>
       marginBottom: 20,
     },
     filterButton: {
-      backgroundColor: colors.card,
+      backgroundColor: '#F7ECEE',
       borderRadius: 20,
       paddingVertical: 10,
       paddingHorizontal: 14,
       margin: 4,
+      borderWidth: 1,
+      borderColor: '#EAD7DB',
     },
     filterButtonSelected: {
-      backgroundColor: colors.primary,
+      backgroundColor: '#D6A4A4',
+      borderColor: '#D6A4A4',
     },
     filterText: {
       color: colors.textPrimary,
@@ -320,10 +323,17 @@ const makeStyles = (colors) =>
       color: colors.white,
     },
     productCard: {
-      backgroundColor: colors.surface,
-      borderRadius: 18,
+      backgroundColor: '#f5f2ef',
+      borderRadius: 24,
       padding: 18,
       marginBottom: 16,
+      borderWidth: 1,
+      borderColor: '#EAD7DB',
+      shadowColor: '#f4dfe5',
+      shadowOpacity: 0.14,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 3,
     },
     productCardTop: {
       flexDirection: 'row',
@@ -335,7 +345,7 @@ const makeStyles = (colors) =>
       height: 96,
       borderRadius: 16,
       marginRight: 14,
-      backgroundColor: colors.card,
+      backgroundColor: '#F7ECEE',
       resizeMode: 'cover',
     },
     productInfo: {
@@ -352,7 +362,7 @@ const makeStyles = (colors) =>
       color: colors.textSecondary,
     },
     buyButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: '#D6A4A4',
       paddingVertical: 12,
       borderRadius: 16,
       alignItems: 'center',

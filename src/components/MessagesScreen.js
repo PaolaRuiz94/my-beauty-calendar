@@ -384,7 +384,7 @@ const makeStyles = (colors) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: '#FAF8F6',
     },
     header: {
       padding: 20,
@@ -406,6 +406,9 @@ const makeStyles = (colors) =>
     subtitle: {
       color: colors.textSecondary,
       fontSize: 15,
+      marginTop: 12,
+      marginBottom: 18,
+      textAlign: 'center',
     },
     feedContainer: {
       paddingHorizontal: 16,
@@ -604,11 +607,11 @@ const makeStyles = (colors) =>
     },
     transitionCardOuter: {
       width: '100%',
-      marginHorizontal: -16,
       marginBottom: 16,
       backgroundColor: colors.surface,
       borderRadius: 24,
       overflow: 'hidden',
+      alignSelf: 'center',
     },
     transitionCard: {
       height: 220,

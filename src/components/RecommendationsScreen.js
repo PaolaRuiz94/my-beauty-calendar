@@ -115,7 +115,7 @@ const makeStyles = (colors) =>
   StyleSheet.create({
     wrapper: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: '#FAF8F6',
     },
     container: {
       paddingTop: 0,

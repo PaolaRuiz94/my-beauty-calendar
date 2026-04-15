@@ -89,6 +89,7 @@ function AppRouter() {
       <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
         <RootStack.Screen name="Splash" component={SplashScreen} />
         <RootStack.Screen name="OnboardingDiagnosis" component={OnboardingDiagnosisScreen} />
+        <RootStack.Screen name="TipDetail" component={DetailScreen} />
         <RootStack.Screen name="Main" component={MainTabNavigator} />
         <RootStack.Screen name="Profile" component={ProfileScreen} />
         <RootStack.Screen name="Auth" component={AuthStackScreen} />

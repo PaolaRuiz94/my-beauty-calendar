@@ -706,6 +706,7 @@ const makeStyles = (colors) =>
       fontWeight: '700',
       textAlign: 'center',
       color: colors.textPrimary,
+      marginTop: 20,
       marginBottom: 18,
     },
     progressRow: {

@@ -28,8 +28,8 @@ const categories = [
         description:
           'Usa productos específicos para rizos que definen sin endurecer. Aplica con método de definición y seca al aire o con difusor.',
         body:
-          'Los rizos necesitan amor y movimiento más que rigidez. Una rutina de definición bien pensada permite que cada rizo se forme con suavidad, sin apelmazar ni dejar residuos. Al elegir productos ligeros y específicos para rizos, tu cabello puede respirar, mantener su elasticidad y lucir con un brillo natural que resalta cada curva.',
-        cta: 'Aplica el producto con las manos en secciones, scrunch y seca con difusor o al aire para maximizar la definición.',
+          'Los rizos necesitan un método claro para mostrarse definidos y naturales. Puedes elegir entre tres tipos de definición según tu textura y el resultado deseado. La fitagem ofrece un acabado suave y compacto, trabajando la crema por mechón para maximizar la hidratación sin peso. Con cepillo definidor consigues rizos más estructurados y uniformes, ideal si buscas forma y volumen controlado. El método rizo a rizo va paso a paso, formando cada rizo con los dedos para lograr máxima definición y un look más marcado. En todos los casos, aplica el producto en secciones y evita tocar el cabello mientras seca para mantener la forma.',
+        cta: 'Prueba fitagem para suavidad, cepillo definidor para estructura o rizo a rizo para máxima definición, y trabaja siempre en secciones con el cabello bien hidratado.',
       },
       {
         id: 2,

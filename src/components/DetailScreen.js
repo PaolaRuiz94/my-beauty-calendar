@@ -11,7 +11,12 @@ import { useTheme } from '../hooks/useTheme';
 export default function DetailScreen({ navigation, route }) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const { title = 'Detalle', description = 'Selecciona un elemento para ver más detalles.' } = route?.params || {};
+  const {
+    title = 'Detalle',
+    description = 'Selecciona un elemento para ver más detalles.',
+    body = '',
+    cta = '',
+  } = route?.params || {};
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -21,7 +26,14 @@ export default function DetailScreen({ navigation, route }) {
         </TouchableOpacity>
         <View style={styles.card}>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.description}>{description}</Text>
+          <Text style={styles.subtitle}>{description}</Text>
+          {body ? <Text style={styles.body}>{body}</Text> : null}
+          {cta ? (
+            <View style={styles.ctaBox}>
+              <Text style={styles.ctaLabel}>Consejo práctico</Text>
+              <Text style={styles.ctaText}>{cta}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </SafeAreaView>
@@ -83,9 +95,34 @@ const makeStyles = (colors) =>
       color: colors.textPrimary || '#1E1E1E',
       marginBottom: 14,
     },
-    description: {
+    subtitle: {
       fontSize: 16,
       lineHeight: 24,
+      color: colors.textSecondary || '#6B6B6B',
+      marginBottom: 18,
+    },
+    body: {
+      fontSize: 16,
+      lineHeight: 26,
+      color: colors.textSecondary || '#6B6B6B',
+      marginBottom: 22,
+    },
+    ctaBox: {
+      backgroundColor: '#F7ECEE',
+      padding: 16,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: '#E8D4D6',
+    },
+    ctaLabel: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.textPrimary || '#1E1E1E',
+      marginBottom: 8,
+    },
+    ctaText: {
+      fontSize: 15,
+      lineHeight: 22,
       color: colors.textSecondary || '#6B6B6B',
     },
   });

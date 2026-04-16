@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../hooks/useTheme';
-import { recommendationDB } from '../data/productDB';
+import { productDB, recommendationDB } from '../data/productDB';
 
 const { width } = Dimensions.get('window');
 const CARD_PADDING = 24;
@@ -254,7 +254,33 @@ export default function DiagnosisScreen({ navigation }) {
       }
     }
 
+    const hasOil = uniqueProducts.some((product) => product.category?.trim() === 'Aceites');
+    if (!hasOil && productDB.aceites?.length > 0) {
+      uniqueProducts.push(productDB.aceites[0]);
+    }
+
     return uniqueProducts;
+  };
+
+  const getCategorizedProducts = (products) => {
+    const categories = {
+      Shampoo: [],
+      Acondicionador: [],
+      Tratamiento: [],
+      'Crema de Peinar': [],
+      Gel: [],
+      Espumas: [],
+      Aceites: [],
+    };
+
+    products.forEach((product) => {
+      const key = product.category?.trim();
+      if (categories[key]) {
+        categories[key].push(product);
+      }
+    });
+
+    return categories;
   };
 
   const getRoutineSteps = (answersObject, damageLevel) => {
@@ -408,6 +434,7 @@ export default function DiagnosisScreen({ navigation }) {
       recommendations: {
         routine: getRoutineSteps(answersObject, damageLevel),
         products: recommendedProducts,
+        productsByCategory: getCategorizedProducts(recommendedProducts),
         tips: getPersonalizedTips(answersObject, damageLevel),
         frequency: getFrequencyRecommendations(answersObject, damageLevel),
       },
@@ -470,16 +497,33 @@ export default function DiagnosisScreen({ navigation }) {
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionHeading}>Productos sugeridos</Text>
-            {result.recommendations.products.map((product, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.productSuggestionCard}
-                onPress={() => openLink(product.link)}
-              >
-                <Text style={styles.productSuggestionName}>{product.name}</Text>
-                <Text style={styles.productSuggestionAction}>Ver</Text>
-              </TouchableOpacity>
-            ))}
+            {Object.entries(result.recommendations.productsByCategory).map(
+              ([category, productsInCategory]) =>
+                productsInCategory.length > 0 ? (
+                  <View key={category} style={styles.categoryGroup}>
+                    <Text style={styles.categoryHeading}>
+                      {category === 'Aceites' ? 'Aceite' : category}
+                    </Text>
+                    {productsInCategory.map((product) => (
+                      <TouchableOpacity
+                        key={product.id}
+                        style={styles.productSuggestionCard}
+                        onPress={() => openLink(product.link)}
+                      >
+                        <Text style={styles.productSuggestionName}>{product.name}</Text>
+                        <Text style={styles.productSuggestionAction}>Ver</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : null,
+            )}
+            {Object.values(result.recommendations.productsByCategory).every(
+              (productsInCategory) => productsInCategory.length === 0,
+            ) && (
+              <Text style={styles.emptyText}>
+                No se encontraron productos recomendados por categoría.
+              </Text>
+            )}
           </View>
 
           <View style={styles.sectionCard}>
@@ -885,6 +929,15 @@ const makeStyles = (colors) =>
       fontSize: 14,
       fontWeight: '700',
       color: '#D6A4A4',
+    },
+    categoryGroup: {
+      marginBottom: 16,
+    },
+    categoryHeading: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 10,
     },
     tipText: {
       fontSize: 15,

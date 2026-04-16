@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,88 +15,84 @@ const defaultProductImage = require('../../assets/icon.png');
 
 const categoryOptions = [
   { id: 'all', title: 'Todos' },
-  { id: 'preshampoo', title: 'Preshampoo' },
   { id: 'shampoo', title: 'Shampoo' },
   { id: 'tratamiento', title: 'Tratamiento' },
   { id: 'acondicionador', title: 'Acondicionador' },
-  { id: 'termoprotector', title: 'Termoprotector' },
-  { id: 'crema_peinar', title: 'Crema de peinar' },
-  { id: 'geles', title: 'Geles' },
-  { id: 'espumas', title: 'Espumas' },
-  { id: 'aceites', title: 'Aceites' },
+  { id: 'cremaDePeinar', title: 'Crema de peinar' },
+  { id: 'gel', title: 'Gel' },
+  { id: 'espuma', title: 'Espuma' },
+  { id: 'aceite', title: 'Aceite' },
 ];
 
 const productDB = {
-  preshampoo: [
-    {
-      name: 'Kérastase Specifique Bain Pré-Shampoo',
-      description: 'Limpieza profunda previa al lavado para un cuero cabelludo equilibrado.',
-      link: 'https://www.amazon.com.mx/s?k=Kerastase+Specifique+Bain+Pre-Shampoo',
-      image: defaultProductImage,
-    },
-  ],
   shampoo: [
     {
-      name: 'Shampoo Kérastase Discipline',
-      description: 'Suaviza el cabello rebelde y controla el frizz desde el lavado.',
-      link: 'https://www.amazon.com.mx/s?k=Kerastase+Discipline+Shampoo',
-      image: defaultProductImage,
+      name: 'KATIVA SHAMPOO ARGAN X 1000ML',
+      description:
+        'Shampoo nutritivo con argán para mantener el cabello suave, brillante y con limpieza equilibrada.',
+      link: 'https://almacensandra.com.co/product/p-10437-kativa-shampoo-argan-x-1000ml',
+      image:
+        'https://d2k4simfy5dbs2.cloudfront.net/eyJidWNrZXQiOiJjYXNhbmRyYS1zdGF0aWMiLCJrZXkiOiJwcm9kdWN0cy8xMDQzNy83NDUxNS5qcGciLCJlZGl0cyI6eyJyZXNpemUiOnsid2lkdGgiOjgwMCwiaGVpZ2h0Ijo5NjB9LCJ0b0Zvcm1hdCI6IndlYnAifX0=',
     },
   ],
   tratamiento: [
     {
-      name: 'Mascarilla hidratante Shea Moisture Raw Shea Butter',
-      description: 'Hidratación profunda para puntas secas y cabello dañado.',
-      link: 'https://www.amazon.com.mx/s?k=Shea+Moisture+Raw+Shea+Butter+Hair+Mask',
-      image: defaultProductImage,
+      name: 'KERASTASE GLOSS ABSOLU MASQUE HYDRA-GLAZE X 200ML',
+      description:
+        'Mascarilla de tratamiento profunda para restaurar la fibra capilar y retener la hidratación.',
+      link: 'https://almacensandra.com.co/product/p-49862-kerastase-gloss-absolu-masque-hydra-glaze-x-200ml',
+      image:
+        'https://d2k4simfy5dbs2.cloudfront.net/eyJidWNrZXQiOiJjYXNhbmRyYS1zdGF0aWMiLCJrZXkiOiJzdGF0aWMvcHJvZHVjdHNHYWxsZXJ5LzdjYjI5NTAyLTU4M2YtNDJmZC04ZDY0LWI5YWRhZjMyMDA5Ml8xMDI0NjguanBnIiwiZWRpdHMiOnsicmVzaXplIjp7IndpZHRoIjo4MDAsImhlaWdodCI6OTYwfSwidG9Gb3JtYXQiOiJ3ZWJwIn19',
     },
   ],
   acondicionador: [
     {
-      name: 'Acondicionador L’Oréal Elvive Dream Lengths',
-      description: 'Suaviza y fortalece el cabello largo sin apelmazarlo.',
-      link: 'https://www.amazon.com.mx/s?k=LOreal+Elvive+Dream+Lengths+Conditioner',
-      image: defaultProductImage,
+      name: 'KATIVA ACONDICIONADOR ARGAN X 500ML',
+      description:
+        'Acondicionador hidratante con aceite de argán para desenredar y proteger la fibra.',
+      link: 'https://almacensandra.com.co/product/p-3654-kativa-acondicionador-argan-x-500ml',
+      image:
+        'https://d2k4simfy5dbs2.cloudfront.net/eyJidWNrZXQiOiJjYXNhbmRyYS1zdGF0aWMiLCJrZXkiOiJwcm9kdWN0cy8zNjU0LzQwNjUyLmpwZyIsImVkaXRzIjp7InJlc2l6ZSI6eyJ3aWR0aCI6ODAwLCJoZWlnaHQiOjk2MH0sInRvRm9ybWF0Ijoid2VicCJ9fQ==',
     },
   ],
-  termoprotector: [
+  cremaDePeinar: [
     {
-      name: 'Termoprotector TRESemmé Thermal Creations',
-      description: 'Protege el cabello del calor de planchas y secadores.',
-      link: 'https://www.amazon.com.mx/s?k=TRESemme+Thermal+Creations',
-      image: defaultProductImage,
+      name: 'SALERM CREMA DE PEINAR SALERM 21 X 200GR',
+      description:
+        'Crema para peinar que ayuda a definir y proteger sin dejar peso en el cabello.',
+      link: 'https://almacensandra.com.co/product/p-702-salerm-crema-de-peinar-salerm-21-x-200gr',
+      image:
+        'https://d2k4simfy5dbs2.cloudfront.net/eyJidWNrZXQiOiJjYXNhbmRyYS1zdGF0aWMiLCJrZXkiOiJwcm9kdWN0cy83MDIvMTI0MDcuanBnIiwiZWRpdHMiOnsicmVzaXplIjp7IndpZHRoIjo4MDAsImhlaWdodCI6OTYwfSwidG9Gb3JtYXQiOiJ3ZWJwIn19',
     },
   ],
-  crema_peinar: [
+  gel: [
     {
-      name: 'Crema de peinar Garnier Fructis',
-      description: 'Define ondas y controla el frizz sin dejar el cabello pesado.',
-      link: 'https://www.amazon.com.mx/s?k=Garnier+Fructis+Crema+de+Peinar',
-      image: defaultProductImage,
+      name: 'GEL MAXIMA FIJACION X 200 ML',
+      description:
+        'Gel de fijación para mantener el estilo y el control en peinados definidos.',
+      link: 'https://almacensandra.com.co/product/p-13984-gel-maxima-fijacion-x-200-ml',
+      image:
+        'https://d2k4simfy5dbs2.cloudfront.net/eyJidWNrZXQiOiJjYXNhbmRyYS1zdGF0aWMiLCJrZXkiOiJwcm9kdWN0cy8xMzk4NC84MTcxNS5qcGciLCJlZGl0cyI6eyJyZXNpemUiOnsid2lkdGgiOjgwMCwiaGVpZ2h0Ijo5NjB9LCJ0b0Zvcm1hdCI6IndlYnAifX0=',
     },
   ],
-  geles: [
+  espuma: [
     {
-      name: 'Gel capilar Eco Styler',
-      description: 'Fijación fuerte con brillo sin residuos secos.',
-      link: 'https://www.amazon.com.mx/s?k=Eco+Styler+Gel',
-      image: defaultProductImage,
+      name: 'YUMA ESPUMA CAPILAR HIDRATANTE CREADOR DE RIZOS X 200ML',
+      description:
+        'Espuma capilar que define los rizos con hidratación y control sin apelmazar.',
+      link: 'https://almacensandra.com.co/product/p-40082-yuma-espuma-capilar-hidratante-creador-de-rizos-x-200ml',
+      image:
+        'https://d2k4simfy5dbs2.cloudfront.net/eyJidWNrZXQiOiJjYXNhbmRyYS1zdGF0aWMiLCJrZXkiOiJwcm9kdWN0cy80MDA4Mi85NDkxMS5qcGciLCJlZGl0cyI6eyJyZXNpemUiOnsid2lkdGgiOjgwMCwiaGVpZ2h0Ijo5NjB9LCJ0b0Zvcm1hdCI6IndlYnAifX0=',
     },
   ],
-  espumas: [
+  aceite: [
     {
-      name: 'Espuma reductora de frizz John Frieda',
-      description: 'Controla volumen y humedad sin dejar el cabello rígido.',
-      link: 'https://www.amazon.com.mx/s?k=John+Frieda+Frizz+Ease+Mousse',
-      image: defaultProductImage,
-    },
-  ],
-  aceites: [
-    {
-      name: 'Aceite de argán Moroccanoil',
-      description: 'Nutre, aporta brillo y suaviza puntas secas.',
-      link: 'https://www.amazon.com.mx/s?k=Moroccanoil+Argan+Oil',
-      image: defaultProductImage,
+      name: 'ATHOS ACEITE DE COCO X 1000 ML',
+      description:
+        'Aceite de coco puro para nutrir puntas, sellar la fibra y aportar brillo natural.',
+      link: 'https://almacensandra.com.co/product/p-2833-athos-aceite-de-coco-x-1000-ml',
+      image:
+        'https://d2k4simfy5dbs2.cloudfront.net/eyJidWNrZXQiOiJjYXNhbmRyYS1zdGF0aWMiLCJrZXkiOiJwcm9kdWN0cy8yODMzLzMyMDc4LmpwZyIsImVkaXRzIjp7InJlc2l6ZSI6eyJ3aWR0aCI6ODAwLCJoZWlnaHQiOjk2MH0sInRvRm9ybWF0Ijoid2VicCJ9fQ==',
     },
   ],
 };
@@ -105,8 +101,6 @@ export default function ProductsScreen() {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [remoteProductImages, setRemoteProductImages] = useState({});
-  const [fetchErrors, setFetchErrors] = useState({});
 
   const getVisibleProducts = () => {
     if (selectedCategory === 'all') {
@@ -116,77 +110,6 @@ export default function ProductsScreen() {
   };
 
   const products = getVisibleProducts();
-
-  useEffect(() => {
-    const getProxyUrl = (link) => {
-      const trimmed = link.replace(/^https?:\/\//, '');
-      return `https://r.jina.ai/http://${trimmed}`;
-    };
-
-    const parseAmazonImage = (text) => {
-      const rawMatches = [...text.matchAll(/!\[[^\]]*]\((https?:\/\/[^)]+)\)/g)].map((match) => match[1]);
-      if (rawMatches.length === 0) {
-        return null;
-      }
-
-      const normalizeUrl = (url) => {
-        if (url.startsWith('http://')) {
-          return url.replace(/^http:\/\//, 'https://');
-        }
-        return url;
-      };
-
-      const normalized = rawMatches.map(normalizeUrl);
-
-      const preferred = normalized.find(
-        (url) =>
-          url.includes('m.media-amazon.com/images/I/') ||
-          url.includes('m.media-amazon.com/images/S/') ||
-          url.includes('amazon.com.mx/images')
-      );
-      if (preferred) {
-        return preferred;
-      }
-
-      const fallback = normalized.find(
-        (url) =>
-          url.includes('m.media-amazon.com/images') ||
-          url.includes('fls-na.amazon.com.mx') ||
-          url.includes('aax-us-east-retail-direct.amazon.com')
-      );
-      return fallback || normalized[0];
-    };
-
-    const fetchImageForLink = async (link) => {
-      try {
-        const response = await fetch(getProxyUrl(link));
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const body = await response.text();
-        const imageUrl = parseAmazonImage(body);
-
-        if (imageUrl) {
-          setRemoteProductImages((prev) => ({ ...prev, [link]: imageUrl }));
-        } else {
-          setFetchErrors((prev) => ({ ...prev, [link]: true }));
-        }
-      } catch (error) {
-        setFetchErrors((prev) => ({ ...prev, [link]: true }));
-      }
-    };
-
-    products.forEach((product) => {
-      if (
-        product.link &&
-        !remoteProductImages[product.link] &&
-        !fetchErrors[product.link]
-      ) {
-        fetchImageForLink(product.link);
-      }
-    });
-  }, [products, remoteProductImages, fetchErrors]);
 
   const openLink = async (url) => {
     try {
@@ -200,7 +123,7 @@ export default function ProductsScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <AppHeader />
       <Text style={styles.subtitle}>
-        Selecciona la categoría y encuentra productos reales con opción de compra.
+        Selecciona una categoría para ver productos capilares reales de Almacén Sandra: shampoo, tratamiento, acondicionador, crema de peinar, gel, espuma y aceite.
       </Text>
 
       <View style={styles.filterRow}>
@@ -234,11 +157,7 @@ export default function ProductsScreen() {
           <View key={index} style={styles.productCard}>
             <View style={styles.productCardTop}>
               <Image
-                source={
-                  remoteProductImages[product.link]
-                    ? { uri: remoteProductImages[product.link] }
-                    : product.image || defaultProductImage
-                }
+                source={product.image ? { uri: product.image } : defaultProductImage}
                 style={styles.productImage}
               />
               <View style={styles.productInfo}>

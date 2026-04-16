@@ -129,19 +129,46 @@ const questions = [
 
 const productDB = {
   balance: [
-    { name: 'Shampoo balanceante', link: 'https://www.falabella.com' },
+    {
+      name: 'KATIVA SHAMPOO ARGAN X 1000ML',
+      link: 'https://almacensandra.com.co/product/p-10437-kativa-shampoo-argan-x-1000ml',
+    },
   ],
   hydra: [
-    { name: 'Mascarilla hidratante con argán', link: 'https://www.amazon.com' },
+    {
+      name: 'KERASTASE GLOSS ABSOLU MASQUE HYDRA-GLAZE X 200ML',
+      link: 'https://almacensandra.com.co/product/p-49862-kerastase-gloss-absolu-masque-hydra-glaze-x-200ml',
+    },
+    {
+      name: 'ATHOS ACEITE DE COCO X 1000 ML',
+      link: 'https://almacensandra.com.co/product/p-2833-athos-aceite-de-coco-x-1000-ml',
+    },
   ],
   repair: [
-    { name: 'Tratamiento reparador profundo', link: 'https://www.sephora.com' },
+    {
+      name: 'KERASTASE GLOSS ABSOLU MASQUE HYDRA-GLAZE X 200ML',
+      link: 'https://almacensandra.com.co/product/p-49862-kerastase-gloss-absolu-masque-hydra-glaze-x-200ml',
+    },
   ],
   volume: [
-    { name: 'Mousse ligero de volumen', link: 'https://www.amazon.com' },
+    {
+      name: 'KATIVA SHAMPOO ARGAN X 1000ML',
+      link: 'https://almacensandra.com.co/product/p-10437-kativa-shampoo-argan-x-1000ml',
+    },
+    {
+      name: 'SALERM CREMA DE PEINAR SALERM 21 X 200GR',
+      link: 'https://almacensandra.com.co/product/p-702-salerm-crema-de-peinar-salerm-21-x-200gr',
+    },
   ],
   curl: [
-    { name: 'Crema definidora de rizos', link: 'https://www.mercadolibre.com' },
+    {
+      name: 'YUMA ESPUMA CAPILAR HIDRATANTE CREADOR DE RIZOS X 200ML',
+      link: 'https://almacensandra.com.co/product/p-40082-yuma-espuma-capilar-hidratante-creador-de-rizos-x-200ml',
+    },
+    {
+      name: 'SALERM CREMA DE PEINAR SALERM 21 X 200GR',
+      link: 'https://almacensandra.com.co/product/p-702-salerm-crema-de-peinar-salerm-21-x-200gr',
+    },
   ],
 };
 
@@ -233,6 +260,10 @@ export default function DiagnosisScreen({ navigation }) {
       productSet.push(...productDB.balance);
     }
 
+    if (answersObject.scalp === 'Seco') {
+      productSet.push(...productDB.hydra);
+    }
+
     if (answersObject.porosity === 'Alta') {
       productSet.push(...productDB.hydra, ...productDB.repair);
     }
@@ -253,45 +284,57 @@ export default function DiagnosisScreen({ navigation }) {
       productSet.push(...productDB.repair);
     }
 
-    return Array.from(new Set(productSet));
+    if (productSet.length === 0) {
+      productSet.push(...productDB.balance);
+    }
+
+    const uniqueProducts = [];
+    const seenLinks = new Set();
+
+    for (const product of productSet) {
+      if (!seenLinks.has(product.link)) {
+        uniqueProducts.push(product);
+        seenLinks.add(product.link);
+      }
+    }
+
+    return uniqueProducts;
   };
 
   const getRoutineSteps = (answersObject, damageLevel) => {
     const shampoo =
       answersObject.scalp === 'Grasa'
-        ? 'Shampoo equilibrante sin sulfatos'
+        ? 'Shampoo equilibrante para eliminar exceso de grasa'
         : answersObject.scalp === 'Seco'
         ? 'Shampoo nutritivo suave'
         : 'Shampoo hidratante ligero';
 
+    const conditioner =
+      answersObject.porosity === 'Baja'
+        ? 'Acondicionador ligero para brindar desenredo sin peso'
+        : 'Acondicionador nutritivo con argán';
+
     const treatment =
       damageLevel === 'Alto'
         ? 'Mascarilla reparadora profunda'
-        : damageLevel === 'Moderado'
-        ? 'Tratamiento fortalecedor con proteínas'
-        : 'Mascarilla nutritiva ligera';
+        : 'Tratamiento hidratante semanal';
 
     const leaveIn =
-      answersObject.porosity === 'Alta'
-        ? 'Leave-in sellador con ceramidas'
-        : answersObject.porosity === 'Baja'
-        ? 'Crema ligera para baja porosidad'
-        : 'Crema hidratante ligera';
-
-    const styling =
       answersObject.texture === 'Rizado'
-        ? 'Crema definidora de rizos'
-        : answersObject.texture === 'Ondulado'
-        ? 'Spray de definición ligera'
-        : answersObject.density === 'Fina'
-        ? 'Aceite ligero anti-frizz'
-        : 'Sérum suavizante de acabado';
+        ? 'Crema de peinar para definir rizos'
+        : 'Crema ligera para peinar y proteger';
+
+    const oil =
+      answersObject.scalp === 'Grasa'
+        ? 'Aceite ligero solo en puntas'
+        : 'Aceite de coco para sellar y aportar brillo';
 
     return [
       { label: 'Shampoo', value: shampoo },
+      { label: 'Acondicionador', value: conditioner },
       { label: 'Tratamiento', value: treatment },
-      { label: 'Leave-in', value: leaveIn },
-      { label: 'Styling', value: styling },
+      { label: 'Crema de peinar / espuma', value: leaveIn },
+      { label: 'Aceite', value: oil },
     ];
   };
 

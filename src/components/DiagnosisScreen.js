@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../hooks/useTheme';
+import { recommendationDB } from '../data/productDB';
 
 const { width } = Dimensions.get('window');
 const CARD_PADDING = 24;
@@ -127,51 +128,6 @@ const questions = [
   },
 ];
 
-const productDB = {
-  balance: [
-    {
-      name: 'KATIVA SHAMPOO ARGAN X 1000ML',
-      link: 'https://almacensandra.com.co/product/p-10437-kativa-shampoo-argan-x-1000ml',
-    },
-  ],
-  hydra: [
-    {
-      name: 'KERASTASE GLOSS ABSOLU MASQUE HYDRA-GLAZE X 200ML',
-      link: 'https://almacensandra.com.co/product/p-49862-kerastase-gloss-absolu-masque-hydra-glaze-x-200ml',
-    },
-    {
-      name: 'ATHOS ACEITE DE COCO X 1000 ML',
-      link: 'https://almacensandra.com.co/product/p-2833-athos-aceite-de-coco-x-1000-ml',
-    },
-  ],
-  repair: [
-    {
-      name: 'KERASTASE GLOSS ABSOLU MASQUE HYDRA-GLAZE X 200ML',
-      link: 'https://almacensandra.com.co/product/p-49862-kerastase-gloss-absolu-masque-hydra-glaze-x-200ml',
-    },
-  ],
-  volume: [
-    {
-      name: 'KATIVA SHAMPOO ARGAN X 1000ML',
-      link: 'https://almacensandra.com.co/product/p-10437-kativa-shampoo-argan-x-1000ml',
-    },
-    {
-      name: 'SALERM CREMA DE PEINAR SALERM 21 X 200GR',
-      link: 'https://almacensandra.com.co/product/p-702-salerm-crema-de-peinar-salerm-21-x-200gr',
-    },
-  ],
-  curl: [
-    {
-      name: 'YUMA ESPUMA CAPILAR HIDRATANTE CREADOR DE RIZOS X 200ML',
-      link: 'https://almacensandra.com.co/product/p-40082-yuma-espuma-capilar-hidratante-creador-de-rizos-x-200ml',
-    },
-    {
-      name: 'SALERM CREMA DE PEINAR SALERM 21 X 200GR',
-      link: 'https://almacensandra.com.co/product/p-702-salerm-crema-de-peinar-salerm-21-x-200gr',
-    },
-  ],
-};
-
 export default function DiagnosisScreen({ navigation }) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -257,35 +213,35 @@ export default function DiagnosisScreen({ navigation }) {
     const productSet = [];
 
     if (answersObject.scalp === 'Grasa') {
-      productSet.push(...productDB.balance);
+      productSet.push(...recommendationDB.balance);
     }
 
     if (answersObject.scalp === 'Seco') {
-      productSet.push(...productDB.hydra);
+      productSet.push(...recommendationDB.hydra);
     }
 
     if (answersObject.porosity === 'Alta') {
-      productSet.push(...productDB.hydra, ...productDB.repair);
+      productSet.push(...recommendationDB.hydra, ...recommendationDB.repair);
     }
 
     if (answersObject.porosity === 'Baja') {
-      productSet.push(...productDB.volume);
+      productSet.push(...recommendationDB.volume);
     }
 
     if (answersObject.density === 'Fina') {
-      productSet.push(...productDB.volume);
+      productSet.push(...recommendationDB.volume);
     }
 
     if (answersObject.texture === 'Rizado') {
-      productSet.push(...productDB.curl);
+      productSet.push(...recommendationDB.curl);
     }
 
     if (answersObject.chemical === 'Químico') {
-      productSet.push(...productDB.repair);
+      productSet.push(...recommendationDB.repair);
     }
 
     if (productSet.length === 0) {
-      productSet.push(...productDB.balance);
+      productSet.push(...recommendationDB.balance);
     }
 
     const uniqueProducts = [];

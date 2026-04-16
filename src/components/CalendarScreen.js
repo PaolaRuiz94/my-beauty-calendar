@@ -6,31 +6,55 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ImageBackground,
   Animated,
 } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Calendar } from 'react-native-calendars';
+import { Video } from 'expo-av';
 import AppHeader from './AppHeader';
 
 const recommendations = [
   {
     id: 1,
-    title: 'Mascarilla hidratante',
-    subtitle: 'Nutrición profunda',
-    image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9',
+    title: 'Forma correcta de lavar el cabello',
+    subtitle: 'Paso a paso para una limpieza saludable',
+    video: require('../../assets/sample-video.mp4'),
   },
   {
     id: 2,
-    title: 'Aceite capilar',
-    subtitle: 'Brillo sin frizz',
-    image: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6',
+    title: '3 formas de definir tus rizos',
+    subtitle: 'Técnicas para rizos más definidos',
+    video: require('../../assets/sample-video.mp4'),
   },
   {
     id: 3,
-    title: 'Crema de rizos',
-    subtitle: 'Definición natural',
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e',
+    title: 'Accesorios para evitar el frizz',
+    subtitle: 'Productos y herramientas clave',
+    video: require('../../assets/sample-video.mp4'),
+  },
+  {
+    id: 4,
+    title: 'Lista de productos esenciales',
+    subtitle: 'Lo básico para una rutina completa',
+    video: require('../../assets/sample-video.mp4'),
+  },
+  {
+    id: 5,
+    title: 'Tipos de mascarilla según tu cabello',
+    subtitle: 'Encuentra la mejor mascarilla para ti',
+    video: require('../../assets/sample-video.mp4'),
+  },
+  {
+    id: 6,
+    title: 'Romper la textura del gel',
+    subtitle: 'Cómo eliminar el efecto crunch',
+    video: require('../../assets/sample-video.mp4'),
+  },
+  {
+    id: 7,
+    title: 'Cuidado del cabello liso',
+    subtitle: 'Rutina suave para cabello liso',
+    video: require('../../assets/sample-video.mp4'),
   },
 ];
 
@@ -44,6 +68,8 @@ export default function CalendarScreen() {
 
   const [product, setProduct] = useState('');
   const [routinesByDate, setRoutinesByDate] = useState({});
+  const [activeVideoId, setActiveVideoId] = useState(recommendations[0]?.id || null);
+  const videoRefs = useRef([]);
 
   const todayRoutines = routinesByDate[selectedDate] || [];
 
@@ -230,16 +256,33 @@ export default function CalendarScreen() {
         <Text style={styles.sectionTitle}>Recomendado hoy</Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {recommendations.map((item) => (
+          {recommendations.map((item, index) => (
             <View key={item.id} style={styles.card}>
-              <ImageBackground
-                source={{ uri: item.image }}
-                style={styles.cardImage}
-                imageStyle={{ borderRadius: 20 }}
-              >
-                <View style={styles.overlay} />
+              <Video
+                source={item.video}
+                style={styles.cardVideo}
+                resizeMode="cover"
+                isLooping
+                shouldPlay={activeVideoId === item.id}
+                isMuted={false}
+                useNativeControls={true}
+              />
+              <View style={styles.videoOverlay} />
+              {activeVideoId !== item.id ? (
+                <TouchableOpacity
+                  style={styles.playOverlay}
+                  activeOpacity={0.8}
+                  onPress={() => setActiveVideoId(item.id)}
+                >
+                  <View style={styles.playButton}>
+                    <Text style={styles.playButtonText}>▶</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : null}
+              <View style={styles.videoTextContainer}>
                 <Text style={styles.cardTitle}>{item.title}</Text>
-              </ImageBackground>
+                <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+              </View>
             </View>
           ))}
         </ScrollView>
@@ -426,21 +469,58 @@ const styles = StyleSheet.create({
     marginRight: 15,
     borderRadius: 20,
     overflow: 'hidden',
+    backgroundColor: '#000',
   },
 
-  cardImage: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: 10,
+  cardVideo: {
+    width: '100%',
+    height: '100%',
   },
 
-  overlay: {
+  videoOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.18)',
+  },
+
+  playOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  playButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+
+  playButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+
+  videoTextContainer: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 14,
   },
 
   cardTitle: {
     color: '#fff',
     fontWeight: '700',
+    fontSize: 16,
+    marginBottom: 4,
+  },
+
+  cardSubtitle: {
+    color: '#F3D6DC',
+    fontSize: 12,
   },
 });

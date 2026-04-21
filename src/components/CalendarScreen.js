@@ -92,9 +92,46 @@ export default function CalendarScreen({ route }) {
     if (route?.params?.objective) {
       setRoutineObjective(route.params.objective);
     }
-  }, [route?.params?.routinePlan, route?.params?.objective]);
+  }, [route]);
 
-  const calendarHeight = calendarHeightAnim.interpolate({
+  useEffect(() => {
+  if (!route || !route.params || !route.params.routinePlan) return;
+
+  const plan = route.params.routinePlan;
+
+  if (!Array.isArray(plan)) return;
+
+  const today = new Date();
+  const newRoutines = {};
+
+  plan.forEach((dayPlan, index) => {
+    if (!dayPlan?.steps) return;
+
+    const date = new Date(today);
+    date.setDate(today.getDate() + index);
+
+    const dateStr = date.toISOString().split('T')[0];
+
+    newRoutines[dateStr] = dayPlan.steps;
+  });
+
+  setRoutinesByDate((prev) => {
+    const merged = { ...prev };
+
+    Object.keys(newRoutines).forEach((date) => {
+      merged[date] = [...(merged[date] || []), ...newRoutines[date]];
+    });
+
+    return merged;
+  });
+
+  const firstDate = Object.keys(newRoutines)[0];
+  if (firstDate) {
+    setSelectedDate(firstDate);
+  }
+}, [route]);
+
+const calendarHeight = calendarHeightAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [120, 400],
   });

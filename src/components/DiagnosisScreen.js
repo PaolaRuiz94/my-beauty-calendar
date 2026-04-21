@@ -762,6 +762,11 @@ export default function DiagnosisScreen({ navigation }) {
             return (
               <View style={[styles.slide, { width: SLIDE_WIDTH }]}>                
                 <View style={styles.slideContent}>
+                  <Text style={styles.stepLabel}>
+                    {item.id === 'photo' ? 'Paso final' : `Pregunta ${index + 1} de ${questions.length}`}
+                  </Text>
+                  <Text style={styles.question}>{item.title}</Text>
+
                   {item.id === 'photo' ? (
                     <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
                       {image ? (
@@ -774,14 +779,7 @@ export default function DiagnosisScreen({ navigation }) {
                         </View>
                       )}
                     </TouchableOpacity>
-                  ) : null}
-
-                  <Text style={styles.stepLabel}>
-                    {item.id === 'photo' ? 'Paso final' : `Pregunta ${index + 1} de ${questions.length}`}
-                  </Text>
-                  <Text style={styles.question}>{item.title}</Text>
-
-                  {item.id !== 'photo' && (
+                  ) : (
                     <View style={styles.optionsRow}>
                       {item.options.map((option) => {
                         const isActive = selected === option.value;
@@ -893,7 +891,7 @@ const makeStyles = (colors) =>
     slide: {
       width: SLIDE_WIDTH,
       paddingHorizontal: 20,
-      paddingBottom: 180,
+      paddingBottom: 100,
       justifyContent: 'space-between',
     },
     flatListContent: {
@@ -912,7 +910,7 @@ const makeStyles = (colors) =>
       shadowOffset: { width: 0, height: 6 },
       elevation: 2,
       alignSelf: 'center',
-      marginBottom: 194,
+      marginTop: 20,
       justifyContent: 'center',
       alignItems: 'center',
     },

@@ -22,6 +22,42 @@ const SLIDE_WIDTH = width - 40;
 
 const questions = [
   {
+    id: 'objective',
+    title: '¿Cuál es tu objetivo capilar?',
+    options: [
+      {
+        value: 'crecimiento',
+        title: 'Crecimiento',
+        desc: 'Apoya el crecimiento y la fortaleza del cabello.',
+      },
+      {
+        value: 'hidratación',
+        title: 'Hidratación',
+        desc: 'Aporta suavidad y flexibilidad a la fibra.',
+      },
+      {
+        value: 'reparación',
+        title: 'Reparación',
+        desc: 'Repara y fortalece el cabello dañado.',
+      },
+      {
+        value: 'definición',
+        title: 'Definición',
+        desc: 'Mejora la forma de tus rizos u ondas.',
+      },
+      {
+        value: 'volumen',
+        title: 'Volumen',
+        desc: 'Aporta cuerpo y movimiento ligero.',
+      },
+      {
+        value: 'transición',
+        title: 'Transición capilar',
+        desc: 'Empiezo a usar mi cabello natural sin procesos químicos.',
+      },
+    ],
+  },
+  {
     id: 'scalp',
     title: '¿Cómo describirías tu cuero cabelludo?',
     options: [
@@ -126,6 +162,11 @@ const questions = [
       },
     ],
   },
+  {
+    id: 'photo',
+    title: 'Sube una foto de tu cabello (opcional)',
+    options: [],
+  },
 ];
 
 export default function DiagnosisScreen({ navigation }) {
@@ -135,6 +176,7 @@ export default function DiagnosisScreen({ navigation }) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
+  const [routinePlan, setRoutinePlan] = useState([]);
   const [image, setImage] = useState(null);
   const [products, setProducts] = useState([]);
   const flatListRef = useRef(null);
@@ -164,7 +206,7 @@ export default function DiagnosisScreen({ navigation }) {
   };
 
   const handleNext = () => {
-    if (!selectedAnswer) return;
+    if (!selectedAnswer && currentQuestion < questions.length - 1) return;
 
     if (currentQuestion < questions.length - 1) {
       const nextIndex = currentQuestion + 1;
@@ -207,6 +249,98 @@ export default function DiagnosisScreen({ navigation }) {
         : 'denso';
     const treatedLabel = answersObject.chemical === 'Natural' ? 'natural' : 'tratado';
     return `${answersObject.texture} ${densityLabel} / ${treatedLabel}`;
+  };
+
+  const getObjectiveLabel = (value) => {
+    switch (value) {
+      case 'crecimiento':
+        return 'Crecimiento';
+      case 'hidratación':
+        return 'Hidratación';
+      case 'reparación':
+        return 'Reparación';
+      case 'definición':
+        return 'Definición';
+      case 'volumen':
+        return 'Volumen';
+      case 'transición':
+        return 'Transición capilar';
+      default:
+        return 'Objetivo personalizado';
+    }
+  };
+
+  const getRoutinePlan = (answersObject, damageLevel) => {
+    const isCurlyOrWavy =
+      answersObject.texture === 'Rizado' || answersObject.texture === 'Ondulado';
+    const objective = answersObject.objective;
+
+    const day1Steps = [
+      'Aceite capilar',
+      'Lavado detox',
+      objective === 'volumen'
+        ? 'Mascarilla ligera voluminizadora'
+        : objective === 'reparación'
+        ? 'Mascarilla reparadora'
+        : objective === 'hidratación'
+        ? 'Mascarilla hidratante'
+        : objective === 'transición'
+        ? 'Mascarilla nutritiva suave'
+        : 'Mascarilla nutritiva',
+      'Acondicionador',
+      isCurlyOrWavy
+        ? 'Definición con crema de peinar, gel y aceite'
+        : 'Leave-in ligero',
+    ];
+
+    const day2Steps = isCurlyOrWavy
+      ? [
+          'Refresco de rizos',
+          objective === 'transición'
+            ? 'Protección suave sin calor'
+            : 'Crema ligera para reactivar la definición',
+        ]
+      : [
+          'Shampoo en seco',
+          objective === 'transición'
+            ? 'Spray refrescante suave y cuidado ligero'
+            : 'Spray refrescante ligero',
+        ];
+
+    const day3Steps = [
+      'Aceite capilar',
+      'Shampoo suave',
+      objective === 'reparación'
+        ? 'Tratamiento reparador'
+        : objective === 'volumen'
+        ? 'Tratamiento ligero voluminizador'
+        : objective === 'hidratación'
+        ? 'Tratamiento hidratante'
+        : objective === 'transición'
+        ? 'Tratamiento nutritivo suave'
+        : 'Tratamiento hidratante',
+      'Acondicionador',
+      isCurlyOrWavy ? 'Definición ligera' : 'Leave-in ligero',
+    ];
+
+    const day4Steps = objective === 'transición'
+      ? [
+          'Aceite ligero en las puntas',
+          'Protección sin calor',
+          'Rutina suave de mantenimiento',
+        ]
+      : [
+          'Aceite ligero o serum',
+          'Protege con leave-in',
+          'Evita calor intenso',
+        ];
+
+    return [
+      { day: 1, title: 'Lavado detox + reinicio', steps: day1Steps },
+      { day: 2, title: isCurlyOrWavy ? 'Refresco y definición' : 'Refresco ligero', steps: day2Steps },
+      { day: 3, title: 'Cuidado profundo', steps: day3Steps },
+      { day: 4, title: 'Cuidado suave', steps: day4Steps },
+    ];
   };
 
   const getRecommendedProducts = (answersObject) => {
@@ -422,13 +556,16 @@ export default function DiagnosisScreen({ navigation }) {
     const damageLevel = getDamageLevel(answersObject);
     const resultObject = {
       hairType: getHairType(answersObject),
+      objective: getObjectiveLabel(answersObject.objective),
       porosity: getPorosity(answersObject.porosity),
       density: answersObject.density,
       scalpCondition: getScalpCondition(answersObject.scalp),
       damageLevel,
     };
     const recommendedProducts = getRecommendedProducts(answersObject);
+    const routinePlanResult = getRoutinePlan(answersObject, damageLevel);
     setProducts(recommendedProducts);
+    setRoutinePlan(routinePlanResult);
     setResult({
       ...resultObject,
       recommendations: {
@@ -473,6 +610,10 @@ export default function DiagnosisScreen({ navigation }) {
             <View style={styles.resultBox}>
               <Text style={styles.resultLabel}>Densidad</Text>
               <Text style={styles.resultValue}>{result.density}</Text>
+            </View>
+            <View style={styles.resultBox}>
+              <Text style={styles.resultLabel}>Objetivo</Text>
+              <Text style={styles.resultValue}>{result.objective}</Text>
             </View>
             <View style={styles.resultBox}>
               <Text style={styles.resultLabel}>Cuero cabelludo</Text>
@@ -557,6 +698,20 @@ export default function DiagnosisScreen({ navigation }) {
             ))}
           </View>
           <TouchableOpacity
+            style={styles.calendarButton}
+            onPress={() =>
+              navigation.navigate('Calendario', {
+                screen: 'CalendarMain',
+                params: {
+                  routinePlan,
+                  objective: result.objective,
+                },
+              })
+            }
+          >
+            <Text style={styles.calendarButtonText}>Ver rutina en calendario</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.resetButton}
             onPress={() => {
               setResult(null);
@@ -581,7 +736,6 @@ export default function DiagnosisScreen({ navigation }) {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 140 }]}
       >
         <View style={styles.pageContent}>
-          <Text style={styles.title}>Diagnóstico Capilar</Text>
           <View style={styles.progressRow}>
             <View style={styles.progressBar}> 
               <View
@@ -608,43 +762,50 @@ export default function DiagnosisScreen({ navigation }) {
             return (
               <View style={[styles.slide, { width: SLIDE_WIDTH }]}>                
                 <View style={styles.slideContent}>
-                  {index === 0 ? (
+                  {item.id === 'photo' ? (
                     <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-                      <Text style={styles.uploadText}>
-                        {image ? 'Cambiar foto' : 'Subir foto'}
-                      </Text>
+                      {image ? (
+                        <Image source={{ uri: image }} style={styles.uploadImage} />
+                      ) : (
+                        <View style={styles.placeholder}>
+                          <Text style={styles.uploadText}>
+                            Subir foto
+                          </Text>
+                        </View>
+                      )}
                     </TouchableOpacity>
                   ) : null}
 
-                  {image ? <Image source={{ uri: image }} style={styles.image} /> : null}
-
-                  <Text style={styles.stepLabel}>Pregunta {index + 1} de {questions.length}</Text>
+                  <Text style={styles.stepLabel}>
+                    {item.id === 'photo' ? 'Paso final' : `Pregunta ${index + 1} de ${questions.length}`}
+                  </Text>
                   <Text style={styles.question}>{item.title}</Text>
 
-                  <View style={styles.optionsRow}>
-                    {item.options.map((option) => {
-                      const isActive = selected === option.value;
-                      return (
-                        <TouchableOpacity
-                          key={option.value}
-                          style={[
-                            styles.optionCard,
-                            isActive && styles.optionCardActive,
-                          ]}
-                          activeOpacity={0.85}
-                          onPress={() => handleSelectOption(item.id, option.value)}
-                        >
-                          <Text style={[styles.optionTitle, isActive && styles.optionTitleActive]}>
-                            {option.title}
-                          </Text>
-                          <Text style={[styles.optionDesc, isActive && styles.optionDescActive]}>
-                            {option.desc}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
+                  {item.id !== 'photo' && (
+                    <View style={styles.optionsRow}>
+                      {item.options.map((option) => {
+                        const isActive = selected === option.value;
+                        return (
+                          <TouchableOpacity
+                            key={option.value}
+                            style={[
+                              styles.optionCard,
+                              isActive && styles.optionCardActive,
+                            ]}
+                            activeOpacity={0.85}
+                            onPress={() => handleSelectOption(item.id, option.value)}
+                          >
+                            <Text style={[styles.optionTitle, isActive && styles.optionTitleActive]}>
+                              {option.title}
+                            </Text>
+                            <Text style={[styles.optionDesc, isActive && styles.optionDescActive]}>
+                              {option.desc}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
               </View>
             );
@@ -655,16 +816,16 @@ export default function DiagnosisScreen({ navigation }) {
         />
       </View>
       </ScrollView>
-      <View style={[styles.fixedNextContainer, { bottom: tabBarHeight + 10 }]}> 
+      <View style={[styles.fixedNextContainer, { bottom: tabBarHeight - 40 }]}> 
         <TouchableOpacity
           style={[
             styles.nextButton,
-            !selectedAnswer && styles.nextButtonDisabled,
+            (!selectedAnswer && currentQuestion < questions.length - 1) && styles.nextButtonDisabled,
           ]}
           onPress={handleNext}
-          disabled={!selectedAnswer}
+          disabled={!selectedAnswer && currentQuestion < questions.length - 1}
         >
-          <Text style={[styles.nextText, !selectedAnswer && styles.nextTextDisabled]}>
+          <Text style={[styles.nextText, (!selectedAnswer && currentQuestion < questions.length - 1) && styles.nextTextDisabled]}>
             {isLastQuestion ? 'Ver resultado' : 'Siguiente'}
           </Text>
         </TouchableOpacity>
@@ -710,7 +871,7 @@ const makeStyles = (colors) =>
       marginBottom: 18,
     },
     progressRow: {
-      marginBottom: 18,
+      marginBottom: 10,
     },
     progressBar: {
       width: '100%',
@@ -739,22 +900,37 @@ const makeStyles = (colors) =>
       paddingBottom: 16,
     },
     uploadButton: {
-      alignSelf: 'center',
+      width: 200,
+      height: 200,
       backgroundColor: '#FFFFFF',
       borderRadius: 24,
-      paddingVertical: 12,
-      paddingHorizontal: 20,
+      borderWidth: 1,
+      borderColor: '#ECE0DD',
       shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 3,
-      marginBottom: 20,
+      shadowOpacity: 0.05,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 2,
+      alignSelf: 'center',
+      marginBottom: 194,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     uploadText: {
       color: colors.textPrimary,
       fontWeight: '700',
-      fontSize: 15,
+      fontSize: 16,
+      textAlign: 'center',
+    },
+    uploadImage: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 24,
+      
+    },
+    placeholder: {
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     image: {
       width: '100%',
@@ -765,29 +941,32 @@ const makeStyles = (colors) =>
     stepLabel: {
       color: colors.textSecondary,
       fontSize: 14,
-      marginBottom: 8,
+      marginBottom: 4,
     },
     question: {
       fontSize: 22,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 20,
+      marginTop: 20,
+      marginBottom: 10,
+      textAlign: 'center',
     },
     optionsRow: {
       width: '100%',
+      marginTop: 30,
     },
     slideContent: {
       width: '100%',
       flex: 1,
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
       alignItems: 'center',
     },
     optionCard: {
       width: '100%',
       backgroundColor: '#FFFFFF',
-      borderRadius: 28,
-      padding: 20,
-      marginBottom: 14,
+      borderRadius: 24,
+      padding: 16,
+      marginBottom: 10,
       borderWidth: 1,
       borderColor: '#ECE0DD',
       shadowColor: '#000',
@@ -801,17 +980,17 @@ const makeStyles = (colors) =>
       borderColor: '#D6A4A4',
     },
     optionTitle: {
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 8,
+      marginBottom: 6,
     },
     optionTitleActive: {
       color: '#FFFFFF',
     },
     optionDesc: {
-      fontSize: 15,
-      lineHeight: 22,
+      fontSize: 14,
+      lineHeight: 20,
       color: colors.textSecondary,
     },
     optionDescActive: {
@@ -982,6 +1161,18 @@ const makeStyles = (colors) =>
       color: '#D6A4A4',
       fontWeight: '700',
       fontSize: 14,
+    },
+    calendarButton: {
+      marginTop: 16,
+      backgroundColor: '#D6A4A4',
+      borderRadius: 18,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    calendarButtonText: {
+      color: '#FFFFFF',
+      fontWeight: '700',
+      fontSize: 15,
     },
     resetButton: {
       marginTop: 22,

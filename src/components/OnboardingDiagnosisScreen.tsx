@@ -82,19 +82,6 @@ const slides: Slide[] = [
     placeholder: '1990',
   },
   {
-    key: 'hairGoals',
-    type: 'chips',
-    title: 'Objetivos para tu cabello ✨',
-    options: [
-      'Transición capilar',
-      'Reparación',
-      'Brillo',
-      'Crecimiento',
-      'Entender mi cabello',
-      'Crear rutina ideal',
-    ],
-  },
-  {
     key: 'skinGoals',
     type: 'chips',
     title: 'Objetivos skincare 🌸',
@@ -119,7 +106,6 @@ export default function OnboardingDiagnosisScreen() {
   const [name, setName] = useState('');
   const currentYearString = new Date().getFullYear().toString();
   const [age, setAge] = useState(currentYearString);
-  const [hairGoals, setHairGoals] = useState<string[]>([]);
   const [skinGoals, setSkinGoals] = useState<string[]>([]);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const topPadding = Platform.OS === 'ios' ? 48 : 24;
@@ -132,10 +118,9 @@ export default function OnboardingDiagnosisScreen() {
   const isNextDisabled = useMemo(() => {
     if (currentSlide.type === 'text') return name.trim().length === 0;
     if (currentSlide.type === 'numeric') return age.trim().length !== 4;
-    if (currentSlide.key === 'hairGoals') return hairGoals.length === 0;
     if (currentSlide.key === 'skinGoals') return skinGoals.length === 0;
     return false;
-  }, [currentSlide, name, age, hairGoals, skinGoals]);
+  }, [currentSlide, name, age, skinGoals]);
 
   const handleNext = async () => {
     if (isNextDisabled) return;
@@ -148,7 +133,7 @@ export default function OnboardingDiagnosisScreen() {
     try {
       await AsyncStorage.setItem(
         'onboardingProfile',
-        JSON.stringify({ name: name.trim(), age: age.trim(), hairGoals, skinGoals })
+        JSON.stringify({ name: name.trim(), age: age.trim(), skinGoals })
       );
     } catch (error) {
       console.warn('Error saving onboarding profile:', error);
@@ -198,8 +183,8 @@ export default function OnboardingDiagnosisScreen() {
   };
 
   const renderChips = (slide: Extract<Slide, { type: 'chips' }>) => {
-    const selectedList = slide.key === 'hairGoals' ? hairGoals : skinGoals;
-    const setSelectedList = slide.key === 'hairGoals' ? setHairGoals : setSkinGoals;
+    const selectedList = skinGoals;
+    const setSelectedList = setSkinGoals;
 
     return (
       <View style={[styles.slideInner, { backgroundColor: colors.card, height: innerSlideHeight }]}>      

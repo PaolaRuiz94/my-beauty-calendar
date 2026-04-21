@@ -58,7 +58,7 @@ const recommendations = [
   },
 ];
 
-export default function CalendarScreen() {
+export default function CalendarScreen({ route }) {
   const tabBarHeight = useBottomTabBarHeight();
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
@@ -68,6 +68,10 @@ export default function CalendarScreen() {
 
   const [product, setProduct] = useState('');
   const [routinesByDate, setRoutinesByDate] = useState({});
+  const [suggestedRoutinePlan, setSuggestedRoutinePlan] = useState(
+    route?.params?.routinePlan || []
+  );
+  const [routineObjective, setRoutineObjective] = useState(route?.params?.objective || '');
   const [activeVideoId, setActiveVideoId] = useState(recommendations[0]?.id || null);
   const videoRefs = useRef([]);
 
@@ -80,6 +84,15 @@ export default function CalendarScreen() {
       useNativeDriver: false,
     }).start();
   }, [isExpanded, calendarHeightAnim]);
+
+  useEffect(() => {
+    if (route?.params?.routinePlan) {
+      setSuggestedRoutinePlan(route.params.routinePlan);
+    }
+    if (route?.params?.objective) {
+      setRoutineObjective(route.params.objective);
+    }
+  }, [route?.params?.routinePlan, route?.params?.objective]);
 
   const calendarHeight = calendarHeightAnim.interpolate({
     inputRange: [0, 1],
@@ -191,6 +204,32 @@ export default function CalendarScreen() {
 
         {/* DATE HEADER */}
         <Text style={styles.dateHeader}>{getFormattedDate()}</Text>
+
+        {suggestedRoutinePlan.length > 0 ? (
+          <View style={styles.routineSummaryCard}>
+            <Text style={styles.sectionTitle}>Rutina sugerida</Text>
+            {routineObjective ? (
+              <Text style={styles.objectiveText}>Objetivo: {routineObjective}</Text>
+            ) : null}
+            {suggestedRoutinePlan.map((day) => (
+              <View key={day.day} style={styles.routineDayCard}>
+                <Text style={styles.routineDayTitle}>{day.title}</Text>
+                {day.steps.map((step, index) => (
+                  <Text key={`${day.day}-${index}`} style={styles.routineStep}>
+                    • {step}
+                  </Text>
+                ))}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.routineSummaryCard}>
+            <Text style={styles.sectionTitle}>Rutina sugerida</Text>
+            <Text style={styles.emptyRoutineText}>
+              Completa tu diagnóstico para ver una rutina personalizada aquí.
+            </Text>
+          </View>
+        )}
 
         {/* ANIMATED CALENDAR */}
         {!isExpanded ? (
@@ -426,6 +465,44 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#F3EDE7',
     borderRadius: 20,
+  },
+
+  routineSummaryCard: {
+    backgroundColor: '#FFF4F5',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+  },
+
+  objectiveText: {
+    fontSize: 14,
+    marginBottom: 12,
+    color: '#6A3B62',
+  },
+
+  routineDayCard: {
+    marginBottom: 12,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 14,
+  },
+
+  routineDayTitle: {
+    fontWeight: '700',
+    marginBottom: 6,
+    color: '#4D2350',
+  },
+
+  routineStep: {
+    fontSize: 13,
+    color: '#4C3A49',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+
+  emptyRoutineText: {
+    color: '#7C5C6E',
+    fontSize: 14,
   },
 
   title: {

@@ -14,8 +14,18 @@ import { categoryOptions, productDB } from "../data/productDB";
 
 const defaultProductImage = require("../../assets/icon.png");
 
-export default function ProductsScreen() {
-  const { colors } = useTheme();
+export default function ProductsScreen({ route, navigation }) {
+  const routines = route?.params?.routines || [];
+
+  const date = route?.params?.date;
+
+const formattedDate = date
+  ? new Date(date).toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+    })
+  : '';
+   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const [selectedCategory, setSelectedCategory] = useState("all");
 
@@ -36,6 +46,10 @@ export default function ProductsScreen() {
     }
   };
 
+  const getProductsForRoutine = () => {
+  return routines;
+};
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <AppHeader />
@@ -43,51 +57,70 @@ export default function ProductsScreen() {
         Selecciona una categoría para ver productos capilares reales de Almacén Sandra: shampoo, tratamiento, acondicionador, crema de peinar, gel, espuma y aceite.
       </Text>
 
-      <View style={styles.filterRow}>
-        {categoryOptions.map((option) => (
-          <TouchableOpacity
-            key={option.id}
-            style={[styles.filterButton, selectedCategory === option.id && styles.filterButtonSelected]}
-            onPress={() => setSelectedCategory(option.id)}
-          >
-            <Text
-              style={[styles.filterText, selectedCategory === option.id && styles.filterTextSelected]}
-            >
-              {option.title}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* 🔥 Productos según rutina del día */}
+      <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 10 }}>
+        Productos recomendados para tu rutina de hoy {formattedDate}
+      </Text>
 
-      {products.length === 0 ? (
-        <Text style={styles.emptyText}>
-          Selecciona una categoría para ver productos recomendados.
+  <View style={{ marginBottom: 20 }}>
+    {getProductsForRoutine().length === 0 ? (
+      <Text style={styles.emptyText}>
+        No hay productos asociados a la rutina de hoy.
+      </Text>
+    ) : (
+      getProductsForRoutine().map((item, index) => (
+        <Text key={index} style={{ marginBottom: 5 }}>
+          • {item}
         </Text>
-      ) : (
-        products.map((product, index) => (
-          <View key={index} style={styles.productCard}>
-            <View style={styles.productCardTop}>
-              <Image
-                source={product.image ? { uri: product.image } : defaultProductImage}
-                style={styles.productImage}
-              />
-              <View style={styles.productInfo}>
-                <Text style={styles.productName}>{product.name}</Text>
-                <Text style={styles.productDescription}>{product.description}</Text>
-              </View>
-            </View>
+      ))
+    )}
+  </View>
+
+        <View style={styles.filterRow}>
+          {categoryOptions.map((option) => (
             <TouchableOpacity
-              style={styles.buyButton}
-              onPress={() => openLink(product.link)}
+              key={option.id}
+              style={[styles.filterButton, selectedCategory === option.id && styles.filterButtonSelected]}
+              onPress={() => setSelectedCategory(option.id)}
             >
-              <Text style={styles.buyText}>Comprar</Text>
+              <Text
+                style={[styles.filterText, selectedCategory === option.id && styles.filterTextSelected]}
+              >
+                {option.title}
+              </Text>
             </TouchableOpacity>
-          </View>
-        ))
-      )}
-    </ScrollView>
-  );
-}
+          ))}
+        </View>
+
+        {products.length === 0 ? (
+          <Text style={styles.emptyText}>
+            Selecciona una categoría para ver productos recomendados.
+          </Text>
+        ) : (
+          products.map((product, index) => (
+            <View key={index} style={styles.productCard}>
+              <View style={styles.productCardTop}>
+                <Image
+                  source={product.image ? { uri: product.image } : defaultProductImage}
+                  style={styles.productImage}
+                />
+                <View style={styles.productInfo}>
+                  <Text style={styles.productName}>{product.name}</Text>
+                  <Text style={styles.productDescription}>{product.description}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.buyButton}
+                onPress={() => openLink(product.link)}
+              >
+                <Text style={styles.buyText}>Comprar</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    );
+};
 
 const makeStyles = (colors) =>
   StyleSheet.create({

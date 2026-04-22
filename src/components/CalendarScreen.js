@@ -58,7 +58,7 @@ const recommendations = [
   },
 ];
 
-export default function CalendarScreen({ route }) {
+export default function CalendarScreen({ route, navigation }) {
   const tabBarHeight = useBottomTabBarHeight();
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
@@ -104,26 +104,37 @@ export default function CalendarScreen({ route }) {
   const today = new Date();
   const newRoutines = {};
 
-  plan.forEach((dayPlan, index) => {
-    if (!dayPlan?.steps) return;
+for (let i = 0; i < 30; i++) {
+  const date = new Date(today);
+  date.setDate(today.getDate() + i);
 
-    const date = new Date(today);
-    date.setDate(today.getDate() + index);
+  const dateStr = date.toISOString().split('T')[0];
 
-    const dateStr = date.toISOString().split('T')[0];
+  let dayPlan = plan[i % plan.length];
 
-    newRoutines[dateStr] = dayPlan.steps;
-  });
+  // 🔥 ajustes inteligentes
+  if (i === 13) {
+    dayPlan = {
+      steps: ['Detox profundo', 'Mascarilla intensiva', 'Hidratación profunda'],
+    };
+  }
 
-  setRoutinesByDate((prev) => {
-    const merged = { ...prev };
+  if (i === 20) {
+    dayPlan = {
+      steps: ['Tratamiento reparador intensivo', 'Aceite nutritivo'],
+    };
+  }
 
-    Object.keys(newRoutines).forEach((date) => {
-      merged[date] = [...(merged[date] || []), ...newRoutines[date]];
-    });
+  if (i === 27) {
+    dayPlan = {
+      steps: ['Reset total', 'Detox + hidratación + sellado'],
+    };
+  }
 
-    return merged;
-  });
+  newRoutines[dateStr] = dayPlan.steps;
+}
+
+setRoutinesByDate(newRoutines);
 
   const firstDate = Object.keys(newRoutines)[0];
   if (firstDate) {
@@ -242,31 +253,7 @@ const calendarHeight = calendarHeightAnim.interpolate({
         {/* DATE HEADER */}
         <Text style={styles.dateHeader}>{getFormattedDate()}</Text>
 
-        {suggestedRoutinePlan.length > 0 ? (
-          <View style={styles.routineSummaryCard}>
-            <Text style={styles.sectionTitle}>Rutina sugerida</Text>
-            {routineObjective ? (
-              <Text style={styles.objectiveText}>Objetivo: {routineObjective}</Text>
-            ) : null}
-            {suggestedRoutinePlan.map((day) => (
-              <View key={day.day} style={styles.routineDayCard}>
-                <Text style={styles.routineDayTitle}>{day.title}</Text>
-                {day.steps.map((step, index) => (
-                  <Text key={`${day.day}-${index}`} style={styles.routineStep}>
-                    • {step}
-                  </Text>
-                ))}
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.routineSummaryCard}>
-            <Text style={styles.sectionTitle}>Rutina sugerida</Text>
-            <Text style={styles.emptyRoutineText}>
-              Completa tu diagnóstico para ver una rutina personalizada aquí.
-            </Text>
-          </View>
-        )}
+   
 
         {/* ANIMATED CALENDAR */}
         {!isExpanded ? (
@@ -326,6 +313,25 @@ const calendarHeight = calendarHeightAnim.interpolate({
               • {item}
             </Text>
           ))}
+
+            <TouchableOpacity style={{
+              marginTop: 15,
+              backgroundColor: '#5A2A74',
+              padding: 14,
+              borderRadius: 12,
+              alignItems: 'center',
+            }}
+           onPress={() =>
+            navigation.navigate('ProductsModal', {
+            routines: todayRoutines,
+            date: selectedDate, // 🔥 ESTA LÍNEA ES NUEVA
+            })
+            }
+  >
+    <Text style={{ color: '#fff', fontWeight: '700' }}>
+      Ver productos recomendados
+    </Text>
+  </TouchableOpacity>
         </View>
 
         {/* RECOMENDADOS */}
@@ -366,6 +372,8 @@ const calendarHeight = calendarHeightAnim.interpolate({
     </View>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {

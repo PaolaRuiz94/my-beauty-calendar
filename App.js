@@ -1,7 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import CalendarScreen from './src/components/CalendarScreen';
 import DetailScreen from './src/components/DetailScreen';
@@ -17,12 +16,12 @@ import ProfileScreen from './src/components/ProfileScreen';
 import { ThemeProvider } from './src/hooks/useTheme';
 import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const CalendarStack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
-
 function CalendarStackScreen() {
   return (
     <CalendarStack.Navigator
@@ -47,11 +46,23 @@ function CalendarStackScreen() {
         component={CalendarScreen}
         options={{ headerShown: false }}
       />
+
       <CalendarStack.Screen
         name="DetailScreen"
         component={DetailScreen}
         options={{ headerShown: true }}
       />
+
+      {/* 🔥 AGREGA ESTO */}
+      <CalendarStack.Screen
+        name="ProductsModal"
+        component={ProductsScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+
     </CalendarStack.Navigator>
   );
 }

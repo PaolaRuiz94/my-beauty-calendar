@@ -366,7 +366,7 @@ export default function DiagnosisScreen({ navigation }) {
 
           <View style={styles.resultAvatarSection}>
             <View style={styles.resultIconCircle}>
-              <Ionicons name="sparkles" size={26} color="#BF789C" />
+              <Ionicons name="sparkles" size={18} color="#BF789C" />
             </View>
             <Text style={styles.resultHairType}>{result.hairType}</Text>
             <View style={styles.badgeRow}>
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
   // quiz header extras
   quizHeader: {
     paddingHorizontal: 18,
-    paddingBottom: 18,
+    paddingBottom: 50,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     shadowColor: '#BF789C',
@@ -892,13 +892,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resultIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(255,255,255,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   resultHairType: {
     color: '#fff',

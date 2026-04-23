@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,6 @@ import {
   TextInput,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Animated,
-  Easing,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -56,16 +54,6 @@ function toggleSelection(item: string, list: string[], setList: SetList) {
   else setList([...list, item]);
 }
 
-// helper para convertir Animated.Value en opacity + translateY
-function useAnimStyle(anim: Animated.Value, offsetY = 20) {
-  return {
-    opacity: anim,
-    transform: [
-      { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [offsetY, 0] }) },
-    ],
-  };
-}
-
 export default function OnboardingDiagnosisScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -74,15 +62,6 @@ export default function OnboardingDiagnosisScreen() {
   const [age, setAge] = useState(new Date().getFullYear().toString());
   const [skinGoals, setSkinGoals] = useState<string[]>([]);
   const scrollViewRef = useRef<ScrollView | null>(null);
-
-  // 3 valores independientes para stagger: icono → título → helper
-  const anim1 = useRef(new Animated.Value(0)).current;
-  const anim2 = useRef(new Animated.Value(0)).current;
-  const anim3 = useRef(new Animated.Value(0)).current;
-
-  // float para intro icon
-  const iconFloat = useRef(new Animated.Value(0)).current;
-  const floatLoop = useRef<Animated.CompositeAnimation | null>(null);
 
   const currentSlide = slides[currentIndex];
   const isLastSlide = currentIndex === slides.length - 1;
@@ -93,35 +72,6 @@ export default function OnboardingDiagnosisScreen() {
     if (currentSlide.key === 'skinGoals') return skinGoals.length === 0;
     return false;
   }, [currentSlide, name, age, skinGoals]);
-
-  useEffect(() => {
-    anim1.setValue(0);
-    anim2.setValue(0);
-    anim3.setValue(0);
-    floatLoop.current?.stop();
-    iconFloat.setValue(0);
-
-    const ease = Easing.out(Easing.cubic);
-
-    Animated.stagger(90, [
-      Animated.timing(anim1, { toValue: 1, duration: 420, easing: ease, useNativeDriver: true }),
-      Animated.timing(anim2, { toValue: 1, duration: 400, easing: ease, useNativeDriver: true }),
-      Animated.timing(anim3, { toValue: 1, duration: 380, easing: ease, useNativeDriver: true }),
-    ]).start(() => {
-      if (currentSlide.type === 'intro') {
-        const loop = Animated.loop(
-          Animated.sequence([
-            Animated.timing(iconFloat, { toValue: -8, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-            Animated.timing(iconFloat, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          ])
-        );
-        floatLoop.current = loop;
-        loop.start();
-      }
-    });
-
-    return () => { floatLoop.current?.stop(); };
-  }, [currentIndex]);
 
   const handleNext = async () => {
     if (isNextDisabled) return;
@@ -146,13 +96,7 @@ export default function OnboardingDiagnosisScreen() {
 
   const renderIntro = (slide: Extract<Slide, { type: 'intro' }>) => (
     <View style={styles.cardInner}>
-      {/* Icono — aparece primero */}
-      <Animated.View style={[styles.introIconWrap, useAnimStyle(anim1, 16), { transform: [
-        { translateY: Animated.add(
-            anim1.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
-            iconFloat
-          ) },
-      ]}]}>
+      <View style={styles.introIconWrap}>
         <LinearGradient
           colors={['#F9E4EF', '#EDD0E2']}
           start={{ x: 0, y: 0 }}
@@ -161,21 +105,19 @@ export default function OnboardingDiagnosisScreen() {
         >
           <Ionicons name={introIcons[slide.key] || 'sparkles-outline'} size={38} color="#BF789C" />
         </LinearGradient>
-      </Animated.View>
+      </View>
 
-      {/* Título — aparece segundo */}
-      <Animated.View style={[styles.introTextWrap, useAnimStyle(anim2, 14)]}>
+      <View style={styles.introTextWrap}>
         <Text style={styles.slideTitle}>{slide.title}</Text>
         <View style={styles.titleUnderline} />
         <Text style={styles.slideSubtitle}>{slide.subtitle}</Text>
-      </Animated.View>
+      </View>
 
-      {/* Dots decorativos — aparecen terceros */}
-      <Animated.View style={[styles.introDots, useAnimStyle(anim3, 10)]}>
+      <View style={styles.introDots}>
         {[0.3, 1, 0.3].map((op, i) => (
           <View key={i} style={[styles.introDot, { opacity: op }]} />
         ))}
-      </Animated.View>
+      </View>
     </View>
   );
 
@@ -183,13 +125,11 @@ export default function OnboardingDiagnosisScreen() {
     const isNumeric = slide.type === 'numeric';
     return (
       <View style={styles.cardInner}>
-        {/* Icono */}
-        <Animated.View style={[styles.questionIconWrap, useAnimStyle(anim1, 16)]}>
+        <View style={styles.questionIconWrap}>
           <Ionicons name={isNumeric ? 'calendar-outline' : 'person-outline'} size={26} color="#BF789C" />
-        </Animated.View>
+        </View>
 
-        {/* Pregunta */}
-        <Animated.View style={[{ width: '100%' }, useAnimStyle(anim2, 14)]}>
+        <View style={{ width: '100%' }}>
           {isNumeric && name.trim().length > 0 && (
             <Text style={styles.greetingText}>Hola, {name.trim()} 👋</Text>
           )}
@@ -214,25 +154,22 @@ export default function OnboardingDiagnosisScreen() {
               />
             </View>
           )}
-        </Animated.View>
+        </View>
 
-        {/* Helper text */}
-        <Animated.Text style={[styles.helpText, useAnimStyle(anim3, 10)]}>
+        <Text style={styles.helpText}>
           Usaremos estos datos para personalizar tu experiencia.
-        </Animated.Text>
+        </Text>
       </View>
     );
   };
 
   const renderChips = (slide: Extract<Slide, { type: 'chips' }>) => (
     <View style={styles.cardInner}>
-      {/* Icono */}
-      <Animated.View style={[styles.questionIconWrap, useAnimStyle(anim1, 16)]}>
+      <View style={styles.questionIconWrap}>
         <Ionicons name="sparkles-outline" size={26} color="#BF789C" />
-      </Animated.View>
+      </View>
 
-      {/* Título + chips */}
-      <Animated.View style={[{ width: '100%', alignItems: 'center' }, useAnimStyle(anim2, 14)]}>
+      <View style={{ width: '100%', alignItems: 'center' }}>
         <Text style={styles.questionText}>{slide.title}</Text>
         <View style={styles.chipRow}>
           {slide.options.map((option) => {
@@ -252,12 +189,11 @@ export default function OnboardingDiagnosisScreen() {
             );
           })}
         </View>
-      </Animated.View>
+      </View>
 
-      {/* Helper */}
-      <Animated.Text style={[styles.helpText, useAnimStyle(anim3, 10)]}>
+      <Text style={styles.helpText}>
         Selecciona todos los objetivos que quieras.
-      </Animated.Text>
+      </Text>
     </View>
   );
 

@@ -124,7 +124,7 @@ export default function RecommendationsScreen({ navigation }) {
 
       {/* ── HEADER ── */}
       <LinearGradient
-        colors={['#DEB4CC', '#BF789C']}
+        colors={['#E8A0A0', '#C47898']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
         style={[styles.header, { paddingTop: insets.top + 44 }]}
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
     letterSpacing: 0.2,
   },

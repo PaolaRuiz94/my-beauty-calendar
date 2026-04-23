@@ -1,5 +1,4 @@
 export const categoryOptions = [
-  { id: 'all', title: 'Todos' },
   { id: 'shampoo', title: 'Shampoo' },
   { id: 'tratamiento', title: 'Tratamiento' },
   { id: 'acondicionador', title: 'Acondicionador' },

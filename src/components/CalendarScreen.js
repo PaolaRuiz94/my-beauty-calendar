@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,643 +6,517 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Animated,
 } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { Calendar } from 'react-native-calendars';
-import { Video } from 'expo-av';
-import AppHeader from './AppHeader';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
+import BeautyCalendarHeader from './BeautyCalendarHeader';
 
-const recommendations = [
-  {
-    id: 1,
-    title: 'Forma correcta de lavar el cabello',
-    subtitle: 'Paso a paso para una limpieza saludable',
-    video: require('../../assets/sample-video.mp4'),
-  },
-  {
-    id: 2,
-    title: '3 formas de definir tus rizos',
-    subtitle: 'Técnicas para rizos más definidos',
-    video: require('../../assets/sample-video.mp4'),
-  },
-  {
-    id: 3,
-    title: 'Accesorios para evitar el frizz',
-    subtitle: 'Productos y herramientas clave',
-    video: require('../../assets/sample-video.mp4'),
-  },
-  {
-    id: 4,
-    title: 'Lista de productos esenciales',
-    subtitle: 'Lo básico para una rutina completa',
-    video: require('../../assets/sample-video.mp4'),
-  },
-  {
-    id: 5,
-    title: 'Tipos de mascarilla según tu cabello',
-    subtitle: 'Encuentra la mejor mascarilla para ti',
-    video: require('../../assets/sample-video.mp4'),
-  },
-  {
-    id: 6,
-    title: 'Romper la textura del gel',
-    subtitle: 'Cómo eliminar el efecto crunch',
-    video: require('../../assets/sample-video.mp4'),
-  },
-  {
-    id: 7,
-    title: 'Cuidado del cabello liso',
-    subtitle: 'Rutina suave para cabello liso',
-    video: require('../../assets/sample-video.mp4'),
-  },
+// ─── static content ──────────────────────────────────────────────────────────
+
+const TIPS = [
+  'Usar demasiados productos a la vez puede causar congestión y sensibilidad en el cuero cabelludo (cuando no combinan bien). Asegúrate de conocer tu rutina ideal.',
+  'Lavar el cabello con agua fría ayuda a sellar la cutícula y aporta más brillo natural.',
+  'El masaje capilar estimula la circulación y favorece el crecimiento del cabello.',
+  'Dormir con el cabello húmedo puede causar frizz y rotura. Déjalo secar antes de acostarte.',
+  'Los aceites se aplican al final de la rutina para sellar la hidratación, no antes.',
+  'Evita el calor excesivo: si usas secador, aplica protector térmico siempre.',
+  'La frecuencia de lavado depende de tu tipo de cabello; no hay una regla universal.',
 ];
 
-export default function CalendarScreen({ route, navigation }) {
-  const tabBarHeight = useBottomTabBarHeight();
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0]
+const MOTIVATIONS = [
+  'Hoy es un buen día para cuidar de tu cabello',
+  'Tu cabello te lo agradecerá ✨',
+  'Pequeños hábitos, grandes resultados',
+  'Cuídate hoy, brilla mañana',
+  'Tu rutina es tu momento de autocuidado',
+  'Cada paso cuenta en tu transformación capilar',
+  'Hoy es el día perfecto para mimar tu cabello',
+];
+
+const THUMB_GRADIENTS = [
+  ['#FFD6E0', '#FFAFC5'],
+  ['#C8F7C5', '#96E4A1'],
+  ['#C5D8FF', '#A0BEFF'],
+  ['#FFE5C5', '#FFD0A0'],
+  ['#E5C5FF', '#C8A0FF'],
+  ['#C5FFEE', '#A0FFDA'],
+];
+
+// ─── sub-components ───────────────────────────────────────────────────────────
+
+function ProductThumb({ index }) {
+  const colors = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length];
+  return (
+    <LinearGradient colors={colors} style={styles.productThumb} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
   );
-  const [isExpanded, setIsExpanded] = useState(false);
-  const calendarHeightAnim = useRef(new Animated.Value(0)).current;
-
-  const [product, setProduct] = useState('');
-  const [routinesByDate, setRoutinesByDate] = useState({});
-  const [suggestedRoutinePlan, setSuggestedRoutinePlan] = useState(
-    route?.params?.routinePlan || []
-  );
-  const [routineObjective, setRoutineObjective] = useState(route?.params?.objective || '');
-  const [activeVideoId, setActiveVideoId] = useState(recommendations[0]?.id || null);
-  const videoRefs = useRef([]);
-
-  const todayRoutines = routinesByDate[selectedDate] || [];
-
-  useEffect(() => {
-    Animated.timing(calendarHeightAnim, {
-      toValue: isExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [isExpanded, calendarHeightAnim]);
-
-  useEffect(() => {
-    if (route?.params?.routinePlan) {
-      setSuggestedRoutinePlan(route.params.routinePlan);
-    }
-    if (route?.params?.objective) {
-      setRoutineObjective(route.params.objective);
-    }
-  }, [route]);
-
-  useEffect(() => {
-  if (!route || !route.params || !route.params.routinePlan) return;
-
-  const plan = route.params.routinePlan;
-
-  if (!Array.isArray(plan)) return;
-
-  const today = new Date();
-  const newRoutines = {};
-
-for (let i = 0; i < 30; i++) {
-  const date = new Date(today);
-  date.setDate(today.getDate() + i);
-
-  const dateStr = date.toISOString().split('T')[0];
-
-  let dayPlan = plan[i % plan.length];
-
-  // 🔥 ajustes inteligentes
-  if (i === 13) {
-    dayPlan = {
-      steps: ['Detox profundo', 'Mascarilla intensiva', 'Hidratación profunda'],
-    };
-  }
-
-  if (i === 20) {
-    dayPlan = {
-      steps: ['Tratamiento reparador intensivo', 'Aceite nutritivo'],
-    };
-  }
-
-  if (i === 27) {
-    dayPlan = {
-      steps: ['Reset total', 'Detox + hidratación + sellado'],
-    };
-  }
-
-  newRoutines[dateStr] = dayPlan.steps;
 }
 
-setRoutinesByDate(newRoutines);
+function RoutineItem({ item, index, isCompleted, onToggle, accentColor }) {
+  const raw = typeof item === 'string' ? item : item.text;
+  const colonIdx = raw.indexOf(':');
+  const label = colonIdx !== -1 ? raw.slice(0, colonIdx).trim() : '';
+  const name  = colonIdx !== -1 ? raw.slice(colonIdx + 1).trim() : raw;
+  const brand = typeof item === 'object' ? item.brand : undefined;
 
-  const firstDate = Object.keys(newRoutines)[0];
-  if (firstDate) {
-    setSelectedDate(firstDate);
-  }
-}, [route]);
+  return (
+    <View style={styles.routineItem}>
+      <ProductThumb index={index} />
+      <View style={styles.routineItemContent}>
+        <Text style={styles.routineItemText} numberOfLines={2}>
+          {label
+            ? <Text style={styles.routineItemLabel}>{index + 1}. {label}: </Text>
+            : <Text style={styles.routineItemLabel}>{index + 1}. </Text>}
+          {name}
+        </Text>
+        {brand ? <Text style={styles.routineItemBrand}>{brand}</Text> : null}
+      </View>
+      <TouchableOpacity onPress={onToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Ionicons
+          name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
+          size={26}
+          color={isCompleted ? accentColor : '#DDD'}
+        />
+      </TouchableOpacity>
+    </View>
+  );
+}
 
-const calendarHeight = calendarHeightAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [120, 400],
-  });
-
-  const toggleCalendarExpand = () => {
-    setIsExpanded(!isExpanded);
-  };
-
-  const getWeekDays = () => {
-    const baseDate = new Date(selectedDate);
-    const startOfWeek = new Date(baseDate);
-    startOfWeek.setDate(baseDate.getDate() - baseDate.getDay());
-
-    return Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + index);
-      const dateStr = date.toISOString().split('T')[0];
-      return {
-        dateStr,
-        dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()],
-        dayNumber: date.getDate(),
-        isSelected: dateStr === selectedDate,
-        hasData: (routinesByDate[dateStr]?.length || 0) > 0,
-      };
-    });
-  };
-
-  const buildMarkedDates = () => {
-    const marked = {};
-
-    // Mark all dates with saved routines
-    Object.keys(routinesByDate).forEach((date) => {
-      if (routinesByDate[date].length > 0) {
-        marked[date] = {
-          customStyles: {
-            container: {
-              backgroundColor: '#D6A4A4',
-              borderRadius: 20,
-            },
-            text: {
-              color: '#fff',
-              fontWeight: 'bold',
-            },
-          },
-        };
-      }
-    });
-
-    // Mark selectedDate with light pink if it doesn't have data
-    if (!marked[selectedDate]) {
-      marked[selectedDate] = {
-        customStyles: {
-          container: {
-            backgroundColor: '#F3D6DC',
-            borderRadius: 20,
-          },
-          text: {
-            color: '#333',
-            fontWeight: '600',
-          },
-        },
-      };
-    }
-
-    return marked;
-  };
+function RoutineCard({ title, iconName, accentColor, routines, completed, onToggle, onAdd, onNavigate }) {
+  const [showInput, setShowInput] = useState(false);
+  const [draft, setDraft]         = useState('');
 
   const handleSave = () => {
-    if (!product.trim()) return;
-
-    setRoutinesByDate((prev) => ({
-      ...prev,
-      [selectedDate]: [...(prev[selectedDate] || []), product],
-    }));
-
-    setProduct('');
-  };
-
-  const getFormattedDate = () => {
-    return new Date(selectedDate).toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'long',
-    });
+    const t = draft.trim();
+    if (t) { onAdd(t); setDraft(''); setShowInput(false); }
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: tabBarHeight + 20 }}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.routineCard}>
+      {/* section header */}
+      <View style={styles.routineCardHeader}>
+        <Ionicons name={iconName} size={15} color={accentColor} style={{ marginRight: 6 }} />
+        <Text style={[styles.routineCardTitle, { color: accentColor }]}>{title}</Text>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity onPress={onNavigate} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <Ionicons name="ellipsis-horizontal" size={18} color="#CCC" />
+        </TouchableOpacity>
+      </View>
+
+      {/* MI RUTINA label */}
+      <View style={styles.myRoutineRow}>
+        <Ionicons name="sparkles" size={13} color={accentColor} />
+        <Text style={[styles.myRoutineText, { color: accentColor }]}>MI RUTINA</Text>
+      </View>
+
+      {/* items */}
+      {routines.map((item, i) => (
+        <RoutineItem
+          key={i}
+          item={item}
+          index={i}
+          isCompleted={completed.includes(i)}
+          onToggle={() => onToggle(i)}
+          accentColor={accentColor}
+        />
+      ))}
+
+      {/* inline input */}
+      {showInput && (
+        <TextInput
+          placeholder="Ej. Shampoo + mascarilla"
+          placeholderTextColor="#CCC"
+          value={draft}
+          onChangeText={setDraft}
+          style={[styles.inlineInput, { borderColor: accentColor + '55' }]}
+          autoFocus
+          returnKeyType="done"
+          onSubmitEditing={handleSave}
+        />
+      )}
+
+      {/* Agregar paso row */}
+      <View style={[styles.addRow, { borderTopColor: accentColor + '22' }]}>
+        <TouchableOpacity style={styles.addRowLeft} onPress={() => setShowInput(v => !v)}>
+          <Ionicons name="add-circle-outline" size={17} color={accentColor} />
+          <Text style={[styles.addRowText, { color: accentColor }]}>Agregar paso</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          style={[styles.squareBtn, { borderColor: accentColor + '88' }]}
+          onPress={() => setShowInput(v => !v)}
+        >
+          <Ionicons name="add" size={15} color={accentColor} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.squareBtn, { borderColor: accentColor + '88', marginLeft: 8 }]}
+          onPress={onNavigate}
+        >
+          <Text style={{ fontSize: 13 }}>🏁</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* centered + button */}
+      <TouchableOpacity
+        style={[styles.centerBtn, { borderColor: accentColor + '88' }]}
+        onPress={() => setShowInput(v => !v)}
       >
-        <AppHeader />
-        {/* CALENDAR HEADER */}
-        <View style={styles.calendarHeader}>
-          <Text style={styles.subtitle}>
-            Hoy es un buen día para cuidar de ti
-          </Text>
-          <TouchableOpacity
-            onPress={toggleCalendarExpand}
-            activeOpacity={0.6}
-            style={styles.toggleBtn}
-          >
-            <Text style={styles.toggleIcon}>{isExpanded ? '▼' : '▶'}</Text>
+        <Ionicons name="add" size={20} color={accentColor} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── screen ──────────────────────────────────────────────────────────────────
+
+export default function CalendarScreen({ route, navigation }) {
+  const tabBarHeight = useBottomTabBarHeight();
+
+  const [selectedDate,     setSelectedDate]     = useState(new Date().toISOString().split('T')[0]);
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
+  const [dayByDate,    setDayByDate]    = useState({});
+  const [nightByDate,  setNightByDate]  = useState({});
+  const [dayDone,      setDayDone]      = useState({});
+  const [nightDone,    setNightDone]    = useState({});
+
+  const handleDatePress = (dateStr) => {
+    setSelectedDate(dateStr);
+  };
+
+  const dayRoutines   = dayByDate[selectedDate]   || [];
+  const nightRoutines = nightByDate[selectedDate]  || [];
+  const dayCompleted  = dayDone[selectedDate]      || [];
+  const nightCompleted= nightDone[selectedDate]    || [];
+
+  const dateObj = new Date(selectedDate + 'T12:00:00');
+  const tipText = TIPS[dateObj.getDate() % TIPS.length];
+  const motText = MOTIVATIONS[dateObj.getDay() % MOTIVATIONS.length];
+
+  // populate 30-day plan from route params
+  useEffect(() => {
+    if (!route?.params?.routinePlan) return;
+    const plan = route.params.routinePlan;
+    if (!Array.isArray(plan)) return;
+
+    const today = new Date();
+    const newDay   = {};
+    const newNight = {};
+
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+
+      // plan[0] es siempre el detox — se aplica el día 1 y cada 14 días
+      const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
+
+      newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => ({ text: s, editable: false }));
+      newNight[dateStr] = (dayPlan.nightSteps || []).map(s => ({ text: s, editable: false }));
+    }
+
+    setDayByDate(newDay);
+    setNightByDate(newNight);
+    const first = Object.keys(newDay)[0];
+    if (first) setSelectedDate(first);
+  }, [route]);
+
+  const buildMarkedDates = () => {
+    const out = {};
+    Object.keys(dayByDate).forEach(d => {
+      if (dayByDate[d]?.length) out[d] = true;
+    });
+    return out;
+  };
+
+  const getFormattedDate = () =>
+    dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+
+  const toggle = (setter, date, index) =>
+    setter(prev => {
+      const cur = prev[date] || [];
+      return {
+        ...prev,
+        [date]: cur.includes(index) ? cur.filter(i => i !== index) : [...cur, index],
+      };
+    });
+
+  const addRoutine = (setter, date, text) =>
+    setter(prev => ({
+      ...prev,
+      [date]: [...(prev[date] || []), { text, editable: true }],
+    }));
+
+  return (
+    <View style={styles.screen}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 28 }}
+      >
+        {/* ── gradient header ── */}
+        <View style={styles.headerWrap}>
+          <BeautyCalendarHeader
+            selectedDate={selectedDate}
+            onDatePress={handleDatePress}
+            markedDates={buildMarkedDates()}
+            streak={1}
+            points={50}
+            expanded={calendarExpanded}
+            onGridPress={() => setCalendarExpanded(e => !e)}
+          />
+        </View>
+
+        {/* ── date label ── */}
+        <Text style={styles.dateLabel}>{getFormattedDate()}</Text>
+
+        {/* ── motivational banner ── */}
+        <View style={styles.motivRow}>
+          <Text style={styles.sparkle}>✦</Text>
+          <Text style={styles.motivText}>{motText}</Text>
+          <TouchableOpacity style={styles.playBtn}>
+            <Ionicons name="play" size={13} color="#C47898" />
           </TouchableOpacity>
         </View>
 
-        {/* DATE HEADER */}
-        <Text style={styles.dateHeader}>{getFormattedDate()}</Text>
-
-   
-
-        {/* ANIMATED CALENDAR */}
-        {!isExpanded ? (
-          // WEEK VIEW (Collapsed)
-          <View style={styles.weekViewContainer}>
-            <View style={styles.weekRow}>
-              {getWeekDays().map((day) => (
-                <TouchableOpacity
-                  key={day.dateStr}
-                  style={[
-                    styles.weekDay,
-                    day.isSelected && styles.weekDaySelected,
-                    day.hasData && styles.weekDayWithData,
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => setSelectedDate(day.dateStr)}
-                >
-                  <Text style={[styles.weekDayName, day.isSelected && styles.weekDayNameSelected]}>
-                    {day.dayName}
-                  </Text>
-                  <Text style={[styles.weekDayNumber, day.isSelected && styles.weekDayNumberSelected]}>
-                    {day.dayNumber}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+        {/* ── tip del día ── */}
+        <View style={styles.tipCard}>
+          <View style={styles.tipCardTop}>
+            <Text style={styles.tipLabel}>TIP DEL DÍA</Text>
+            <View style={styles.tipLike}>
+              <Ionicons name="heart-outline" size={15} color="#CCC" />
+              <Text style={styles.tipLikeNum}>376</Text>
             </View>
           </View>
-        ) : (
-          // MONTH VIEW (Expanded)
-          <Animated.View style={[styles.calendarContainer, { height: calendarHeight }]}>
-            <Calendar
-              markingType="custom"
-              markedDates={buildMarkedDates()}
-              onDayPress={(day) => setSelectedDate(day.dateString)}
-              style={styles.calendar}
-            />
-          </Animated.View>
-        )}
-
-        {/* FORM */}
-        <View style={styles.cardForm}>
-          <Text style={styles.title}>Rutina del día</Text>
-
-          <TextInput
-            placeholder="Ej. Shampoo + mascarilla"
-            value={product}
-            onChangeText={setProduct}
-            style={styles.input}
-          />
-
-          <TouchableOpacity style={styles.button} onPress={handleSave}>
-            <Text style={styles.buttonText}>Guardar rutina</Text>
-          </TouchableOpacity>
-
-          {todayRoutines.map((item, index) => (
-            <Text key={index} style={styles.item}>
-              • {item}
-            </Text>
-          ))}
-
-            <TouchableOpacity style={{
-              marginTop: 15,
-              backgroundColor: '#5A2A74',
-              padding: 14,
-              borderRadius: 12,
-              alignItems: 'center',
-            }}
-           onPress={() =>
-            navigation.navigate('ProductsModal', {
-            routines: todayRoutines,
-            date: selectedDate, // 🔥 ESTA LÍNEA ES NUEVA
-            })
-            }
-  >
-    <Text style={{ color: '#fff', fontWeight: '700' }}>
-      Ver productos recomendados
-    </Text>
-  </TouchableOpacity>
+          <Text style={styles.tipText}>{tipText}</Text>
         </View>
 
-        {/* RECOMENDADOS */}
-        <Text style={styles.sectionTitle}>Recomendado hoy</Text>
+        <View style={{ height: 8 }} />
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {recommendations.map((item, index) => (
-            <View key={item.id} style={styles.card}>
-              <Video
-                source={item.video}
-                style={styles.cardVideo}
-                resizeMode="cover"
-                isLooping
-                shouldPlay={activeVideoId === item.id}
-                isMuted={false}
-                useNativeControls={true}
-              />
-              <View style={styles.videoOverlay} />
-              {activeVideoId !== item.id ? (
-                <TouchableOpacity
-                  style={styles.playOverlay}
-                  activeOpacity={0.8}
-                  onPress={() => setActiveVideoId(item.id)}
-                >
-                  <View style={styles.playButton}>
-                    <Text style={styles.playButtonText}>▶</Text>
-                  </View>
-                </TouchableOpacity>
-              ) : null}
-              <View style={styles.videoTextContainer}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
+        {/* ── DÍA ── */}
+        <RoutineCard
+          title="DÍA"
+          iconName="sunny-outline"
+          accentColor="#E8789A"
+          routines={dayRoutines}
+          completed={dayCompleted}
+          onToggle={(i) => toggle(setDayDone, selectedDate, i)}
+          onAdd={(t) => addRoutine(setDayByDate, selectedDate, t)}
+          onNavigate={() =>
+            navigation.navigate('ProductsModal', { routines: dayRoutines, date: selectedDate })
+          }
+        />
+
+        <View style={{ height: 16 }} />
+
+        {/* ── NOCHE ── */}
+        <RoutineCard
+          title="NOCHE"
+          iconName="moon-outline"
+          accentColor="#7B61FF"
+          routines={nightRoutines}
+          completed={nightCompleted}
+          onToggle={(i) => toggle(setNightDone, selectedDate, i)}
+          onAdd={(t) => addRoutine(setNightByDate, selectedDate, t)}
+          onNavigate={() =>
+            navigation.navigate('ProductsModal', { routines: nightRoutines, date: selectedDate })
+          }
+        />
       </ScrollView>
     </View>
   );
 }
 
-
+// ─── styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#FAF8F6',
+    backgroundColor: '#FDF5F8',
   },
+  headerWrap: {},
 
-  calendar: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 20,
-  },
-
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingTop: 18,
-  },
-
-  calendarHeaderTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#5A2A74',
-    marginBottom: 12,
-  },
-
-  toggleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: 'rgba(212, 164, 164, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  toggleIcon: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#D6A4A4',
-  },
-
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    marginBottom: 14,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#C48A95',
-  },
-
-  dateHeader: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#999',
+  // date + motivation
+  dateLabel: {
+    marginTop: 14,
     textAlign: 'center',
-    marginBottom: 16,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#C47898',
     textTransform: 'capitalize',
   },
-
-  calendarContainer: {
-    overflow: 'hidden',
-    borderRadius: 20,
-    backgroundColor: '#FFF',
-    marginBottom: 20,
-  },
-
-  weekViewContainer: {
-    paddingVertical: 16,
-    marginBottom: 20,
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-  },
-
-  weekRow: {
+  motivRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    marginHorizontal: 18,
+    marginTop: 10,
+    marginBottom: 16,
+    gap: 8,
   },
-
-  weekDay: {
-    width: 50,
-    height: 70,
-    borderRadius: 12,
+  sparkle: {
+    color: '#7B61FF',
+    fontSize: 15,
+  },
+  motivText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  playBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FDEAF2',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
   },
 
-  weekDaySelected: {
-    backgroundColor: '#F3D6DC',
-  },
-
-  weekDayWithData: {
-    backgroundColor: '#D6A4A4',
-  },
-
-  weekDayName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#999',
-    marginBottom: 4,
-  },
-
-  weekDayNameSelected: {
-    color: '#333',
-    fontWeight: '700',
-  },
-
-  weekDayNumber: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-
-  weekDayNumberSelected: {
-    color: '#5A2A74',
-  },
-
-  cardForm: {
-    padding: 20,
-    backgroundColor: '#F3EDE7',
-    borderRadius: 20,
-  },
-
-  routineSummaryCard: {
-    backgroundColor: '#FFF4F5',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-  },
-
-  objectiveText: {
-    fontSize: 14,
-    marginBottom: 12,
-    color: '#6A3B62',
-  },
-
-  routineDayCard: {
-    marginBottom: 12,
+  // tip card
+  tipCard: {
+    marginHorizontal: 16,
     backgroundColor: '#FFF',
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
+    shadowColor: '#C47898',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
-
-  routineDayTitle: {
-    fontWeight: '700',
-    marginBottom: 6,
-    color: '#4D2350',
+  tipCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-
-  routineStep: {
+  tipLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#E8789A',
+    letterSpacing: 0.8,
+  },
+  tipLike: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  tipLikeNum: {
+    fontSize: 12,
+    color: '#BBB',
+    fontWeight: '500',
+  },
+  tipText: {
     fontSize: 13,
-    color: '#4C3A49',
-    marginBottom: 4,
+    color: '#555',
     lineHeight: 20,
   },
 
-  emptyRoutineText: {
-    color: '#7C5C6E',
-    fontSize: 14,
+  // routine card
+  routineCard: {
+    marginHorizontal: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 18,
+    shadowColor: '#C47898',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
-
-  title: {
-    fontWeight: '700',
-    marginBottom: 10,
-  },
-
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-  },
-
-  button: {
-    backgroundColor: '#D6A4A4',
-    padding: 14,
-    borderRadius: 12,
+  routineCardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  routineCardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  myRoutineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 14,
+  },
+  myRoutineText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
   },
 
-  buttonText: {
-    color: '#fff',
+  // routine item
+  routineItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 12,
+  },
+  productThumb: {
+    width: 44,
+    height: 56,
+    borderRadius: 10,
+  },
+  routineItemContent: {
+    flex: 1,
+  },
+  routineItemText: {
+    fontSize: 13,
+    color: '#333',
+    lineHeight: 19,
+  },
+  routineItemLabel: {
     fontWeight: '700',
   },
+  routineItemBrand: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
 
-  item: {
-    marginTop: 5,
+  // add step
+  inlineInput: {
+    backgroundColor: '#FBF5F8',
+    borderRadius: 10,
+    padding: 11,
+    fontSize: 13,
+    borderWidth: 1,
+    marginBottom: 10,
     color: '#333',
   },
-
-  sectionTitle: {
-    marginTop: 25,
-    marginBottom: 10,
-    fontWeight: '700',
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    marginTop: 2,
   },
-
-  card: {
-    width: 170,
-    height: 240,
-    marginRight: 15,
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: '#000',
+  addRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-
-  cardVideo: {
-    width: '100%',
-    height: '100%',
+  addRowText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
-
-  videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-  },
-
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  squareBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  playButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+  centerBtn: {
+    alignSelf: 'center',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#fff',
-  },
-
-  playButtonText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-
-  videoTextContainer: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
-    bottom: 14,
-  },
-
-  cardTitle: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-    marginBottom: 4,
-  },
-
-  cardSubtitle: {
-    color: '#F3D6DC',
-    fontSize: 12,
+    marginTop: 14,
   },
 });

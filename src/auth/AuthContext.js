@@ -99,13 +99,46 @@ export function AuthProvider({ children }) {
     await persistUser(currentUser);
   };
 
+  const updateUser = async (name, email, newPassword) => {
+    if (!name.trim() || !email.trim()) {
+      throw new Error('Nombre y email son obligatorios.');
+    }
+
+    const users = await getStoredUsers();
+    const emailLower = email.trim().toLowerCase();
+
+    const conflict = users.some(
+      (u) =>
+        u.email.toLowerCase() === emailLower &&
+        u.email.toLowerCase() !== user.email.toLowerCase()
+    );
+    if (conflict) throw new Error('Ya existe una cuenta con ese email.');
+
+    const updated = users.map((u) => {
+      if (u.email.toLowerCase() === user.email.toLowerCase()) {
+        return {
+          ...u,
+          name: name.trim(),
+          email: emailLower,
+          password: newPassword ? newPassword : u.password,
+        };
+      }
+      return u;
+    });
+
+    await saveStoredUsers(updated);
+    const currentUser = { name: name.trim(), email: emailLower };
+    setUser(currentUser);
+    await persistUser(currentUser);
+  };
+
   const logout = async () => {
     setUser(null);
     await clearUser();
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

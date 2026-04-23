@@ -7,17 +7,20 @@ import {
   TouchableOpacity,
   Dimensions,
   TextInput,
-  Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useTheme } from '../hooks/useTheme';
+import { LinearGradient } from 'expo-linear-gradient';
+// @ts-ignore
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import YearPicker from './YearPicker';
 
-const { width, height } = Dimensions.get('window');
+const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type RootStackParamList = {
   Main: { screen: string };
@@ -25,92 +28,41 @@ type RootStackParamList = {
 };
 
 type Slide =
-  | {
-      key: string;
-      type: 'intro';
-      title: string;
-      subtitle: string;
-    }
-  | {
-      key: string;
-      type: 'text';
-      question: string;
-      placeholder: string;
-    }
-  | {
-      key: string;
-      type: 'numeric';
-      question: string;
-      placeholder: string;
-    }
-  | {
-      key: string;
-      type: 'chips';
-      title: string;
-      options: string[];
-    };
+  | { key: string; type: 'intro'; title: string; subtitle: string }
+  | { key: string; type: 'text'; question: string; placeholder: string }
+  | { key: string; type: 'numeric'; question: string; placeholder: string }
+  | { key: string; type: 'chips'; title: string; options: string[] };
 
 const slides: Slide[] = [
-  {
-    key: 'intro-1',
-    type: 'intro',
-    title: 'Hola ✨',
-    subtitle: 'Bienvenida a tu experiencia de cuidado capilar',
-  },
-  {
-    key: 'intro-2',
-    type: 'intro',
-    title: 'Te vamos a conocer 💖',
-    subtitle: 'Responde unas preguntas para entender tu cabello',
-  },
-  {
-    key: 'intro-3',
-    type: 'intro',
-    title: 'Rutina personalizada 🌸',
-    subtitle: 'Recibirás recomendaciones hechas para ti',
-  },
-  {
-    key: 'name',
-    type: 'text',
-    question: '¿Cómo te gustaría que te llamara la app?',
-    placeholder: 'Tu nombre',
-  },
-  {
-    key: 'age',
-    type: 'numeric',
-    question: 'Registra tu año de nacimiento',
-    placeholder: '1990',
-  },
-  {
-    key: 'skinGoals',
-    type: 'chips',
-    title: 'Objetivos skincare 🌸',
-    options: ['Mejorar acné', 'Mejorar manchas', 'Rutina según piel', 'Entender mi piel'],
-  },
+  { key: 'intro-1', type: 'intro', title: 'Hola ✨', subtitle: 'Bienvenida a tu experiencia de cuidado capilar' },
+  { key: 'intro-2', type: 'intro', title: 'Te vamos a conocer 💖', subtitle: 'Responde unas preguntas para entender tu cabello' },
+  { key: 'intro-3', type: 'intro', title: 'Rutina personalizada 🌸', subtitle: 'Recibirás recomendaciones hechas para ti' },
+  { key: 'name', type: 'text', question: '¿Cómo te gustaría que te llamara la app?', placeholder: 'Tu nombre' },
+  { key: 'age', type: 'numeric', question: 'Registra tu año de nacimiento', placeholder: '1990' },
+  { key: 'skinGoals', type: 'chips', title: 'Objetivos skincare 🌸', options: ['Mejorar acné', 'Mejorar manchas', 'Rutina según piel', 'Entender mi piel'] },
 ];
 
-type SetList<T> = React.Dispatch<React.SetStateAction<T>>;
+const introIcons: Record<string, string> = {
+  'intro-1': 'sparkles-outline',
+  'intro-2': 'heart-outline',
+  'intro-3': 'leaf-outline',
+};
 
-function toggleSelection(item: string, list: string[], setList: SetList<string[]>) {
-  if (list.includes(item)) {
-    setList(list.filter((value) => value !== item));
-  } else {
-    setList([...list, item]);
-  }
+type SetList = React.Dispatch<React.SetStateAction<string[]>>;
+
+function toggleSelection(item: string, list: string[], setList: SetList) {
+  if (list.includes(item)) setList(list.filter((v) => v !== item));
+  else setList([...list, item]);
 }
 
 export default function OnboardingDiagnosisScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [name, setName] = useState('');
-  const currentYearString = new Date().getFullYear().toString();
-  const [age, setAge] = useState(currentYearString);
+  const [age, setAge] = useState(new Date().getFullYear().toString());
   const [skinGoals, setSkinGoals] = useState<string[]>([]);
   const scrollViewRef = useRef<ScrollView | null>(null);
-  const topPadding = Platform.OS === 'ios' ? 48 : 24;
-  const slideHeight = height - topPadding;
-  const innerSlideHeight = slideHeight * 0.82;
 
   const currentSlide = slides[currentIndex];
   const isLastSlide = currentIndex === slides.length - 1;
@@ -124,21 +76,15 @@ export default function OnboardingDiagnosisScreen() {
 
   const handleNext = async () => {
     if (isNextDisabled) return;
-
     if (currentIndex < slides.length - 1) {
       scrollViewRef.current?.scrollTo({ x: width * (currentIndex + 1), animated: true });
       return;
     }
-
     try {
-      await AsyncStorage.setItem(
-        'onboardingProfile',
-        JSON.stringify({ name: name.trim(), age: age.trim(), skinGoals })
-      );
-    } catch (error) {
-      console.warn('Error saving onboarding profile:', error);
+      await AsyncStorage.setItem('onboardingProfile', JSON.stringify({ name: name.trim(), age: age.trim(), skinGoals }));
+    } catch (e) {
+      console.warn('Error saving onboarding profile:', e);
     }
-
     navigation.navigate('Main', { screen: 'Diagnóstico' });
   };
 
@@ -147,80 +93,84 @@ export default function OnboardingDiagnosisScreen() {
     setCurrentIndex(newIndex);
   };
 
+  // ── Slide renderers ──────────────────────────────────────────────────────────
+
   const renderIntro = (slide: Extract<Slide, { type: 'intro' }>) => (
-    <View style={[styles.slideInner, { backgroundColor: colors.card, height: innerSlideHeight }]}>      
-      <Text style={[styles.slideTitle, { color: colors.textPrimary }]}>{slide.title}</Text>
-      <Text style={[styles.slideSubtitle, { color: colors.textSecondary }]}>{slide.subtitle}</Text>
+    <View style={styles.card}>
+      <View style={styles.introIconWrap}>
+        <Ionicons name={introIcons[slide.key] || 'sparkles-outline'} size={36} color="#BF789C" />
+      </View>
+      <Text style={styles.slideTitle}>{slide.title}</Text>
+      <Text style={styles.slideSubtitle}>{slide.subtitle}</Text>
     </View>
   );
 
   const renderTextInput = (slide: Extract<Slide, { type: 'text' | 'numeric' }>) => {
     const isNumeric = slide.type === 'numeric';
-
     return (
-      <View style={[styles.slideInner, { backgroundColor: colors.card, height: innerSlideHeight }]}>      
-        {isNumeric && name.trim().length > 0 ? (
-          <Text style={[styles.greetingTitle, { color: colors.textPrimary }]}>Hola {name.trim()}</Text>
-        ) : null}
-        <Text style={[styles.inputTitle, { color: colors.textPrimary }]}>{slide.question}</Text>
+      <View style={styles.card}>
+        {isNumeric && name.trim().length > 0 && (
+          <Text style={styles.greetingText}>Hola, {name.trim()} 👋</Text>
+        )}
+        <Text style={styles.questionText}>{slide.question}</Text>
         {isNumeric ? (
           <YearPicker value={age} onChange={setAge} minYear={1950} maxYear={new Date().getFullYear()} />
         ) : (
           <TextInput
             value={name}
-            onChangeText={(value) => setName(value)}
+            onChangeText={setName}
             placeholder={slide.placeholder}
-            placeholderTextColor="#B9A7A2"
+            placeholderTextColor="#CCC"
             keyboardType="default"
-            style={[styles.input, { backgroundColor: '#F7F3F1', color: colors.textPrimary }]}
+            style={styles.input}
             maxLength={30}
             returnKeyType="done"
           />
         )}
-        <Text style={[styles.helpText, { color: colors.textSecondary }]}>Usaremos estos datos para personalizar tu experiencia.</Text>
+        <Text style={styles.helpText}>Usaremos estos datos para personalizar tu experiencia.</Text>
       </View>
     );
   };
 
-  const renderChips = (slide: Extract<Slide, { type: 'chips' }>) => {
-    const selectedList = skinGoals;
-    const setSelectedList = setSkinGoals;
-
-    return (
-      <View style={[styles.slideInner, { backgroundColor: colors.card, height: innerSlideHeight }]}>      
-        <Text style={[styles.chipsTitle, { color: colors.textPrimary }]}>{slide.title}</Text>
-        <View style={styles.chipRow}>
-          {slide.options.map((option) => {
-            const active = selectedList.includes(option);
-            return (
-              <TouchableOpacity
-                key={option}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: active ? '#D6A4A4' : colors.background,
-                    borderColor: active ? '#D6A4A4' : '#E8D8D6',
-                  },
-                ]}
-                activeOpacity={0.8}
-                onPress={() => toggleSelection(option, selectedList, setSelectedList)}
-              >
-                <Text style={[styles.chipText, { color: active ? '#3D2834' : colors.textPrimary }]}>{option}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <Text style={[styles.helpText, { color: colors.textSecondary }]}>Selecciona todos los objetivos que quieras.</Text>
+  const renderChips = (slide: Extract<Slide, { type: 'chips' }>) => (
+    <View style={styles.card}>
+      <Text style={styles.questionText}>{slide.title}</Text>
+      <View style={styles.chipRow}>
+        {slide.options.map((option) => {
+          const active = skinGoals.includes(option);
+          return (
+            <TouchableOpacity
+              key={option}
+              style={[styles.chip, active && styles.chipActive]}
+              activeOpacity={0.8}
+              onPress={() => toggleSelection(option, skinGoals, setSkinGoals)}
+            >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{option}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
-    );
-  };
+      <Text style={styles.helpText}>Selecciona todos los objetivos que quieras.</Text>
+    </View>
+  );
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <View style={[styles.container, { backgroundColor: '#FAF8F6' }]}>      
+    <View style={[styles.screen, { paddingTop: insets.top + 16 }]}>
+      <StatusBar style="dark" />
+
+      {/* Decoración de fondo */}
+      <View style={styles.decorBlob} pointerEvents="none">
+        <LinearGradient colors={['#F0D5E8', '#EDD8E4']} style={StyleSheet.absoluteFill} />
+      </View>
+
+      {/* Slides */}
       <ScrollView
         ref={scrollViewRef}
         horizontal
         pagingEnabled
+        scrollEnabled={false}
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
         onMomentumScrollEnd={handleMomentumScrollEnd}
@@ -230,7 +180,7 @@ export default function OnboardingDiagnosisScreen() {
         bounces={false}
       >
         {slides.map((item) => (
-          <View key={item.key} style={[styles.slide, { width, height: slideHeight }]}>            
+          <View key={item.key} style={[styles.slide, { width }]}>
             {item.type === 'intro' && renderIntro(item)}
             {(item.type === 'text' || item.type === 'numeric') && renderTextInput(item)}
             {item.type === 'chips' && renderChips(item)}
@@ -238,155 +188,213 @@ export default function OnboardingDiagnosisScreen() {
         ))}
       </ScrollView>
 
+      {/* Paginación */}
       <View style={styles.pagination}>
         {slides.map((_, index) => {
           const isActive = index === currentIndex;
           return (
             <View
               key={`dot-${index}`}
-              style={[
-                styles.dot,
-                {
-                  width: isActive ? 18 : 8,
-                  opacity: isActive ? 1 : 0.3,
-                },
-              ]}
+              style={[styles.dot, { width: isActive ? 20 : 7, opacity: isActive ? 1 : 0.3 }]}
             />
           );
         })}
       </View>
 
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: '#D6A4A4' }]}
-        onPress={handleNext}
-        activeOpacity={0.85}
-        disabled={isNextDisabled}
-      >
-        <Text style={[styles.actionText, { color: isNextDisabled ? '#7F6A6A' : '#FFFFFF' }]}
-        >
-          {isLastSlide ? 'Empezar' : 'Siguiente'}
-        </Text>
-      </TouchableOpacity>
+      {/* Botón siguiente */}
+      <View style={[styles.buttonWrap, { paddingBottom: insets.bottom + 28 }]}>
+        <TouchableOpacity onPress={handleNext} activeOpacity={0.85} disabled={isNextDisabled}>
+          <LinearGradient
+            colors={isNextDisabled ? ['#E2C8D4', '#CCB0C0'] : ['#DEB4CC', '#BF789C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.button}
+          >
+            <Text style={styles.buttonText}>
+              {isLastSlide ? 'Empezar' : 'Siguiente'}
+            </Text>
+            <Ionicons
+              name={isLastSlide ? 'sparkles-outline' : 'arrow-forward'}
+              size={18}
+              color="#fff"
+              style={{ marginLeft: 8 }}
+            />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 48 : 24,
-    justifyContent: 'space-between',
+    backgroundColor: '#FDF5F8',
+  },
+
+  // decoración
+  decorBlob: {
+    position: 'absolute',
+    top: -80,
+    right: -60,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    overflow: 'hidden',
+    opacity: 0.5,
+  },
+
+  // scroll
+  scrollView: {
+    flex: 1,
   },
   list: {
     alignItems: 'center',
   },
-  scrollView: {
-    flex: 1,
-  },
-  slide: {
+ slide: {
+  alignItems: 'center',
+  paddingHorizontal: 22,
+  paddingTop: 20, // 👈 separación arriba
+  paddingBottom: 20, // 👈 separación abajo respecto a dots
+},
+
+  // card
+  card: {
+  width: '100%',
+  flex: 1, // 👈 esto hace que ocupe el espacio disponible
+  backgroundColor: '#fff',
+  borderRadius: 28,
+  padding: 30,
+  alignItems: 'center',
+  justifyContent: 'center', // opcional: centra contenido interno
+  shadowColor: '#C47898',
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.1,
+  shadowRadius: 20,
+  elevation: 6,
+},
+
+  // intro
+  introIconWrap: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    backgroundColor: '#FDF0F3',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  slideInner: {
-    width: '100%',
-    borderRadius: 30,
-    padding: 28,
-    minHeight: 420,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 6,
+    marginBottom: 24,
   },
   slideTitle: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
+    color: '#2D2D2D',
     textAlign: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   slideSubtitle: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    color: '#999',
     textAlign: 'center',
-    color: '#8F7181',
+    lineHeight: 22,
   },
-  greetingTitle: {
-    fontSize: 20,
+
+  // input slides
+  greetingText: {
+    fontSize: 18,
     fontWeight: '700',
+    color: '#D6A4A4',
     textAlign: 'center',
     marginBottom: 10,
   },
-  inputTitle: {
-    fontSize: 22,
+  questionText: {
+    fontSize: 20,
     fontWeight: '700',
+    color: '#2D2D2D',
     textAlign: 'center',
-    marginBottom: 18,
-    paddingHorizontal: 12,
+    marginBottom: 22,
+    lineHeight: 28,
   },
   input: {
     width: '100%',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E8D8D6',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    fontSize: 18,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#F0DDE2',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    fontSize: 17,
     marginBottom: 14,
-    backgroundColor: '#F7F3F1',
+    backgroundColor: '#FDF5F8',
+    color: '#2D2D2D',
   },
   helpText: {
-    fontSize: 14,
+    fontSize: 13,
+    color: '#BBB',
     textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 20,
+    marginTop: 8,
+    lineHeight: 19,
   },
-  chipsTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 18,
-    paddingHorizontal: 12,
-  },
+
+  // chips
   chipRow: {
     width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
+    gap: 8,
+    marginBottom: 8,
   },
   chip: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    borderWidth: 1,
-    margin: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 99,
+    borderWidth: 1.5,
+    borderColor: '#F0DDE2',
+    backgroundColor: '#fff',
+  },
+  chipActive: {
+    backgroundColor: '#D6A4A4',
+    borderColor: '#D6A4A4',
   },
   chipText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    color: '#888',
   },
+  chipTextActive: {
+    color: '#fff',
+  },
+
+  // paginación
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 10,
+    alignItems: 'center',
+    gap: 6,
+    marginVertical: 16,
   },
   dot: {
-    height: 10,
-    borderRadius: 5,
+    height: 7,
+    borderRadius: 4,
     backgroundColor: '#D6A4A4',
-    marginHorizontal: 6,
   },
-  actionButton: {
-    marginHorizontal: 28,
-    borderRadius: 28,
-    paddingVertical: 16,
+
+  // botón
+  buttonWrap: {
+    paddingHorizontal: 26,
+  },
+  button: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 28,
+    justifyContent: 'center',
+    borderRadius: 20,
+    paddingVertical: 16,
   },
-  actionText: {
+  buttonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });

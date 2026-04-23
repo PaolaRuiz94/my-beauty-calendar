@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,32 +7,106 @@ import {
   ScrollView,
   Linking,
   Image,
+  Animated,
 } from "react-native";
-import { useTheme } from "../hooks/useTheme";
-import AppHeader from "./AppHeader";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { categoryOptions, productDB } from "../data/productDB";
 
 const defaultProductImage = require("../../assets/icon.png");
 
+const ALL_CATEGORIES = [...categoryOptions];
+
+// ─── CategoryChip ─────────────────────────────────────────────────────────────
+
+function CategoryChip({ option, isSelected, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 0.90, useNativeDriver: true, tension: 300, friction: 10 }),
+      Animated.spring(scale, { toValue: 1,    useNativeDriver: true, tension: 300, friction: 10 }),
+    ]).start();
+    onPress(option.id);
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={0.85}
+        style={[styles.chip, isSelected && styles.chipSelected]}
+      >
+        <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+          {option.title}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+// ─── ProductCard ──────────────────────────────────────────────────────────────
+
+function ProductCard({ product, onBuy }) {
+  return (
+    <View style={styles.productCard}>
+      <View style={styles.productCardTop}>
+        <Image
+          source={product.image ? { uri: product.image } : defaultProductImage}
+          style={styles.productImage}
+        />
+        <View style={styles.productInfo}>
+          {product.brand ? (
+            <Text style={styles.productBrand}>{product.brand}</Text>
+          ) : null}
+          <Text style={styles.productName} numberOfLines={2}>
+            {product.name}
+          </Text>
+          <Text style={styles.productDescription} numberOfLines={2}>
+            {product.description}
+          </Text>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        onPress={onBuy}
+        activeOpacity={0.85}
+        style={styles.buyButton}
+      >
+        <LinearGradient
+          colors={["#D6A4A4", "#BF789C"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.buyGradient}
+        >
+          <Ionicons name="bag-outline" size={15} color="#fff" style={{ marginRight: 6 }} />
+          <Text style={styles.buyText}>Comprar</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 export default function ProductsScreen({ route, navigation }) {
   const routines = route?.params?.routines || [];
+  const date     = route?.params?.date;
+  const insets   = useSafeAreaInsets();
 
-  const date = route?.params?.date;
+  const formattedDate = date
+    ? new Date(date + "T12:00:00").toLocaleDateString("es-ES", {
+        day: "numeric",
+        month: "long",
+      })
+    : "";
 
-const formattedDate = date
-  ? new Date(date).toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'long',
-    })
-  : '';
-   const { colors } = useTheme();
-  const styles = makeStyles(colors);
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState(categoryOptions[0]?.id || "shampoo");
 
   const getVisibleProducts = () => {
-    if (selectedCategory === "all") {
-      return Object.values(productDB).flat();
-    }
+    if (selectedCategory === "all") return Object.values(productDB).flat();
     return productDB[selectedCategory] || [];
   };
 
@@ -41,204 +115,339 @@ const formattedDate = date
   const openLink = async (url) => {
     try {
       await Linking.openURL(url);
-    } catch (error) {
+    } catch {
       alert("No se puede abrir el enlace.");
     }
   };
 
-  const getProductsForRoutine = () => {
-  return routines;
-};
+  const getProductsForRoutine = () => routines;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <AppHeader />
-      <Text style={styles.subtitle}>
-        Selecciona una categoría para ver productos capilares reales de Almacén Sandra: shampoo, tratamiento, acondicionador, crema de peinar, gel, espuma y aceite.
-      </Text>
+    <View style={styles.screen}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
 
-      {/* 🔥 Productos según rutina del día */}
-      <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 10 }}>
-        Productos recomendados para tu rutina de hoy {formattedDate}
-      </Text>
+      {/* ── GRADIENT HEADER ── */}
+      <LinearGradient
+        colors={["#DEB4CC", "#BF789C"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.5 }}
+        style={[styles.header, { paddingTop: insets.top + 14 }]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.headerBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </TouchableOpacity>
 
-  <View style={{ marginBottom: 20 }}>
-    {getProductsForRoutine().length === 0 ? (
-      <Text style={styles.emptyText}>
-        No hay productos asociados a la rutina de hoy.
-      </Text>
-    ) : (
-      getProductsForRoutine().map((item, index) => (
-        <Text key={index} style={{ marginBottom: 5 }}>
-          • {item}
-        </Text>
-      ))
-    )}
-  </View>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Mis Productos</Text>
+            {formattedDate ? (
+              <Text style={styles.headerSub}>{formattedDate}</Text>
+            ) : null}
+          </View>
 
-        <View style={styles.filterRow}>
-          {categoryOptions.map((option) => (
-            <TouchableOpacity
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Profile')}
+            style={styles.headerBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-outline" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* ── RUTINA DEL DÍA ── */}
+        {getProductsForRoutine().length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="sparkles" size={13} color="#D6A4A4" />
+              <Text style={styles.sectionTitle}>Tu rutina de hoy</Text>
+            </View>
+            <View style={styles.routineCard}>
+              {getProductsForRoutine().map((item, index) => (
+                <View key={index} style={styles.routineItem}>
+                  <View style={styles.routineDot} />
+                  <Text style={styles.routineText}>{item?.text || ""}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* ── CATEGORÍAS ── */}
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="grid-outline" size={13} color="#D6A4A4" />
+          <Text style={styles.sectionTitle}>Categorías</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+          style={{ marginBottom: 24 }}
+        >
+          {ALL_CATEGORIES.map((option) => (
+            <CategoryChip
               key={option.id}
-              style={[styles.filterButton, selectedCategory === option.id && styles.filterButtonSelected]}
-              onPress={() => setSelectedCategory(option.id)}
-            >
-              <Text
-                style={[styles.filterText, selectedCategory === option.id && styles.filterTextSelected]}
-              >
-                {option.title}
-              </Text>
-            </TouchableOpacity>
+              option={option}
+              isSelected={selectedCategory === option.id}
+              onPress={setSelectedCategory}
+            />
           ))}
+        </ScrollView>
+
+        {/* ── PRODUCTOS ── */}
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="bag-handle-outline" size={13} color="#D6A4A4" />
+          <Text style={styles.sectionTitle}>
+            {products.length} producto{products.length !== 1 ? "s" : ""}
+          </Text>
         </View>
 
         {products.length === 0 ? (
-          <Text style={styles.emptyText}>
-            Selecciona una categoría para ver productos recomendados.
-          </Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>🪄</Text>
+            <Text style={styles.emptyText}>
+              Selecciona una categoría para ver productos.
+            </Text>
+          </View>
         ) : (
           products.map((product, index) => (
-            <View key={index} style={styles.productCard}>
-              <View style={styles.productCardTop}>
-                <Image
-                  source={product.image ? { uri: product.image } : defaultProductImage}
-                  style={styles.productImage}
-                />
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{product.name}</Text>
-                  <Text style={styles.productDescription}>{product.description}</Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={styles.buyButton}
-                onPress={() => openLink(product.link)}
-              >
-                <Text style={styles.buyText}>Comprar</Text>
-              </TouchableOpacity>
-            </View>
+            <ProductCard
+              key={product.id || index}
+              product={product}
+              onBuy={() => openLink(product.link)}
+            />
           ))
         )}
       </ScrollView>
-    );
-};
+    </View>
+  );
+}
 
-const makeStyles = (colors) =>
-  StyleSheet.create({
-    container: {
-      paddingHorizontal: 20,
-      paddingTop: 0,
-      paddingBottom: 20,
-      backgroundColor: "#FAF8F6",
-      flexGrow: 1,
-    },
-    title: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      textAlign: "center",
-      marginBottom: 10,
-    },
-    headerRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 20,
-      paddingTop: 50,
-      marginBottom: 16,
-    },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: "600",
-      color: "#C48A95",
-      flex: 1,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: "center",
-      marginBottom: 20,
-    },
-    filterRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "center",
-      gap: 10,
-      marginBottom: 20,
-    },
-    filterButton: {
-      backgroundColor: "#F7ECEE",
-      borderRadius: 20,
-      paddingVertical: 10,
-      paddingHorizontal: 14,
-      margin: 4,
-      borderWidth: 1,
-      borderColor: "#EAD7DB",
-    },
-    filterButtonSelected: {
-      backgroundColor: "#D6A4A4",
-      borderColor: "#D6A4A4",
-    },
-    filterText: {
-      color: colors.textPrimary,
-      fontWeight: "600",
-    },
-    filterTextSelected: {
-      color: colors.white,
-    },
-    productCard: {
-      backgroundColor: "#ffffff",
-      borderRadius: 24,
-      padding: 18,
-      marginBottom: 18,
-      borderWidth: 1,
-      borderColor: "#F0E6E8",
-      shadowColor: "#000000",
-      shadowOpacity: 0.18,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 10 },
-      elevation: 8,
-    },
-    productCardTop: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      marginBottom: 14,
-    },
-    productImage: {
-      width: 96,
-      height: 96,
-      borderRadius: 16,
-      marginRight: 14,
-      backgroundColor: "#F7ECEE",
-      resizeMode: "cover",
-    },
-    productInfo: {
-      flex: 1,
-    },
-    productName: {
-      fontSize: 17,
-      fontWeight: "700",
-      marginBottom: 6,
-      color: colors.textPrimary,
-    },
-    productDescription: {
-      fontSize: 15,
-      color: colors.textSecondary,
-    },
-    buyButton: {
-      backgroundColor: "#D6A4A4",
-      paddingVertical: 12,
-      borderRadius: 16,
-      alignItems: "center",
-    },
-    buyText: {
-      color: colors.white,
-      fontWeight: "700",
-    },
-    emptyText: {
-      color: colors.textSecondary,
-      textAlign: "center",
-      marginTop: 20,
-      fontSize: 16,
-    },
-  });
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#FDF5F8",
+  },
+
+  // header
+  header: {
+    paddingBottom: 20,
+    paddingHorizontal: 18,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: "#BF789C",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 10,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerCenter: {
+    alignItems: "center",
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  headerSub: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 13,
+    fontWeight: "500",
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
+
+  // scroll
+  scrollContent: {
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    paddingBottom: 48,
+  },
+
+  // sections
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#D6A4A4",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+
+  // rutina del día
+  routineCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: "#C47898",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  routineItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 10,
+    gap: 10,
+  },
+  routineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#D6A4A4",
+    marginTop: 6,
+    flexShrink: 0,
+  },
+  routineText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#555",
+    lineHeight: 21,
+  },
+
+  // chips
+  chipsRow: {
+    gap: 8,
+    paddingRight: 4,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 99,
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+    borderColor: "#EDD8DC",
+    shadowColor: "#C47898",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  chipSelected: {
+    backgroundColor: "#D6A4A4",
+    borderColor: "#D6A4A4",
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#999",
+  },
+  chipTextSelected: {
+    color: "#fff",
+  },
+
+  // product cards
+  productCard: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: "#BF789C",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  productCardTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  productImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 16,
+    marginRight: 14,
+    backgroundColor: "#F7ECEE",
+    resizeMode: "cover",
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productBrand: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#D6A4A4",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  productName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#2D2D2D",
+    marginBottom: 6,
+    lineHeight: 21,
+  },
+  productDescription: {
+    fontSize: 13,
+    color: "#999",
+    lineHeight: 19,
+  },
+  buyButton: {
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  buyGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  buyText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
+    letterSpacing: 0.3,
+  },
+
+  // empty state
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 52,
+  },
+  emptyEmoji: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  emptyText: {
+    fontSize: 15,
+    color: "#BBB",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+});

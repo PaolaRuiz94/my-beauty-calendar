@@ -8,6 +8,7 @@ import {
   Linking,
   Image,
   Animated,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -104,10 +105,22 @@ export default function ProductsScreen({ route, navigation }) {
     : "";
 
   const [selectedCategory, setSelectedCategory] = useState(categoryOptions[0]?.id || "shampoo");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const getVisibleProducts = () => {
-    if (selectedCategory === "all") return Object.values(productDB).flat();
-    return productDB[selectedCategory] || [];
+    const q = searchQuery.trim().toLowerCase();
+    const base = q
+      ? Object.values(productDB).flat()
+      : selectedCategory === "all"
+        ? Object.values(productDB).flat()
+        : productDB[selectedCategory] || [];
+    if (!q) return base;
+    return base.filter(
+      (p) =>
+        p.name?.toLowerCase().includes(q) ||
+        p.brand?.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q)
+    );
   };
 
   const products = getVisibleProducts();
@@ -134,13 +147,15 @@ export default function ProductsScreen({ route, navigation }) {
         style={[styles.header, { paddingTop: insets.top + 14 }]}
       >
         <View style={styles.headerRow}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.headerBtn}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-back" size={22} color="#fff" />
-          </TouchableOpacity>
+          {navigation.canGoBack() ? (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.headerBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chevron-back" size={22} color="#fff" />
+            </TouchableOpacity>
+          ) : <View style={{ width: 36 }} />}
 
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Mis Productos</Text>
@@ -149,13 +164,25 @@ export default function ProductsScreen({ route, navigation }) {
             ) : null}
           </View>
 
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Profile')}
-            style={styles.headerBtn}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="person-outline" size={20} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ width: 36 }} />
+        </View>
+
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.75)" />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Buscar productos..."
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            style={styles.searchInput}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")} activeOpacity={0.7}>
+              <Ionicons name="close-circle" size={17} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+          )}
         </View>
       </LinearGradient>
 
@@ -263,6 +290,22 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginTop: 14,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#fff",
   },
   headerCenter: {
     alignItems: "center",

@@ -1,18 +1,18 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 
 import CalendarScreen from './src/components/CalendarScreen';
 import DetailScreen from './src/components/DetailScreen';
 import ProductsScreen from './src/components/ProductsScreen';
-import DiagnosisScreen from './src/components/DiagnosisScreen';
-import RecommendationsScreen from './src/components/RecommendationsScreen';
-import MessagesScreen from './src/components/MessagesScreen';
+import CommunityScreen from './src/components/CommunityScreen';
 import SplashScreen from './src/components/SplashScreen';
 import OnboardingDiagnosisScreen from './src/components/OnboardingDiagnosisScreen';
 import LoginScreen from './src/components/LoginScreen';
 import RegisterScreen from './src/components/RegisterScreen';
 import ProfileScreen from './src/components/ProfileScreen';
+import DiagnosisScreen from './src/components/DiagnosisScreen';
 import { ThemeProvider } from './src/hooks/useTheme';
 import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
@@ -67,14 +67,44 @@ function CalendarStackScreen() {
   );
 }
 
+const TAB_ICONS = {
+  Calendario: ['calendar', 'calendar-outline'],
+  Diagnóstico: ['analytics', 'analytics-outline'],
+  Productos: ['flask', 'flask-outline'],
+  Comunidad: ['people', 'people-outline'],
+  Perfil: ['person', 'person-outline'],
+};
+
 function MainTabNavigator() {
   return (
-    <Tab.Navigator initialRouteName="Diagnóstico" screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      initialRouteName="Calendario"
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          const [active, inactive] = TAB_ICONS[route.name] || ['ellipse', 'ellipse-outline'];
+          return <Ionicons name={focused ? active : inactive} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#BF789C',
+        tabBarInactiveTintColor: '#C0A0A8',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopColor: '#F5E8EC',
+          height: 62,
+          paddingBottom: 8,
+          paddingTop: 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
+      })}
+    >
       <Tab.Screen name="Calendario" component={CalendarStackScreen} />
-      <Tab.Screen name="Productos" component={ProductsScreen} />
       <Tab.Screen name="Diagnóstico" component={DiagnosisScreen} />
-      <Tab.Screen name="Recomendaciones" component={RecommendationsScreen} />
-      <Tab.Screen name="Messages" component={MessagesScreen} />
+      <Tab.Screen name="Productos" component={ProductsScreen} />
+      <Tab.Screen name="Comunidad" component={CommunityScreen} />
+      <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }

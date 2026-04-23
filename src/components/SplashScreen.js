@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const logo = require('../../assets/logo.png');
 
 export default function SplashScreen() {
   const navigation = useNavigation();
@@ -14,28 +16,15 @@ export default function SplashScreen() {
     <View style={styles.screen}>
       <StatusBar style="dark" />
 
-      {/* Decoración de fondo */}
       <View style={styles.decorBlob} pointerEvents="none">
-        <LinearGradient
-          colors={['#F0D5E8', '#E8C4D8']}
-          style={styles.decorGradient}
-        />
+        <LinearGradient colors={['#F0D5E8', '#E8C4D8']} style={StyleSheet.absoluteFill} />
       </View>
       <View style={styles.decorBlobBottom} pointerEvents="none">
-        <LinearGradient
-          colors={['#EDD8E4', '#F5E4EE']}
-          style={styles.decorGradient}
-        />
+        <LinearGradient colors={['#EDD8E4', '#F5E4EE']} style={StyleSheet.absoluteFill} />
       </View>
 
-      {/* Contenido central */}
-      <View style={styles.center}>
-        <View style={styles.iconWrap}>
-          <Ionicons name="leaf" size={38} color="#BF789C" />
-        </View>
-
-        <Text style={styles.appName}>My beauty Calendar</Text>
-        <Text style={styles.tagline}>Hair care ritual</Text>
+      <View style={[styles.center, { paddingTop: insets.top }]}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
 
         <View style={styles.dotsRow}>
           <View style={[styles.decorDot, { opacity: 0.4 }]} />
@@ -44,11 +33,11 @@ export default function SplashScreen() {
         </View>
       </View>
 
-      {/* Botón */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 36 }]}>
         <TouchableOpacity
           onPress={() => navigation.navigate('OnboardingDiagnosis')}
           activeOpacity={0.85}
+          style={{ width: '100%' }}
         >
           <LinearGradient
             colors={['#DEB4CC', '#BF789C']}
@@ -72,8 +61,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FDF5F8',
   },
-
-  // decoración
   decorBlob: {
     position: 'absolute',
     top: -100,
@@ -94,47 +81,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     opacity: 0.45,
   },
-  decorGradient: {
-    flex: 1,
-  },
-
-  // centro
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
   },
-  iconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 28,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 28,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  appName: {
-    fontSize: 34,
-    fontWeight: '300',
-    fontStyle: 'italic',
-    color: '#2D2D2D',
-    letterSpacing: 0.4,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  tagline: {
-    fontSize: 13,
-    color: '#D6A4A4',
-    fontWeight: '600',
-    letterSpacing: 2.5,
-    textTransform: 'uppercase',
-    marginBottom: 28,
+  logo: {
+    width: 300,
+    height: 300,
+    marginBottom: 16,
   },
   dotsRow: {
     flexDirection: 'row',
@@ -146,8 +102,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#D6A4A4',
   },
-
-  // botón
   bottom: {
     paddingHorizontal: 28,
     alignItems: 'center',
@@ -158,7 +112,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 20,
     paddingVertical: 16,
-    paddingHorizontal: 48,
     width: '100%',
   },
   buttonText: {

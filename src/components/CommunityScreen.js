@@ -237,6 +237,12 @@ export default function CommunityScreen({ navigation }) {
     return unsub;
   }, [selectedPost?.id]);
 
+  useEffect(() => {
+    if (!selectedPost) return;
+    const updated = posts.find((p) => p.id === selectedPost.id);
+    if (updated) setSelectedPost(updated);
+  }, [posts]);
+
   const handleLike = async (post) => {
     if (!user) return;
     const liked = post.likesUsuarios?.includes(user.email);

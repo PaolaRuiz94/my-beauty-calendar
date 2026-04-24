@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,20 @@ import {
   Linking,
   Dimensions,
   ScrollView,
+  Modal,
 } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { productDB, recommendationDB } from '../data/productDB';
+import { fetchRoutineVideos } from '../firebase/videos';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const MODAL_VIDEO_HEIGHT = SCREEN_HEIGHT * 0.75 - 48 - 70; // 75% - título - descripción
+const MODAL_WIDTH = MODAL_VIDEO_HEIGHT * (9 / 16);
 
 const questions = [
   {
@@ -109,7 +114,16 @@ export default function DiagnosisScreen({ navigation }) {
   const [result, setResult] = useState(null);
   const [routinePlan, setRoutinePlan] = useState([]);
   const [image, setImage] = useState(null);
+  const [videoModal, setVideoModal] = useState({ visible: false, label: '', value: '' });
+  const [routineVideos, setRoutineVideos] = useState({});
   const flatListRef = useRef(null);
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    fetchRoutineVideos()
+      .then(setRoutineVideos)
+      .catch(() => {});
+  }, []);
   const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
   const selectedAnswer = answers[questions[currentQuestion].id] || null;
@@ -407,13 +421,18 @@ export default function DiagnosisScreen({ navigation }) {
             {result.recommendations.routine.map((step, i) => (
               <View key={step.label}>
                 {i > 0 && <View style={styles.divider} />}
-                <View style={styles.routineRow}>
+                <TouchableOpacity
+                  style={styles.routineRow}
+                  activeOpacity={0.7}
+                  onPress={() => setVideoModal({ visible: true, label: step.label, value: step.value })}
+                >
                   <View style={styles.routineLabelRow}>
                     <View style={styles.routineDot} />
                     <Text style={styles.routineLabel}>{step.label}</Text>
+                    <Ionicons name="play-circle-outline" size={14} color="#D6A4A4" style={{ marginLeft: 6 }} />
                   </View>
                   <Text style={styles.routineValue}>{step.value}</Text>
-                </View>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -455,13 +474,13 @@ export default function DiagnosisScreen({ navigation }) {
             <TouchableOpacity
               key={index}
               style={styles.tipCard}
-              onPress={() => navigation.navigate('TipDetail', { title: tip.title, description: tip.description })}
+              onPress={() => setVideoModal({ visible: true, label: tip.title, value: tip.description })}
               activeOpacity={0.85}
             >
               <View style={styles.tipCardTop}>
                 <View style={styles.tipDot} />
                 <Text style={styles.tipTitle}>{tip.title}</Text>
-                <Ionicons name="chevron-forward" size={16} color="#D6A4A4" />
+                <Ionicons name="play-circle-outline" size={18} color="#D6A4A4" />
               </View>
               <Text style={styles.tipPreview} numberOfLines={2}>{tip.description}</Text>
             </TouchableOpacity>
@@ -505,6 +524,47 @@ export default function DiagnosisScreen({ navigation }) {
             <Text style={styles.secondaryButtonText}>Nuevo diagnóstico</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        <Modal
+          visible={videoModal.visible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setVideoModal({ visible: false, label: '', value: '' })}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalTitleRow}>
+                <View style={styles.modalTitleDot} />
+                <Text style={styles.modalTitle} numberOfLines={2}>{videoModal.label}</Text>
+                <TouchableOpacity
+                  onPress={() => setVideoModal({ visible: false, label: '', value: '' })}
+                  style={styles.modalClose}
+                >
+                  <Ionicons name="close" size={18} color="#888" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.videoContainer}>
+                <Video
+                  ref={videoRef}
+                  source={{ uri: routineVideos[videoModal.label?.toLowerCase()]?.uri ?? 'https://firebasestorage.googleapis.com/v0/b/my-beauty-calendar-72f2b.firebasestorage.app/o/21d0150d450a4ce683e9afff4e800bdb.MOV?alt=media&token=6c11631d-e8a4-44b4-b998-654c350b8a68' }}
+                  style={styles.modalVideo}
+                  resizeMode={ResizeMode.CONTAIN}
+                  shouldPlay
+                  useNativeControls
+                />
+                <TouchableOpacity
+                  style={styles.expandBtn}
+                  onPress={() => videoRef.current?.presentFullscreenPlayer()}
+                >
+                  <Ionicons name="expand-outline" size={18} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalDesc}>{videoModal.value}</Text>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -1165,5 +1225,84 @@ const styles = StyleSheet.create({
     color: '#D6A4A4',
     fontWeight: '700',
     fontSize: 15,
+  },
+
+  // modal video flotante
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    overflow: 'hidden',
+    width: MODAL_WIDTH,
+    height: SCREEN_HEIGHT * 0.75,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 24 },
+    shadowOpacity: 0.35,
+    shadowRadius: 32,
+    elevation: 24,
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  modalTitleDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D6A4A4',
+    flexShrink: 0,
+  },
+  modalTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#2D2D2D',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modalClose: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F5E8EC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoContainer: {
+    position: 'relative',
+    flex: 1,
+  },
+  modalVideo: {
+    width: MODAL_WIDTH,
+    height: MODAL_VIDEO_HEIGHT,
+    backgroundColor: '#1A1A1A',
+  },
+  expandBtn: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalDesc: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 20,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 20,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,18 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { useAuth } from '../auth/AuthContext';
+import {
+  subscribeToPosts, subscribeToComments, toggleLike, addComment, addUserPost,
+} from '../firebase/posts';
 
 import rizadasImage from '../../assets/rizadas.png';
 import lisasImage from '../../assets/lisas.png';
@@ -22,6 +29,8 @@ import transicionImage from '../../assets/transicion.png';
 import skincareImage from '../../assets/skincare.png';
 import peluqueriasImage from '../../assets/peluquerias.jpg';
 import colorimetriaImage from '../../assets/colorimetria.jpg';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -89,115 +98,175 @@ const categories = [
 ];
 
 const sectionMeta = {
-  'Para rizadas':      { image: rizadasImage,    icon: 'water-outline' },
-  'Para lisas':        { image: lisasImage,       icon: 'sunny-outline' },
-  'Transición capilar':{ image: transicionImage,  icon: 'leaf-outline' },
-  'Skincare':          { image: skincareImage,     icon: 'heart-outline' },
+  'Para rizadas':       { image: rizadasImage,    icon: 'water-outline' },
+  'Para lisas':         { image: lisasImage,       icon: 'sunny-outline' },
+  'Transición capilar': { image: transicionImage,  icon: 'leaf-outline' },
+  'Skincare':           { image: skincareImage,    icon: 'heart-outline' },
   'Mejores peluquerías':{ image: peluqueriasImage, icon: 'cut-outline' },
-  'Colorimetría':      { image: colorimetriaImage, icon: 'color-palette-outline' },
+  'Colorimetría':       { image: colorimetriaImage,icon: 'color-palette-outline' },
 };
 
 const getSectionMeta = (title) =>
   sectionMeta[title] || { image: rizadasImage, icon: 'sparkles-outline' };
 
-const initialPosts = [
-  {
-    id: '1', author: 'María', avatar: 'MA',
-    topic: 'Hair', category: 'hair',
-    body: '¿Alguien tiene tips para hidratar cabello muy seco sin usar siliconas?',
-    likes: 8,
-    comments: [
-      { id: '1', author: 'Ana', avatar: 'AN', text: 'Prueba la mascarilla de aguacate una vez por semana.' },
-      { id: '2', author: 'Sofía', avatar: 'SO', text: 'Me funcionó mucho el aceite de coco en las puntas.' },
-    ],
-  },
-  {
-    id: '2', author: 'Claudia', avatar: 'CL',
-    topic: 'Skincare', category: 'skincare',
-    body: 'Busco un serum ligero para piel mixta y sensible.',
-    likes: 5,
-    comments: [
-      { id: '1', author: 'Laura', avatar: 'LA', text: 'Busca productos con niacinamida y sin fragancia.' },
-    ],
-  },
-];
+// ── PostCard (Foro) ───────────────────────────────────────────────────────────
 
-const TOPIC_COLORS = {
-  hair: { bg: '#FDF0F3', text: '#C47898' },
-  skincare: { bg: '#F0EDF8', text: '#8B78C4' },
-};
+function validLikes(arr) {
+  return Array.isArray(arr) ? arr.filter((l) => typeof l === 'string' && l.includes('@')) : [];
+}
 
-// ── Main component ─────────────────────────────────────────────────────────────
+function PostCard({ post, userEmail, onPress, onLike }) {
+  const likes = validLikes(post.likesUsuarios);
+  const liked = likes.includes(userEmail);
+  const likesCount = likes.length;
+
+  return (
+    <TouchableOpacity style={styles.forumCard} onPress={onPress} activeOpacity={0.93}>
+      <ImageBackground
+        source={{ uri: post.uri || post.imagen }}
+        style={styles.forumCardImage}
+        imageStyle={styles.forumCardImageStyle}
+      >
+        <LinearGradient
+          colors={['transparent', 'rgba(20,10,15,0.82)']}
+          style={styles.forumCardGradient}
+        >
+          {(post.Categoría || post.categoria) ? (
+            <View style={styles.categoryPill}>
+              <Text style={styles.categoryPillText}>{post.Categoría || post.categoria}</Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.forumCardTitle}>{post.texto}</Text>
+
+          <View style={styles.forumCardActions}>
+            <TouchableOpacity style={styles.forumCardAction} onPress={onLike} activeOpacity={0.7}>
+              <Ionicons
+                name={liked ? 'heart' : 'heart-outline'}
+                size={20}
+                color={liked ? '#FF6B8A' : 'rgba(255,255,255,0.85)'}
+              />
+              <Text style={styles.forumCardActionText}>{likesCount}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.forumCardAction} onPress={onPress} activeOpacity={0.7}>
+              <Ionicons name="chatbubble-outline" size={18} color="rgba(255,255,255,0.85)" />
+              <Text style={styles.forumCardActionText}>{post.commentsCount ?? 0}</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </ImageBackground>
+    </TouchableOpacity>
+  );
+}
+
+// ── CommentItem ───────────────────────────────────────────────────────────────
+
+function CommentItem({ comment }) {
+  return (
+    <View style={styles.commentRow}>
+      <View style={styles.commentAvatar}>
+        <Text style={styles.commentAvatarText}>{comment.inicial}</Text>
+      </View>
+      <View style={styles.commentBubble}>
+        <Text style={styles.commentAuthorForo}>{comment.autor}</Text>
+        <Text style={styles.commentTextForo}>{comment.texto}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ── QuestionCard ──────────────────────────────────────────────────────────────
+
+function QuestionCard({ post, userEmail, onPress, onLike }) {
+  const likes = validLikes(post.likesUsuarios);
+  const liked = likes.includes(userEmail);
+  return (
+    <TouchableOpacity style={styles.questionCard} onPress={onPress} activeOpacity={0.88}>
+      <View style={styles.questionHeader}>
+        <View style={styles.questionAvatar}>
+          <Text style={styles.questionAvatarText}>{post.inicial ?? '?'}</Text>
+        </View>
+        <Text style={styles.questionAuthor}>{post.autor}</Text>
+      </View>
+      <Text style={styles.questionText}>{post.texto}</Text>
+      <View style={styles.questionFooter}>
+        <TouchableOpacity style={styles.questionAction} onPress={onLike} activeOpacity={0.7}>
+          <Ionicons name={liked ? 'heart' : 'heart-outline'} size={16} color={liked ? '#FF6B8A' : '#CCC'} />
+          <Text style={[styles.questionActionText, liked && { color: '#FF6B8A' }]}>{likes.length}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.questionAction} onPress={onPress} activeOpacity={0.7}>
+          <Ionicons name="chatbubble-outline" size={15} color="#CCC" />
+          <Text style={styles.questionActionText}>{post.commentsCount ?? 0}</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ── CommunityScreen ───────────────────────────────────────────────────────────
 
 export default function CommunityScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('tips');
 
-  // foro state
-  const [posts, setPosts] = useState(initialPosts);
-  const [likedPosts, setLikedPosts] = useState({});
+  // ── Foro state (Firestore) ──────────────────────────────────────────────────
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState(null);
-  const [forumView, setForumView] = useState('feed'); // 'feed' | 'creating' | 'detail'
-  const [postTopic, setPostTopic] = useState('hair');
-  const [postBody, setPostBody] = useState('');
+  const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [sending, setSending] = useState(false);
+  const [createVisible, setCreateVisible] = useState(false);
+  const [newPostText, setNewPostText] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const inputRef = useRef(null);
 
-  const addPost = () => {
-    if (!postBody.trim()) return;
-    const newPost = {
-      id: String(Date.now()),
-      author: 'Tú',
-      avatar: 'TÚ',
-      topic: postTopic === 'hair' ? 'Hair' : 'Skincare',
-      category: postTopic,
-      body: postBody.trim(),
-      likes: 0,
-      comments: [],
-    };
-    setPosts((p) => [newPost, ...p]);
-    setPostBody('');
-    setPostTopic('hair');
-    setForumView('feed');
+  useEffect(() => {
+    const unsub = subscribeToPosts((data) => {
+      setPosts(data);
+      setPostsLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPost) { setComments([]); return; }
+    const unsub = subscribeToComments(selectedPost.id, setComments);
+    return unsub;
+  }, [selectedPost?.id]);
+
+  const handleLike = async (post) => {
+    if (!user) return;
+    const liked = post.likesUsuarios?.includes(user.email);
+    await toggleLike(post.id, user.email, liked);
   };
 
-  const addComment = () => {
-    if (!commentText.trim() || !selectedPost) return;
-    const newComment = {
-      id: String(Date.now()),
-      author: 'Tú',
-      avatar: 'TÚ',
-      text: commentText.trim(),
-    };
-    const updated = posts.map((p) =>
-      p.id === selectedPost.id ? { ...p, comments: [...p.comments, newComment] } : p
-    );
-    setPosts(updated);
-    setSelectedPost({ ...selectedPost, comments: [...selectedPost.comments, newComment] });
+  const handleSendComment = async () => {
+    if (!commentText.trim() || !user || !selectedPost || sending) return;
+    setSending(true);
+    await addComment(selectedPost.id, commentText, user.name);
+    setCommentText('');
+    setSending(false);
+  };
+
+  const closeDetail = () => {
+    setSelectedPost(null);
+    setComments([]);
     setCommentText('');
   };
 
-  const toggleLike = (postId) => {
-    const isLiked = likedPosts[postId];
-    setLikedPosts((prev) => ({ ...prev, [postId]: !isLiked }));
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId ? { ...p, likes: p.likes + (isLiked ? -1 : 1) } : p
-      )
-    );
+  const handleCreatePost = async () => {
+    if (!newPostText.trim() || !user || publishing) return;
+    setPublishing(true);
+    await addUserPost(newPostText, user.name);
+    setNewPostText('');
+    setPublishing(false);
+    setCreateVisible(false);
   };
 
-  const openDetail = (post) => {
-    setSelectedPost(post);
-    setForumView('detail');
-  };
-
-  const filteredPosts =
-    selectedFilter === 'all' ? posts : posts.filter((p) => p.category === selectedFilter);
-
-  const showToggle = !(activeTab === 'comunidad' && forumView !== 'feed');
-
-  // ── Tips search ──────────────────────────────────────────────────────────────
+  // ── Tips search ─────────────────────────────────────────────────────────────
 
   const [tipsSearch, setTipsSearch] = useState('');
 
@@ -221,7 +290,7 @@ export default function CommunityScreen({ navigation }) {
 
   const isSearching = tipsSearch.trim().length > 0;
 
-  // ── Render tips ──────────────────────────────────────────────────────────────
+  // ── Render Consejos ─────────────────────────────────────────────────────────
 
   const renderTips = () => (
     <ScrollView
@@ -293,7 +362,6 @@ export default function CommunityScreen({ navigation }) {
           </>
         )
       ) : (
-        /* Normal layout */
         categories.map((section) => {
           const { image, icon } = getSectionMeta(section.title);
           return (
@@ -352,231 +420,57 @@ export default function CommunityScreen({ navigation }) {
     </ScrollView>
   );
 
-  // ── Render community feed ────────────────────────────────────────────────────
+  // ── Render Foro ─────────────────────────────────────────────────────────────
 
-  const renderFeed = () => (
-    <View style={{ flex: 1 }}>
-      {/* filter chips */}
-      <View style={styles.filterRow}>
-        {['all', 'hair', 'skincare'].map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterChip, selectedFilter === f && styles.filterChipActive]}
-            onPress={() => setSelectedFilter(f)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === f && styles.filterChipTextActive]}>
-              {f === 'all' ? 'Todos' : f === 'hair' ? 'Hair' : 'Skincare'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <FlatList
-        data={filteredPosts}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.feedList, { paddingBottom: insets.bottom + 100 }]}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.postCard} activeOpacity={0.88} onPress={() => openDetail(item)}>
-            <View style={styles.postHeader}>
-              <View style={styles.postAvatarWrap}>
-                <Text style={styles.postAvatarText}>{item.avatar}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.postAuthor}>{item.author}</Text>
-                <View style={[styles.topicBadge, { backgroundColor: TOPIC_COLORS[item.category]?.bg || '#FDF0F3' }]}>
-                  <Text style={[styles.topicBadgeText, { color: TOPIC_COLORS[item.category]?.text || '#C47898' }]}>
-                    {item.topic}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.postCommentCount}>
-                <Ionicons name="chatbubble-outline" size={12} color="#CCC" /> {item.comments.length}
-              </Text>
-            </View>
-
-            <Text style={styles.postBody}>{item.body}</Text>
-
-            <View style={styles.postFooter}>
-              <TouchableOpacity
-                style={styles.likeBtn}
-                onPress={() => toggleLike(item.id)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={likedPosts[item.id] ? 'heart' : 'heart-outline'}
-                  size={15}
-                  color={likedPosts[item.id] ? '#D6A4A4' : '#CCC'}
-                />
-                <Text style={[styles.likeCount, likedPosts[item.id] && { color: '#D6A4A4' }]}>
-                  {item.likes}
-                </Text>
-              </TouchableOpacity>
-              <View style={styles.readMoreRow}>
-                <Text style={styles.readMoreText}>Ver comentarios</Text>
-                <Ionicons name="chevron-forward" size={13} color="#D6A4A4" />
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <Ionicons name="chatbubbles-outline" size={40} color="#E8D0D8" />
-            <Text style={styles.emptyText}>Sé la primera en publicar</Text>
-          </View>
-        }
-      />
-
-      {/* FAB */}
-      <TouchableOpacity
-        style={[styles.fab, { bottom: insets.bottom + 24 }]}
-        onPress={() => setForumView('creating')}
-        activeOpacity={0.85}
-      >
-        <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.fabGradient}>
-          <Ionicons name="add" size={26} color="#fff" />
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
-  );
-
-  // ── Render create post ───────────────────────────────────────────────────────
-
-  const renderCreatePost = () => (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={[styles.createScroll, { paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity style={styles.backRow} onPress={() => setForumView('feed')} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={18} color="#BF789C" />
-          <Text style={styles.backText}>Volver</Text>
-        </TouchableOpacity>
-
-        <View style={styles.sectionTitleRow}>
-          <Ionicons name="create-outline" size={13} color="#D6A4A4" />
-          <Text style={styles.sectionLabel}>Nueva publicación</Text>
+  const renderForo = () => {
+    if (postsLoading) {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#D6A4A4" />
         </View>
-
-        <View style={styles.createCard}>
-          <Text style={styles.createFieldLabel}>Tema</Text>
-          <View style={styles.topicToggle}>
-            {['hair', 'skincare'].map((t) => (
-              <TouchableOpacity
-                key={t}
-                style={[styles.topicBtn, postTopic === t && styles.topicBtnActive]}
-                onPress={() => setPostTopic(t)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.topicBtnText, postTopic === t && styles.topicBtnTextActive]}>
-                  {t === 'hair' ? 'Hair' : 'Skincare'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.divider} />
-
-          <Text style={styles.createFieldLabel}>¿Qué quieres compartir?</Text>
-          <TextInput
-            style={styles.createInput}
-            placeholder="Escribe tu pregunta o comentario..."
-            placeholderTextColor="#CCC"
-            value={postBody}
-            onChangeText={setPostBody}
-            multiline
-            textAlignVertical="top"
-          />
-        </View>
-
+      );
+    }
+    return (
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[styles.forumList, { paddingBottom: insets.bottom + 100 }]}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Ionicons name="flower-outline" size={48} color="#E8C4D8" />
+              <Text style={styles.forumEmptyText}>Sé la primera en publicar</Text>
+            </View>
+          }
+          renderItem={({ item }) =>
+            item.tipo === 'pregunta' ? (
+              <QuestionCard
+                post={item}
+                userEmail={user?.email}
+                onPress={() => setSelectedPost(item)}
+                onLike={() => handleLike(item)}
+              />
+            ) : (
+              <PostCard
+                post={item}
+                userEmail={user?.email}
+                onPress={() => setSelectedPost(item)}
+                onLike={() => handleLike(item)}
+              />
+            )
+          }
+        />
         <TouchableOpacity
-          style={[styles.submitButton, !postBody.trim() && { opacity: 0.5 }]}
-          onPress={addPost}
-          disabled={!postBody.trim()}
+          style={[styles.fab, { bottom: insets.bottom + 24 }]}
+          onPress={() => setCreateVisible(true)}
           activeOpacity={0.85}
         >
-          <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitGradient}>
-            <Ionicons name="paper-plane-outline" size={17} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.submitText}>Publicar</Text>
+          <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.fabGradient}>
+            <Ionicons name="add" size={26} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-
-  // ── Render post detail ───────────────────────────────────────────────────────
-
-  const renderDetail = () => {
-    if (!selectedPost) return null;
-    return (
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[styles.detailScroll, { paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity style={styles.backRow} onPress={() => setForumView('feed')} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={18} color="#BF789C" />
-            <Text style={styles.backText}>Volver</Text>
-          </TouchableOpacity>
-
-          {/* post */}
-          <View style={styles.postCard}>
-            <View style={styles.postHeader}>
-              <View style={styles.postAvatarWrap}>
-                <Text style={styles.postAvatarText}>{selectedPost.avatar}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.postAuthor}>{selectedPost.author}</Text>
-                <View style={[styles.topicBadge, { backgroundColor: TOPIC_COLORS[selectedPost.category]?.bg || '#FDF0F3' }]}>
-                  <Text style={[styles.topicBadgeText, { color: TOPIC_COLORS[selectedPost.category]?.text || '#C47898' }]}>
-                    {selectedPost.topic}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            <Text style={styles.postBody}>{selectedPost.body}</Text>
-          </View>
-
-          {/* comments */}
-          <View style={styles.sectionTitleRow}>
-            <Ionicons name="chatbubble-outline" size={13} color="#D6A4A4" />
-            <Text style={styles.sectionLabel}>Comentarios · {selectedPost.comments.length}</Text>
-          </View>
-
-          {selectedPost.comments.length === 0 && (
-            <Text style={styles.emptyComments}>Sé la primera en comentar.</Text>
-          )}
-
-          {selectedPost.comments.map((c) => (
-            <View key={c.id} style={styles.commentCard}>
-              <View style={styles.commentAvatarWrap}>
-                <Text style={styles.commentAvatarText}>{c.avatar}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.commentAuthor}>{c.author}</Text>
-                <Text style={styles.commentText}>{c.text}</Text>
-              </View>
-            </View>
-          ))}
-
-          {/* comment input */}
-          <View style={styles.commentInputCard}>
-            <TextInput
-              style={styles.commentInput}
-              placeholder="Escribe un comentario..."
-              placeholderTextColor="#CCC"
-              value={commentText}
-              onChangeText={setCommentText}
-              multiline
-            />
-            <TouchableOpacity
-              style={[styles.commentSendBtn, !commentText.trim() && { opacity: 0.45 }]}
-              onPress={addComment}
-              disabled={!commentText.trim()}
-              activeOpacity={0.8}
-            >
-              <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.commentSendGradient}>
-                <Ionicons name="send" size={15} color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     );
   };
 
@@ -598,45 +492,206 @@ export default function CommunityScreen({ navigation }) {
         </View>
       </LinearGradient>
 
-      {showToggle && (
-        <View style={styles.mainToggle}>
-          <TouchableOpacity
-            style={[styles.mainToggleBtn, activeTab === 'tips' && styles.mainToggleBtnActive]}
-            onPress={() => setActiveTab('tips')}
-            activeOpacity={0.85}
-          >
-            <Ionicons
-              name={activeTab === 'tips' ? 'sparkles' : 'sparkles-outline'}
-              size={14}
-              color={activeTab === 'tips' ? '#BF789C' : '#C0A0A8'}
-              style={{ marginRight: 5 }}
-            />
-            <Text style={[styles.mainToggleText, activeTab === 'tips' && styles.mainToggleTextActive]}>
-              Consejos
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.mainToggleBtn, activeTab === 'comunidad' && styles.mainToggleBtnActive]}
-            onPress={() => { setActiveTab('comunidad'); setForumView('feed'); }}
-            activeOpacity={0.85}
-          >
-            <Ionicons
-              name={activeTab === 'comunidad' ? 'people' : 'people-outline'}
-              size={14}
-              color={activeTab === 'comunidad' ? '#BF789C' : '#C0A0A8'}
-              style={{ marginRight: 5 }}
-            />
-            <Text style={[styles.mainToggleText, activeTab === 'comunidad' && styles.mainToggleTextActive]}>
-              Foro
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={styles.mainToggle}>
+        <TouchableOpacity
+          style={[styles.mainToggleBtn, activeTab === 'tips' && styles.mainToggleBtnActive]}
+          onPress={() => setActiveTab('tips')}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name={activeTab === 'tips' ? 'sparkles' : 'sparkles-outline'}
+            size={14}
+            color={activeTab === 'tips' ? '#BF789C' : '#C0A0A8'}
+            style={{ marginRight: 5 }}
+          />
+          <Text style={[styles.mainToggleText, activeTab === 'tips' && styles.mainToggleTextActive]}>
+            Consejos
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.mainToggleBtn, activeTab === 'foro' && styles.mainToggleBtnActive]}
+          onPress={() => setActiveTab('foro')}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name={activeTab === 'foro' ? 'people' : 'people-outline'}
+            size={14}
+            color={activeTab === 'foro' ? '#BF789C' : '#C0A0A8'}
+            style={{ marginRight: 5 }}
+          />
+          <Text style={[styles.mainToggleText, activeTab === 'foro' && styles.mainToggleTextActive]}>
+            Foro
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {activeTab === 'tips' && renderTips()}
-      {activeTab === 'comunidad' && forumView === 'feed' && renderFeed()}
-      {activeTab === 'comunidad' && forumView === 'creating' && renderCreatePost()}
-      {activeTab === 'comunidad' && forumView === 'detail' && renderDetail()}
+      {activeTab === 'foro' && renderForo()}
+
+      {/* Modal crear publicación */}
+      <Modal visible={createVisible} animationType="slide" onRequestClose={() => setCreateVisible(false)}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#FDF5F8' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={[styles.createHeader, { paddingTop: insets.top + 16 }]}>
+            <TouchableOpacity onPress={() => setCreateVisible(false)} activeOpacity={0.7}>
+              <Ionicons name="chevron-down" size={24} color="#BF789C" />
+            </TouchableOpacity>
+            <Text style={styles.createHeaderTitle}>Nueva publicación</Text>
+            <TouchableOpacity
+              onPress={handleCreatePost}
+              disabled={!newPostText.trim() || publishing}
+              activeOpacity={0.8}
+            >
+              {publishing
+                ? <ActivityIndicator size="small" color="#BF789C" />
+                : <Text style={[styles.createPublishBtn, (!newPostText.trim()) && { opacity: 0.35 }]}>Publicar</Text>
+              }
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.createBody}>
+            <View style={styles.createAvatar}>
+              <Text style={styles.createAvatarText}>{user?.name?.charAt(0).toUpperCase() ?? '?'}</Text>
+            </View>
+            <TextInput
+              style={styles.createInput}
+              placeholder="¿Qué quieres preguntarle a la comunidad?"
+              placeholderTextColor="#CCC"
+              value={newPostText}
+              onChangeText={setNewPostText}
+              multiline
+              autoFocus
+              maxLength={500}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal detalle del post */}
+      <Modal
+        visible={!!selectedPost}
+        animationType="slide"
+        onRequestClose={closeDetail}
+      >
+        <View style={styles.detailScreen}>
+          <StatusBar style="light" translucent backgroundColor="transparent" />
+
+          {selectedPost && (selectedPost.uri || selectedPost.imagen) ? (
+            <ImageBackground
+              source={{ uri: selectedPost.uri || selectedPost.imagen }}
+              style={styles.detailImage}
+            >
+              <LinearGradient
+                colors={['rgba(0,0,0,0.35)', 'rgba(20,10,15,0.85)']}
+                style={styles.detailGradient}
+              >
+                <TouchableOpacity
+                  style={[styles.backBtn, { top: insets.top + 12 }]}
+                  onPress={closeDetail}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="chevron-down" size={22} color="#fff" />
+                </TouchableOpacity>
+
+                <View style={styles.detailBottom}>
+                  <Text style={styles.detailTitle}>{selectedPost.texto}</Text>
+                  <TouchableOpacity
+                    style={styles.detailLikeBtn}
+                    onPress={() => handleLike(selectedPost)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons
+                      name={validLikes(selectedPost.likesUsuarios).includes(user?.email) ? 'heart' : 'heart-outline'}
+                      size={20}
+                      color={validLikes(selectedPost.likesUsuarios).includes(user?.email) ? '#FF6B8A' : '#fff'}
+                    />
+                    <Text style={styles.detailLikeBtnText}>
+                      {validLikes(selectedPost.likesUsuarios).length}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            </ImageBackground>
+          ) : selectedPost ? (
+            <LinearGradient
+              colors={['#DEB4CC', '#BF789C']}
+              style={[styles.detailQuestionHeader, { paddingTop: insets.top + 12 }]}
+            >
+              <TouchableOpacity style={styles.detailQuestionBack} onPress={closeDetail} activeOpacity={0.8}>
+                <Ionicons name="chevron-down" size={22} color="#fff" />
+              </TouchableOpacity>
+              <View style={styles.detailQuestionContent}>
+                <Text style={styles.detailQuestionAuthor}>{selectedPost.autor}</Text>
+                <Text style={styles.detailQuestionText}>{selectedPost.texto}</Text>
+                <TouchableOpacity
+                  style={styles.detailLikeBtn}
+                  onPress={() => handleLike(selectedPost)}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons
+                    name={validLikes(selectedPost.likesUsuarios).includes(user?.email) ? 'heart' : 'heart-outline'}
+                    size={18}
+                    color={validLikes(selectedPost.likesUsuarios).includes(user?.email) ? '#FF6B8A' : 'rgba(255,255,255,0.8)'}
+                  />
+                  <Text style={styles.detailLikeBtnText}>
+                    {validLikes(selectedPost.likesUsuarios).length}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          ) : null}
+
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={0}
+          >
+            <FlatList
+              data={comments}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.commentsList}
+              showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                <Text style={styles.commentsHeader}>
+                  {comments.length === 0
+                    ? 'Sé la primera en comentar'
+                    : `${comments.length} comentario${comments.length !== 1 ? 's' : ''}`}
+                </Text>
+              }
+              renderItem={({ item }) => <CommentItem comment={item} />}
+            />
+
+            <View style={[styles.inputRow, { paddingBottom: insets.bottom + 12 }]}>
+              <View style={styles.inputAvatar}>
+                <Text style={styles.inputAvatarText}>
+                  {user?.name?.charAt(0).toUpperCase() ?? '?'}
+                </Text>
+              </View>
+              <TextInput
+                ref={inputRef}
+                style={styles.input}
+                placeholder="Escribe un comentario..."
+                placeholderTextColor="#CCC"
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+                maxLength={300}
+              />
+              <TouchableOpacity
+                style={[styles.sendBtn, (!commentText.trim() || sending) && styles.sendBtnDisabled]}
+                onPress={handleSendComment}
+                disabled={!commentText.trim() || sending}
+                activeOpacity={0.8}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="send" size={16} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -797,7 +852,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // tips
+  // tips layout
   tipsScroll: {
     paddingTop: 20,
     paddingHorizontal: 18,
@@ -915,134 +970,162 @@ const styles = StyleSheet.create({
     color: '#D6A4A4',
   },
 
-  // forum feed
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 10,
+  // foro list
+  forumList: { paddingTop: 20, paddingHorizontal: 16, gap: 16 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  forumEmptyText: { fontSize: 15, color: '#CCC', fontWeight: '500' },
+
+  // forum post card
+  forumCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#BF789C',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  filterChip: {
-    paddingVertical: 7,
-    paddingHorizontal: 16,
-    borderRadius: 99,
-    backgroundColor: '#F5E8EC',
-  },
-  filterChipActive: {
-    backgroundColor: '#D6A4A4',
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#C0A0A8',
-  },
-  filterChipTextActive: {
-    color: '#fff',
-  },
-  feedList: {
-    paddingHorizontal: 18,
-    paddingTop: 6,
-  },
-  postCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 14,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+  forumCardImage: { width: '100%', height: 280 },
+  forumCardImageStyle: { borderRadius: 24 },
+  forumCardGradient: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 18,
     gap: 10,
   },
-  postAvatarWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: '#FDF0F3',
+  categoryPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(222,180,204,0.85)',
+    borderRadius: 99,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  categoryPillText: { color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
+  forumCardTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+    lineHeight: 24,
+    letterSpacing: 0.2,
+  },
+  forumCardActions: { flexDirection: 'row', gap: 16 },
+  forumCardAction: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  forumCardActionText: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600' },
+
+  // detail modal
+  detailScreen: { flex: 1, backgroundColor: '#FDF5F8' },
+  detailImage: { width: SCREEN_WIDTH, height: 300 },
+  detailGradient: { flex: 1, justifyContent: 'flex-end', padding: 20 },
+  backBtn: {
+    position: 'absolute',
+    left: 16,
+    width: 38, height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  postAvatarText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#D6A4A4',
-    letterSpacing: 0.5,
-  },
-  postAuthor: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#2D2D2D',
-    marginBottom: 3,
-  },
-  topicBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 99,
-  },
-  topicBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  postCommentCount: {
-    fontSize: 12,
-    color: '#CCC',
-    fontWeight: '600',
-  },
-  postBody: {
-    fontSize: 14,
-    color: '#444',
-    lineHeight: 21,
-    marginBottom: 14,
-  },
-  postFooter: {
+  detailBottom: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
+    gap: 12,
   },
-  likeBtn: {
+  detailTitle: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 26,
+  },
+  detailLikeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 99,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  likeCount: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#CCC',
-  },
-  readMoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  readMoreText: {
+  detailLikeBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  // comments
+  commentsList: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  commentsHeader: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#D6A4A4',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 14,
   },
-  emptyWrap: {
-    alignItems: 'center',
-    paddingTop: 48,
-    gap: 12,
+  commentRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  commentAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#EDD0E2',
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
   },
-  emptyText: {
-    color: '#D6A4A4',
+  commentAvatarText: { fontSize: 14, fontWeight: '800', color: '#BF789C' },
+  commentBubble: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderTopLeftRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    shadowColor: '#C47898',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  commentAuthorForo: { fontSize: 12, fontWeight: '700', color: '#BF789C', marginBottom: 3 },
+  commentTextForo: { fontSize: 14, color: '#444', lineHeight: 20 },
+
+  // input
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F5E8EC',
+    backgroundColor: '#FDF5F8',
+  },
+  inputAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#EDD0E2',
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
+  },
+  inputAvatarText: { fontSize: 14, fontWeight: '800', color: '#BF789C' },
+  input: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#F0DDE2',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     fontSize: 14,
-    fontWeight: '600',
+    color: '#2D2D2D',
+    maxHeight: 100,
   },
+  sendBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#BF789C',
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
+  },
+  sendBtnDisabled: { backgroundColor: '#E2C8D4' },
+
+  // fab
   fab: {
     position: 'absolute',
     right: 22,
-    width: 56,
-    height: 56,
+    width: 56, height: 56,
     borderRadius: 18,
     overflow: 'hidden',
     shadowColor: '#BF789C',
@@ -1051,180 +1134,77 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 8,
   },
-  fabGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  fabGradient: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // create post
-  createScroll: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-  },
-  backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 16,
-  },
-  backText: {
-    color: '#BF789C',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  createCard: {
+  // question card
+  questionCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
-    padding: 18,
+    padding: 16,
     shadowColor: '#C47898',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
-    marginBottom: 4,
   },
-  createFieldLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#D6A4A4',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: 10,
+  questionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  questionAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#EDD0E2',
+    justifyContent: 'center', alignItems: 'center',
   },
-  topicToggle: {
+  questionAvatarText: { fontSize: 14, fontWeight: '800', color: '#BF789C' },
+  questionAuthor: { fontSize: 14, fontWeight: '700', color: '#2D2D2D' },
+  questionText: { fontSize: 15, color: '#444', lineHeight: 22, marginBottom: 14 },
+  questionFooter: { flexDirection: 'row', gap: 16 },
+  questionAction: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  questionActionText: { fontSize: 13, fontWeight: '600', color: '#CCC' },
+
+  // create post modal
+  createHeader: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 18,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5E8EC',
   },
-  topicBtn: {
+  createHeaderTitle: { fontSize: 16, fontWeight: '800', color: '#2D2D2D' },
+  createPublishBtn: { fontSize: 15, fontWeight: '800', color: '#BF789C' },
+  createBody: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 14,
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 14,
-    alignItems: 'center',
-    backgroundColor: '#F5E8EC',
   },
-  topicBtnActive: {
-    backgroundColor: '#D6A4A4',
+  createAvatar: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#EDD0E2',
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
   },
-  topicBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#C0A0A8',
-  },
-  topicBtnTextActive: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F5E8EC',
-    marginBottom: 16,
-  },
+  createAvatarText: { fontSize: 16, fontWeight: '800', color: '#BF789C' },
   createInput: {
-    minHeight: 120,
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 22,
-  },
-  submitButton: {
-    marginTop: 20,
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  submitGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  submitText: {
-    color: '#fff',
-    fontWeight: '700',
+    flex: 1,
     fontSize: 16,
-    letterSpacing: 0.3,
+    color: '#2D2D2D',
+    lineHeight: 24,
+    textAlignVertical: 'top',
   },
 
-  // detail / comments
-  detailScroll: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
+  // detail for question posts (no image)
+  detailQuestionHeader: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
-  emptyComments: {
-    color: '#CCC',
-    fontSize: 13,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginVertical: 16,
+  detailQuestionBack: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 16,
   },
-  commentCard: {
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  commentAvatarWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: '#FDF0F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  commentAvatarText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#D6A4A4',
-    letterSpacing: 0.3,
-  },
-  commentAuthor: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#2D2D2D',
-    marginBottom: 3,
-  },
-  commentText: {
-    fontSize: 13,
-    color: '#555',
-    lineHeight: 19,
-  },
-  commentInputCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 14,
-    marginTop: 8,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  commentInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#333',
-    maxHeight: 100,
-    lineHeight: 20,
-  },
-  commentSendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  commentSendGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  detailQuestionContent: { gap: 10 },
+  detailQuestionAuthor: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '700' },
+  detailQuestionText: { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 28 },
 });

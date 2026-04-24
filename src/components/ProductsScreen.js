@@ -177,6 +177,8 @@ export default function ProductsScreen({ route, navigation }) {
             style={styles.searchInput}
             returnKeyType="search"
             clearButtonMode="while-editing"
+            selectionColor="rgba(255,255,255,0.6)"
+            cursorColor="#fff"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery("")} activeOpacity={0.7}>

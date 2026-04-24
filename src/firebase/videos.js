@@ -1,4 +1,4 @@
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './config';
 
 // Trae todos los videos de la colección "routine_videos"
@@ -16,4 +16,9 @@ export async function fetchRoutineVideos() {
     videos[doc.id] = doc.data();
   });
   return videos;
+}
+
+export async function fetchTipVideo(tipKey) {
+  const snap = await getDoc(doc(db, 'tip_videos', tipKey));
+  return snap.exists() ? snap.data() : null;
 }

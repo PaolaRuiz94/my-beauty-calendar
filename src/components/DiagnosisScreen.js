@@ -19,6 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { productDB, recommendationDB } from '../data/productDB';
 import { fetchRoutineVideos } from '../firebase/videos';
+import YouTubeCarousel from './YouTubeCarousel';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MODAL_VIDEO_HEIGHT = SCREEN_HEIGHT * 0.75 - 48 - 70; // 75% - título - descripción
@@ -523,6 +524,11 @@ export default function DiagnosisScreen({ navigation }) {
           <TouchableOpacity style={styles.secondaryButton} onPress={handleReset} activeOpacity={0.85}>
             <Text style={styles.secondaryButtonText}>Nuevo diagnóstico</Text>
           </TouchableOpacity>
+
+          <YouTubeCarousel
+            query={`rutina cabello ${result.texture?.toLowerCase() ?? 'capilar'} ${result.objective ?? ''} tutorial`}
+            title="Videos recomendados para ti"
+          />
         </ScrollView>
 
         <Modal

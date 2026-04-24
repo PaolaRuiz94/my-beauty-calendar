@@ -9,12 +9,25 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as ImagePicker from 'expo-image-picker';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase/config';
 import { useAuth } from '../auth/AuthContext';
+
+async function uploadProfilePhoto(uri, userEmail) {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const storageRef = ref(storage, `profile_photos/${userEmail.replace('@', '_').replace('.', '_')}`);
+  await uploadBytes(storageRef, blob);
+  return await getDownloadURL(storageRef);
+}
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
@@ -248,7 +261,7 @@ function AuthView() {
 // ── Profile View (hay sesión) ─────────────────────────────────────────────────
 
 function ProfileView() {
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, updatePhoto } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -258,10 +271,35 @@ function ProfileView() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const initials = user?.name
     ? user.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
     : '??';
+
+  const handlePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled) return;
+    try {
+      setUploadingPhoto(true);
+      const url = await uploadProfilePhoto(result.assets[0].uri, user.email);
+      await updatePhoto(url);
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo subir la foto. Intenta de nuevo.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleEdit = () => {
     setName(user?.name || '');
@@ -337,9 +375,20 @@ function ProfileView() {
 
           {!isEditing && (
             <View style={styles.avatarSection}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarInitials}>{initials}</Text>
-              </View>
+              <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.85} style={styles.avatarWrap}>
+                {user?.photoURL ? (
+                  <Image source={{ uri: user.photoURL }} style={styles.avatarPhoto} />
+                ) : (
+                  <View style={styles.avatarCircle}>
+                    <Text style={styles.avatarInitials}>{initials}</Text>
+                  </View>
+                )}
+                <View style={styles.cameraOverlay}>
+                  {uploadingPhoto
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Ionicons name="camera" size={14} color="#fff" />}
+                </View>
+              </TouchableOpacity>
               {user?.name ? <Text style={styles.avatarName}>{user.name}</Text> : null}
               <View style={styles.badgeRow}>
                 <View style={styles.badge}>
@@ -502,6 +551,10 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: 'center',
   },
+  avatarWrap: {
+    marginBottom: 10,
+    position: 'relative',
+  },
   avatarCircle: {
     width: 76,
     height: 76,
@@ -511,7 +564,26 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+  },
+  avatarPhoto: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#BF789C',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   avatarCircleGuest: {
     width: 76,

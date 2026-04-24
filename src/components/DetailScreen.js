@@ -1,13 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from '../hooks/useTheme';
+import { fetchTipVideo } from '../firebase/videos';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const VIDEO_WIDTH = (SCREEN_WIDTH - 48) * 0.6;
+const VIDEO_HEIGHT = VIDEO_WIDTH * (16 / 9);
 
 export default function DetailScreen({ navigation, route }) {
   const { colors } = useTheme();
@@ -17,7 +24,18 @@ export default function DetailScreen({ navigation, route }) {
     description = 'Selecciona un elemento para ver más detalles.',
     body = '',
     cta = '',
+    tipKey = '',
   } = route?.params || {};
+
+  const videoRef = useRef(null);
+  const [videoUri, setVideoUri] = useState(null);
+
+  useEffect(() => {
+    if (!tipKey) return;
+    fetchTipVideo(tipKey).then((data) => {
+      if (data?.uri) setVideoUri(data.uri);
+    });
+  }, [tipKey]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -35,6 +53,19 @@ export default function DetailScreen({ navigation, route }) {
               <Text style={styles.ctaText}>{cta}</Text>
             </View>
           ) : null}
+
+          {videoUri ? (
+            <View style={styles.videoWrap}>
+              <Video
+                ref={videoRef}
+                source={{ uri: videoUri }}
+                style={{ width: VIDEO_WIDTH, height: VIDEO_HEIGHT }}
+                resizeMode={ResizeMode.CONTAIN}
+                useNativeControls
+                shouldPlay={false}
+              />
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -48,8 +79,8 @@ const makeStyles = (colors) =>
       backgroundColor: colors.background || '#FAF8F6',
     },
     container: {
-      flex: 1,
       padding: 24,
+      paddingBottom: 48,
       backgroundColor: colors.background || '#FAF8F6',
     },
     headerRow: {
@@ -125,5 +156,12 @@ const makeStyles = (colors) =>
       fontSize: 15,
       lineHeight: 22,
       color: colors.textSecondary || '#6B6B6B',
+    },
+    videoWrap: {
+      marginTop: 24,
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: '#000',
+      alignSelf: 'center',
     },
   });

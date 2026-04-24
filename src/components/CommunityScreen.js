@@ -22,6 +22,7 @@ import { useAuth } from '../auth/AuthContext';
 import {
   subscribeToPosts, subscribeToComments, toggleLike, addComment, addUserPost,
 } from '../firebase/posts';
+import YouTubeCarousel from './YouTubeCarousel';
 
 import rizadasImage from '../../assets/rizadas.png';
 import lisasImage from '../../assets/lisas.png';
@@ -348,6 +349,7 @@ export default function CommunityScreen({ navigation }) {
                       description: item.description,
                       body: item.body,
                       cta: item.cta,
+                      tipKey: item.title,
                     })
                   }
                 >
@@ -368,10 +370,14 @@ export default function CommunityScreen({ navigation }) {
           </>
         )
       ) : (
-        categories.map((section) => {
+        categories.map((section, sectionIndex) => {
           const { image, icon } = getSectionMeta(section.title);
           return (
-            <View key={section.title} style={styles.section}>
+            <View key={section.title}>
+            {sectionIndex === 1 && (
+              <YouTubeCarousel query="rutina capilar cuidado cabello consejos" title="Videos recomendados" />
+            )}
+            <View style={styles.section}>
               <View style={styles.sectionTitleRow}>
                 <Ionicons name={icon} size={13} color="#D6A4A4" />
                 <Text style={styles.sectionLabel}>{section.title}</Text>
@@ -404,6 +410,7 @@ export default function CommunityScreen({ navigation }) {
                         description: item.description,
                         body: item.body,
                         cta: item.cta,
+                        tipKey: item.title,
                       })
                     }
                   >
@@ -420,6 +427,7 @@ export default function CommunityScreen({ navigation }) {
                 ))}
               </ScrollView>
             </View>
+          </View>
           );
         })
       )}

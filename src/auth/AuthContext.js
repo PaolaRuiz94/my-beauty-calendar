@@ -132,13 +132,19 @@ export function AuthProvider({ children }) {
     await persistUser(currentUser);
   };
 
+  const updatePhoto = async (photoURL) => {
+    const currentUser = { ...user, photoURL };
+    setUser(currentUser);
+    await persistUser(currentUser);
+  };
+
   const logout = async () => {
     setUser(null);
     await clearUser();
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser, updatePhoto }}>
       {children}
     </AuthContext.Provider>
   );

@@ -11,7 +11,9 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import BeautyCalendarHeader from './BeautyCalendarHeader';
+import { fetchProductsByProfile } from '../firebase/products';
 
 // ─── static content ──────────────────────────────────────────────────────────
 
@@ -44,6 +46,22 @@ const THUMB_GRADIENTS = [
   ['#C5FFEE', '#A0FFDA'],
 ];
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+function getProductForStep(stepText, products) {
+  const t = stepText.toLowerCase();
+  let category = null;
+  if (t.includes('shampoo'))                                     category = 'Shampoo';
+  else if (t.includes('acondicionador'))                         category = 'Acondicionador';
+  else if (t.includes('mascarilla') || t.includes('proteico') || t.includes('tratamiento')) category = 'Tratamiento';
+  else if (t.includes('aceite'))                                 category = 'Aceites';
+  else if (t.includes('crema') || t.includes('leave-in') || t.includes('loc') || t.includes('lco')) category = 'Crema de Peinar';
+  else if (t.includes('gel'))                                    category = 'Gel';
+  else if (t.includes('mousse') || t.includes('espuma'))         category = 'Espumas';
+  if (!category) return null;
+  return products.find(p => p.category === category) ?? null;
+}
+
 // ─── sub-components ───────────────────────────────────────────────────────────
 
 function ProductThumb({ index }) {
@@ -58,7 +76,7 @@ function RoutineItem({ item, index, isCompleted, onToggle, accentColor }) {
   const colonIdx = raw.indexOf(':');
   const label = colonIdx !== -1 ? raw.slice(0, colonIdx).trim() : '';
   const name  = colonIdx !== -1 ? raw.slice(colonIdx + 1).trim() : raw;
-  const brand = typeof item === 'object' ? item.brand : undefined;
+  const product = typeof item === 'object' ? item.product : undefined;
 
   return (
     <View style={styles.routineItem}>
@@ -70,7 +88,11 @@ function RoutineItem({ item, index, isCompleted, onToggle, accentColor }) {
             : <Text style={styles.routineItemLabel}>{index + 1}. </Text>}
           {name}
         </Text>
-        {brand ? <Text style={styles.routineItemBrand}>{brand}</Text> : null}
+        {product ? (
+          <Text style={styles.routineItemBrand} numberOfLines={1}>
+            {product.brand} — {product.name}
+          </Text>
+        ) : null}
       </View>
       <TouchableOpacity onPress={onToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Ionicons
@@ -199,26 +221,40 @@ export default function CalendarScreen({ route, navigation }) {
     const plan = route.params.routinePlan;
     if (!Array.isArray(plan)) return;
 
-    const today = new Date();
-    const newDay   = {};
-    const newNight = {};
+    const init = async () => {
+      let products = [];
+      try {
+        const raw = await AsyncStorage.getItem('@mybeauty-calendar:hairProfile');
+        if (raw) {
+          const profile = JSON.parse(raw);
+          const flags = Object.entries(profile)
+            .filter(([, v]) => v === true)
+            .map(([k]) => k);
+          products = await fetchProductsByProfile(flags);
+        }
+      } catch {}
 
-    for (let i = 0; i < 30; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const today = new Date();
+      const newDay   = {};
+      const newNight = {};
 
-      // plan[0] es siempre el detox — se aplica el día 1 y cada 14 días
-      const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
 
-      newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => ({ text: s, editable: false }));
-      newNight[dateStr] = (dayPlan.nightSteps || []).map(s => ({ text: s, editable: false }));
-    }
+        newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
+        newNight[dateStr] = (dayPlan.nightSteps || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
+      }
 
-    setDayByDate(newDay);
-    setNightByDate(newNight);
-    const first = Object.keys(newDay)[0];
-    if (first) setSelectedDate(first);
+      setDayByDate(newDay);
+      setNightByDate(newNight);
+      const first = Object.keys(newDay)[0];
+      if (first) setSelectedDate(first);
+    };
+
+    init();
   }, [route]);
 
   const buildMarkedDates = () => {

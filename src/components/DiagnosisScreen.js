@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { productDB, recommendationDB } from '../data/productDB';
 import { fetchRoutineVideos } from '../firebase/videos';
 import YouTubeCarousel from './YouTubeCarousel';
@@ -324,6 +325,7 @@ export default function DiagnosisScreen({ navigation }) {
 
   const generateResult = (answersObject) => {
     const profile = buildHairProfile(answersObject);
+    AsyncStorage.setItem('@mybeauty-calendar:hairProfile', JSON.stringify(profile)).catch(() => {});
     const { damageLevel, stylingMethod } = profile;
     const recommendedProducts = getRecommendedProducts(profile);
     const routinePlanResult = getRoutinePlan(profile);

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { initProducts } from './src/firebase/products';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -140,6 +141,10 @@ function AppRouter() {
 }
 
 export default function App() {
+  useEffect(() => {
+    initProducts().catch(() => {});
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>

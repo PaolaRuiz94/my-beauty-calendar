@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,15 @@ import {
   Image,
   Animated,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { categoryOptions, productDB } from "../data/productDB";
+import { categoryOptions } from "../data/productDB";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { fetchProductsByProfile, fetchAllProducts, filterProducts } from "../firebase/products";
 
 const defaultProductImage = require("../../assets/icon.png");
 
@@ -106,24 +109,71 @@ export default function ProductsScreen({ route, navigation }) {
 
   const [selectedCategory, setSelectedCategory] = useState(categoryOptions[0]?.id || "shampoo");
   const [searchQuery, setSearchQuery] = useState("");
+  const [profileProducts, setProfileProducts] = useState([]);
+  const [userFlags, setUserFlags] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const getVisibleProducts = () => {
-    const q = searchQuery.trim().toLowerCase();
-    const base = q
-      ? Object.values(productDB).flat()
-      : selectedCategory === "all"
-        ? Object.values(productDB).flat()
-        : productDB[selectedCategory] || [];
-    if (!q) return base;
-    return base.filter(
-      (p) =>
-        p.name?.toLowerCase().includes(q) ||
-        p.brand?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q)
-    );
+  useEffect(() => {
+    loadProfileProducts();
+  }, []);
+
+  const loadProfileProducts = async () => {
+    setIsLoading(true);
+    try {
+      const raw = await AsyncStorage.getItem("@mybeauty-calendar:hairProfile");
+      let data = [];
+      let flags = [];
+      if (raw) {
+        const profile = JSON.parse(raw);
+        flags = Object.entries(profile).filter(([, v]) => v === true).map(([k]) => k);
+        data = flags.length > 0 ? await fetchProductsByProfile(flags) : await fetchAllProducts();
+      } else {
+        data = await fetchAllProducts();
+      }
+      setUserFlags(flags);
+      setProfileProducts(data);
+    } catch {
+      setProfileProducts([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const products = getVisibleProducts();
+  const CATEGORY_MAP = {
+    shampoo: "Shampoo",
+    acondicionador: "Acondicionador",
+    tratamiento: "Tratamiento",
+    cremaDePeinar: "Crema de Peinar",
+    gel: "Gel",
+    espumas: "Espumas",
+    aceites: "Aceites",
+  };
+
+  function scoreProduct(product, flags) {
+    if (!product.profiles || flags.length === 0) return 0;
+    return product.profiles.filter(f => flags.includes(f)).length;
+  }
+
+  function getGroupedByBrand(products, flags) {
+    const byBrand = {};
+    products.forEach(p => {
+      if (!byBrand[p.brand]) byBrand[p.brand] = [];
+      byBrand[p.brand].push({ ...p, _score: scoreProduct(p, flags) });
+    });
+    return Object.entries(byBrand)
+      .map(([brand, prods]) => ({
+        brand,
+        products: prods.sort((a, b) => b._score - a._score).slice(0, 2),
+      }))
+      .sort((a, b) => a.brand.localeCompare(b.brand));
+  }
+
+  const categoryFiltered = selectedCategory
+    ? profileProducts.filter(p => p.category === CATEGORY_MAP[selectedCategory])
+    : profileProducts;
+
+  const searched = filterProducts(categoryFiltered, searchQuery);
+  const brandGroups = getGroupedByBrand(searched, userFlags);
 
   const openLink = async (url) => {
     try {
@@ -235,24 +285,31 @@ export default function ProductsScreen({ route, navigation }) {
         <View style={styles.sectionTitleRow}>
           <Ionicons name="bag-handle-outline" size={13} color="#D6A4A4" />
           <Text style={styles.sectionTitle}>
-            {products.length} producto{products.length !== 1 ? "s" : ""}
+            Recomendados para ti
           </Text>
         </View>
 
-        {products.length === 0 ? (
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#D6A4A4" style={{ marginTop: 32 }} />
+        ) : brandGroups.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>🪄</Text>
             <Text style={styles.emptyText}>
-              Selecciona una categoría para ver productos.
+              No hay productos compatibles con tu diagnóstico en esta categoría.
             </Text>
           </View>
         ) : (
-          products.map((product, index) => (
-            <ProductCard
-              key={product.id || index}
-              product={product}
-              onBuy={() => openLink(product.link)}
-            />
+          brandGroups.map(({ brand, products: brandProds }) => (
+            <View key={brand} style={{ marginBottom: 8 }}>
+              <Text style={styles.brandHeader}>{brand}</Text>
+              {brandProds.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onBuy={() => openLink(product.link)}
+                />
+              ))}
+            </View>
           ))
         )}
       </ScrollView>
@@ -412,6 +469,16 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: "#fff",
+  },
+
+  brandHeader: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#BF789C",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 10,
+    marginTop: 8,
   },
 
   // product cards

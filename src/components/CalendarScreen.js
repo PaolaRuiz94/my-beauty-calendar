@@ -8,6 +8,9 @@ import {
   ScrollView,
   Modal,
   Animated,
+  Platform,
+  ActionSheetIOS,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +21,8 @@ import BeautyCalendarHeader from './BeautyCalendarHeader';
 import { fetchProductsByProfile } from '../firebase/products';
 import { getWeatherContext, getWeatherBoostTags, getWeatherHairTip } from '../services/weatherService';
 import * as Notifications from 'expo-notifications';
+import { useAuth } from '../auth/AuthContext';
+import { saveDiaryEntry } from '../firebase/diary';
 
 // ─── static content ──────────────────────────────────────────────────────────
 
@@ -71,6 +76,48 @@ function getProductForStep(stepText, products) {
 }
 
 // ─── sub-components ───────────────────────────────────────────────────────────
+
+function ChipGroup({ options, selected, multi = false, onSelect, color = '#BF789C' }) {
+  return (
+    <View style={styles.chipGroup}>
+      {options.map(opt => {
+        const active = multi ? selected.includes(opt) : selected === opt;
+        return (
+          <TouchableOpacity
+            key={opt}
+            style={[styles.chip, active && { backgroundColor: color, borderColor: color }]}
+            onPress={() => {
+              if (multi) onSelect(active ? selected.filter(s => s !== opt) : [...selected, opt]);
+              else onSelect(active ? '' : opt);
+            }}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function YesNo({ value, onChange, color = '#BF789C' }) {
+  return (
+    <View style={styles.yesNoRow}>
+      {[true, false].map(v => (
+        <TouchableOpacity
+          key={String(v)}
+          style={[styles.yesNoBtn, value === v && { backgroundColor: color, borderColor: color }]}
+          onPress={() => onChange(value === v ? null : v)}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.yesNoBtnText, value === v && styles.yesNoBtnTextActive]}>
+            {v ? 'Sí' : 'No'}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
 
 function ProductThumb({ index }) {
   const colors = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length];
@@ -127,13 +174,10 @@ function RoutineItem({ item, index, isCompleted, onToggle, accentColor, onProduc
   );
 }
 
-function RoutineCard({ title, iconName, accentColor, routines, completed, onToggle, onAdd, onNavigate, onProductPress }) {
-  const [showInput, setShowInput] = useState(false);
-  const [draft, setDraft]         = useState('');
-
-  const total      = routines.length;
-  const done       = completed.length;
-  const isAllDone  = total > 0 && done === total;
+function RoutineCard({ title, iconName, accentColor, routines, completed, onToggle, onNavigate, onProductPress, onPlusPress }) {
+  const total     = routines.length;
+  const done      = completed.length;
+  const isAllDone = total > 0 && done === total;
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -145,14 +189,8 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
     }).start();
   }, [done, total]);
 
-  const handleSave = () => {
-    const t = draft.trim();
-    if (t) { onAdd(t); setDraft(''); setShowInput(false); }
-  };
-
   return (
     <View style={styles.routineCard}>
-      {/* section header */}
       <View style={styles.routineCardHeader}>
         <Ionicons name={iconName} size={15} color={accentColor} style={{ marginRight: 6 }} />
         <Text style={[styles.routineCardTitle, { color: accentColor }]}>{title}</Text>
@@ -162,7 +200,6 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
         </TouchableOpacity>
       </View>
 
-      {/* MI RUTINA label + progreso */}
       <View style={styles.myRoutineRow}>
         <Ionicons name="sparkles" size={13} color={accentColor} />
         <Text style={[styles.myRoutineText, { color: accentColor }]}>MI RUTINA</Text>
@@ -171,7 +208,6 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
         )}
       </View>
 
-      {/* barra de progreso */}
       {total > 0 && (
         <View style={styles.progressTrack}>
           <Animated.View
@@ -183,7 +219,6 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
         </View>
       )}
 
-      {/* items */}
       {routines.map((item, i) => {
         const stepText = typeof item === 'string' ? item : item.text;
         const category = getCategoryForStep(stepText);
@@ -200,21 +235,6 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
         );
       })}
 
-      {/* inline input */}
-      {showInput && (
-        <TextInput
-          placeholder="Ej. Shampoo + mascarilla"
-          placeholderTextColor="#CCC"
-          value={draft}
-          onChangeText={setDraft}
-          style={[styles.inlineInput, { borderColor: accentColor + '55' }]}
-          autoFocus
-          returnKeyType="done"
-          onSubmitEditing={handleSave}
-        />
-      )}
-
-      {/* banner de completado */}
       {isAllDone && (
         <View style={[styles.completionBanner, { borderColor: accentColor + '55' }]}>
           <Text style={styles.completionEmoji}>🎉</Text>
@@ -222,11 +242,11 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
         </View>
       )}
 
-      {/* Fila inferior: agregar paso + ir a productos */}
       <View style={[styles.addRow, { borderTopColor: accentColor + '22' }]}>
-        <TouchableOpacity style={styles.addRowLeft} onPress={() => setShowInput(v => !v)}>
-          <Ionicons name="add-circle-outline" size={17} color={accentColor} />
-          <Text style={[styles.addRowText, { color: accentColor }]}>Agregar paso</Text>
+        <TouchableOpacity style={styles.addRowLeft} onPress={onPlusPress} activeOpacity={0.75}>
+          <View style={[styles.plusBtn, { backgroundColor: accentColor + '18', borderColor: accentColor + '44' }]}>
+            <Ionicons name="add" size={18} color={accentColor} />
+          </View>
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
         <TouchableOpacity
@@ -242,7 +262,18 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
 
 // ─── screen ──────────────────────────────────────────────────────────────────
 
+const DIARY_HAIR_FEEL = ['Brilloso', 'Opaco', 'Suave', 'Reseco', 'Con frizz', 'Definido', 'Esponjado', 'Normal'];
+const DIARY_HYDRATION = ['Muy hidratado', 'Hidratado', 'Normal', 'Reseco', 'Muy reseco'];
+const DIARY_SCALP     = ['Normal', 'Graso', 'Reseco', 'Con picazón'];
+
+const MONTH_NAMES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+function fmtDate(dateStr) {
+  const [, m, d] = dateStr.split('-');
+  return `${parseInt(d)} de ${MONTH_NAMES_SHORT[parseInt(m) - 1]}`;
+}
+
 export default function CalendarScreen({ route, navigation }) {
+  const { user } = useAuth();
   const tabBarHeight = useBottomTabBarHeight();
 
   const [selectedDate,     setSelectedDate]     = useState(new Date().toISOString().split('T')[0]);
@@ -260,6 +291,21 @@ export default function CalendarScreen({ route, navigation }) {
   const [streakModal, setStreakModal] = useState(false);
   const [tipLiked, setTipLiked] = useState(false);
   const isLoaded = useRef(false);
+
+  // ── Agregar paso ────────────────────────────────────────────────────────────
+  const [addStepModal, setAddStepModal] = useState({ visible: false, isNight: false });
+  const [stepName, setStepName] = useState('');
+  const [stepDesc, setStepDesc] = useState('');
+
+  // ── Diario ─────────────────────────────────────────────────────────────────
+  const [diaryModal,    setDiaryModal]    = useState(false);
+  const [diaryHairFeel, setDiaryHairFeel] = useState([]);
+  const [diaryHydration,setDiaryHydration]= useState('');
+  const [diaryScalp,    setDiaryScalp]    = useState('');
+  const [diaryHeat,     setDiaryHeat]     = useState(null);
+  const [diaryWashed,   setDiaryWashed]   = useState(null);
+  const [diaryNote,     setDiaryNote]     = useState('');
+  const [diarySaving,   setDiarySaving]   = useState(false);
 
   const openNotifModal = async () => {
     const all = await Notifications.getAllScheduledNotificationsAsync();
@@ -457,11 +503,54 @@ export default function CalendarScreen({ route, navigation }) {
     setProductModal(p => ({ ...p, visible: false }));
   };
 
-  const addRoutine = (setter, date, text) =>
+  const addUnplannedStep = (text, isNight) => {
+    const setter = isNight ? setNightByDate : setDayByDate;
     setter(prev => ({
       ...prev,
-      [date]: [...(prev[date] || []), { text, editable: true }],
+      [selectedDate]: [...(prev[selectedDate] || []), { text, editable: true }],
     }));
+  };
+
+  const handlePlusPress = (isNight) => {
+    const openStep = () => { setStepName(''); setStepDesc(''); setAddStepModal({ visible: true, isNight }); };
+    const openDiary = () => {
+      setDiaryHairFeel([]); setDiaryHydration(''); setDiaryScalp('');
+      setDiaryHeat(null); setDiaryWashed(null); setDiaryNote('');
+      setDiaryModal(true);
+    };
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancelar', 'Agregar paso', 'Diario del cabello'], cancelButtonIndex: 0 },
+        (idx) => { if (idx === 1) openStep(); if (idx === 2) openDiary(); },
+      );
+    } else {
+      Alert.alert('¿Qué quieres agregar?', '', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Agregar paso', onPress: openStep },
+        { text: 'Diario del cabello', onPress: openDiary },
+      ]);
+    }
+  };
+
+  const saveDiary = async () => {
+    if (!user?.uid) return;
+    setDiarySaving(true);
+    try {
+      await saveDiaryEntry(user.uid, selectedDate, {
+        hairFeel: diaryHairFeel,
+        hydration: diaryHydration,
+        scalp: diaryScalp,
+        usedHeat: diaryHeat,
+        washedHair: diaryWashed,
+        note: diaryNote,
+      });
+      setDiaryModal(false);
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar el diario.');
+    } finally {
+      setDiarySaving(false);
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -540,7 +629,7 @@ export default function CalendarScreen({ route, navigation }) {
           routines={dayRoutines}
           completed={dayCompleted}
           onToggle={(i) => toggle(dayDone, setDayDone, selectedDate, i)}
-          onAdd={(t) => addRoutine(setDayByDate, selectedDate, t)}
+          onPlusPress={() => handlePlusPress(false)}
           onNavigate={() =>
             navigation.navigate('ProductsModal', { routines: dayRoutines, date: selectedDate })
           }
@@ -557,7 +646,7 @@ export default function CalendarScreen({ route, navigation }) {
           routines={nightRoutines}
           completed={nightCompleted}
           onToggle={(i) => toggle(nightDone, setNightDone, selectedDate, i)}
-          onAdd={(t) => addRoutine(setNightByDate, selectedDate, t)}
+          onPlusPress={() => handlePlusPress(true)}
           onNavigate={() =>
             navigation.navigate('ProductsModal', { routines: nightRoutines, date: selectedDate })
           }
@@ -672,6 +761,117 @@ export default function CalendarScreen({ route, navigation }) {
               </View>
             </View>
           </View>
+        </Modal>
+
+        {/* ── Modal agregar paso ── */}
+        <Modal visible={addStepModal.visible} transparent animationType="slide" onRequestClose={() => setAddStepModal(p => ({ ...p, visible: false }))}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHandle} />
+                <Text style={styles.modalTitle}>Agregar paso</Text>
+                <Text style={styles.modalCategory}>{addStepModal.isNight ? 'Rutina de noche' : 'Rutina de día'}</Text>
+                <TextInput
+                  style={styles.stepInput}
+                  placeholder="Nombre (ej. Mascarilla de proteína)"
+                  placeholderTextColor="#CCC"
+                  value={stepName}
+                  onChangeText={setStepName}
+                  autoFocus
+                />
+                <TextInput
+                  style={[styles.stepInput, { marginTop: 10, minHeight: 72, textAlignVertical: 'top' }]}
+                  placeholder="Descripción (opcional)"
+                  placeholderTextColor="#CCC"
+                  value={stepDesc}
+                  onChangeText={setStepDesc}
+                  multiline
+                />
+                <TouchableOpacity
+                  style={[styles.stepSaveBtn, !stepName.trim() && { opacity: 0.4 }]}
+                  disabled={!stepName.trim()}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    const text = stepDesc.trim() ? `${stepName.trim()}: ${stepDesc.trim()}` : stepName.trim();
+                    addUnplannedStep(text, addStepModal.isNight);
+                    setAddStepModal({ visible: false, isNight: false });
+                  }}
+                >
+                  <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stepSaveBtnGradient}>
+                    <Text style={styles.stepSaveBtnText}>Agregar paso</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalCancel} onPress={() => setAddStepModal({ visible: false, isNight: false })}>
+                  <Text style={styles.modalCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* ── Modal diario ── */}
+        <Modal visible={diaryModal} transparent animationType="slide" onRequestClose={() => setDiaryModal(false)}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View style={[styles.modalOverlay, { justifyContent: 'flex-end' }]}>
+              <View style={styles.diarySheet}>
+                <View style={styles.modalHandle} />
+                <View style={styles.diaryHeader}>
+                  <Text style={styles.diaryTitle}>Diario del cabello</Text>
+                  <Text style={styles.diaryDate}>{fmtDate(selectedDate)}</Text>
+                  <TouchableOpacity onPress={() => setDiaryModal(false)} style={styles.diaryClose}>
+                    <Ionicons name="close" size={20} color="#999" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.diaryScroll} keyboardShouldPersistTaps="handled">
+
+                  <Text style={styles.diaryQuestion}>¿Cómo se siente tu cabello hoy?</Text>
+                  <ChipGroup options={DIARY_HAIR_FEEL} selected={diaryHairFeel} multi onSelect={setDiaryHairFeel} color="#E8789A" />
+
+                  <View style={styles.diaryDivider} />
+
+                  <Text style={styles.diaryQuestion}>Nivel de hidratación</Text>
+                  <ChipGroup options={DIARY_HYDRATION} selected={diaryHydration} onSelect={setDiaryHydration} color="#BF789C" />
+
+                  <Text style={[styles.diaryQuestion, { marginTop: 18 }]}>Cuero cabelludo</Text>
+                  <ChipGroup options={DIARY_SCALP} selected={diaryScalp} onSelect={setDiaryScalp} color="#BF789C" />
+
+                  <View style={styles.diaryDivider} />
+
+                  <View style={styles.diaryYesNoRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.diaryQuestion}>¿Usaste calor?</Text>
+                      <YesNo value={diaryHeat} onChange={setDiaryHeat} color="#7B61FF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.diaryQuestion}>¿Lavaste el cabello?</Text>
+                      <YesNo value={diaryWashed} onChange={setDiaryWashed} color="#7B61FF" />
+                    </View>
+                  </View>
+
+                  <View style={styles.diaryDivider} />
+
+                  <Text style={styles.diaryQuestion}>Nota libre (opcional)</Text>
+                  <TextInput
+                    style={styles.diaryNoteInput}
+                    placeholder="¿Algo más sobre tu cabello hoy?"
+                    placeholderTextColor="#CCC"
+                    value={diaryNote}
+                    onChangeText={setDiaryNote}
+                    multiline
+                    maxLength={200}
+                  />
+
+                  <TouchableOpacity style={styles.stepSaveBtn} activeOpacity={0.85} onPress={saveDiary} disabled={diarySaving}>
+                    <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stepSaveBtnGradient}>
+                      <Text style={styles.stepSaveBtnText}>{diarySaving ? 'Guardando...' : 'Guardar en el diario'}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                </ScrollView>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* ── Modal notificaciones ── */}
@@ -952,16 +1152,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // add step
-  inlineInput: {
-    backgroundColor: '#FBF5F8',
-    borderRadius: 10,
-    padding: 11,
-    fontSize: 13,
-    borderWidth: 1,
-    marginBottom: 10,
-    color: '#333',
-  },
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1064,6 +1254,156 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 14,
+  },
+
+  // + button
+  plusBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // add step modal
+  stepInput: {
+    backgroundColor: '#FBF5F8',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#333',
+    borderWidth: 1.5,
+    borderColor: '#F0E0E8',
+  },
+  stepSaveBtn: {
+    marginTop: 18,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  stepSaveBtnGradient: {
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  stepSaveBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+
+  // diary modal
+  diarySheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    width: '100%',
+    maxHeight: '90%',
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 36,
+  },
+  diaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 8,
+  },
+  diaryTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#2D2D2D',
+    flex: 1,
+  },
+  diaryDate: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D6A4A4',
+  },
+  diaryClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5F0F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  diaryScroll: {
+    paddingBottom: 16,
+  },
+  diaryQuestion: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#555',
+    marginBottom: 10,
+    letterSpacing: 0.2,
+  },
+  diaryDivider: {
+    height: 1,
+    backgroundColor: '#F5E8EC',
+    marginVertical: 18,
+  },
+  diaryYesNoRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  diaryNoteInput: {
+    backgroundColor: '#FBF5F8',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#333',
+    borderWidth: 1.5,
+    borderColor: '#F0E0E8',
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+
+  // chips
+  chipGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 99,
+    borderWidth: 1.5,
+    borderColor: '#E8D0D8',
+    backgroundColor: '#FDF5F8',
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#999',
+  },
+  chipTextActive: {
+    color: '#fff',
+  },
+
+  // yes/no
+  yesNoRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  yesNoBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E8D0D8',
+    backgroundColor: '#FDF5F8',
+    alignItems: 'center',
+  },
+  yesNoBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#999',
+  },
+  yesNoBtnTextActive: {
+    color: '#fff',
   },
 
   // streak modal

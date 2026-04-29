@@ -449,9 +449,9 @@ export default function DiagnosisScreen({ navigation }) {
             activeOpacity={0.85}
             style={styles.productsButton}
           >
-            <Ionicons name="sparkles-outline" size={16} color="#BF789C" style={{ marginRight: 8 }} />
+            <Ionicons name="sparkles-outline" size={16} color="#8A6B00" style={{ marginRight: 8 }} />
             <Text style={styles.productsButtonText}>Ver productos recomendados para ti</Text>
-            <Ionicons name="chevron-forward" size={16} color="#BF789C" />
+            <Ionicons name="chevron-forward" size={16} color="#8A6B00" />
           </TouchableOpacity>
 
           {/* TIPS */}
@@ -1100,19 +1100,19 @@ const styles = StyleSheet.create({
   productsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FDF0F5',
+    backgroundColor: '#FFF5C2',
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 18,
     borderWidth: 1.5,
-    borderColor: '#EDD8E4',
+    borderColor: '#F0D97A',
     marginBottom: 24,
   },
   productsButtonText: {
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#BF789C',
+    color: '#8A6B00',
   },
 
   // products

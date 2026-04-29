@@ -49,7 +49,7 @@ function getMonthGrid(year, month) {
   return days;
 }
 
-function DayCell({ day, isSelected, isMarked, isCompleted, onPress, animValue }) {
+function DayCell({ day, isSelected, isMarked, isCompleted, isToday, onPress, animValue }) {
   const scale = animValue.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.1],
@@ -65,14 +65,36 @@ function DayCell({ day, isSelected, isMarked, isCompleted, onPress, animValue })
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.dayCell}>
-      <Text style={[styles.dayLabel, isSelected && styles.dayLabelSelected]}>
+      <Text style={[
+        styles.dayLabel,
+        isSelected && styles.dayLabelSelected,
+        isToday && !isSelected && styles.dayLabelToday,
+      ]}>
         {day.label}
       </Text>
       <Animated.View style={[styles.dayCircleWrap, { transform: [{ scale }] }]}>
+        {/* selected: white fill */}
         <Animated.View
           style={[StyleSheet.absoluteFill, styles.dayCircleSelected, { opacity: circleOpacity }]}
         />
-        <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
+        {/* completed (not selected): butter yellow fill */}
+        {isCompleted && !isSelected && (
+          <View style={[StyleSheet.absoluteFill, styles.dayCircleCompleted]} />
+        )}
+        {/* today (not selected, not completed): white ring border */}
+        {isToday && !isSelected && !isCompleted && (
+          <View style={[StyleSheet.absoluteFill, styles.dayCircleToday]} />
+        )}
+        {/* today + completed: show ring on top of yellow */}
+        {isToday && !isSelected && isCompleted && (
+          <View style={[StyleSheet.absoluteFill, styles.dayCircleTodayRing]} />
+        )}
+        <Text style={[
+          styles.dayNumber,
+          isSelected && styles.dayNumberSelected,
+          isCompleted && !isSelected && styles.dayNumberCompleted,
+          isToday && !isSelected && styles.dayNumberToday,
+        ]}>
           {day.number}
         </Text>
       </Animated.View>
@@ -81,6 +103,8 @@ function DayCell({ day, isSelected, isMarked, isCompleted, onPress, animValue })
           <Animated.View style={[styles.selectedDot, { opacity: dotOpacity }]} />
         ) : isCompleted ? (
           <View style={styles.completedDot} />
+        ) : isToday ? (
+          <View style={styles.todayDot} />
         ) : isMarked ? (
           <View style={styles.markedDot} />
         ) : (
@@ -91,7 +115,7 @@ function DayCell({ day, isSelected, isMarked, isCompleted, onPress, animValue })
   );
 }
 
-function MonthDayCell({ day, isSelected, isMarked, isToday, onPress }) {
+function MonthDayCell({ day, isSelected, isMarked, isCompleted, isToday, onPress }) {
   if (!day) return <View style={styles.monthCell} />;
   return (
     <TouchableOpacity
@@ -101,18 +125,21 @@ function MonthDayCell({ day, isSelected, isMarked, isToday, onPress }) {
     >
       <View style={[
         styles.monthCellInner,
-        isMarked && !isSelected && styles.monthCellMarked,
+        isCompleted && !isSelected && styles.monthCellCompleted,
+        isMarked && !isSelected && !isCompleted && styles.monthCellMarked,
         isSelected && styles.monthCellSelected,
         isToday && !isSelected && styles.monthCellToday,
       ]}>
         <Text style={[
           styles.monthCellNum,
-          isMarked && !isSelected && styles.monthCellNumMarked,
+          isCompleted && !isSelected && styles.monthCellNumCompleted,
+          isMarked && !isSelected && !isCompleted && styles.monthCellNumMarked,
           isSelected && styles.monthCellNumSelected,
+          isToday && !isSelected && styles.monthCellNumToday,
         ]}>
           {day.number}
         </Text>
-        {isMarked && !isSelected && <View style={styles.monthMarkedDot} />}
+        {isCompleted && !isSelected && <View style={styles.monthCompletedDot} />}
       </View>
     </TouchableOpacity>
   );
@@ -207,6 +234,9 @@ export default function BeautyCalendarHeader({
           <TouchableOpacity onPress={onBellPress} activeOpacity={0.7} style={styles.iconBtn}>
             <Ionicons name="notifications-outline" size={18} color="#fff" />
           </TouchableOpacity>
+          <TouchableOpacity onPress={onGridPress} activeOpacity={0.7} style={styles.iconBtn}>
+            <Ionicons name={expanded ? 'chevron-up' : 'calendar-outline'} size={18} color="#fff" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -242,6 +272,7 @@ export default function BeautyCalendarHeader({
                 isToday={day?.dateStr === TODAY}
                 onPress={handleDayPress}
               />
+
             ))}
           </View>
         </>
@@ -255,6 +286,7 @@ export default function BeautyCalendarHeader({
               isSelected={day.dateStr === selectedDate}
               isMarked={!!markedDates[day.dateStr]}
               isCompleted={!!completedDates[day.dateStr]}
+              isToday={day.dateStr === TODAY}
               onPress={() => handleDayPress(day.dateStr)}
               animValue={animValues[i]}
             />
@@ -344,6 +376,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
+  dayLabelToday: {
+    color: '#fff',
+    fontWeight: '700',
+  },
   dayCircleWrap: {
     width: 34,
     height: 34,
@@ -356,6 +392,20 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     backgroundColor: '#fff',
   },
+  dayCircleCompleted: {
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 243, 180, 0.38)',
+  },
+  dayCircleToday: {
+    borderRadius: 17,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
+  dayCircleTodayRing: {
+    borderRadius: 17,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.85)',
+  },
   dayNumber: {
     color: 'rgba(255,255,255,0.88)',
     fontSize: 14,
@@ -363,6 +413,14 @@ const styles = StyleSheet.create({
   },
   dayNumberSelected: {
     color: '#BF789C',
+    fontWeight: '800',
+  },
+  dayNumberCompleted: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  dayNumberToday: {
+    color: '#fff',
     fontWeight: '800',
   },
   indicatorRow: {
@@ -387,7 +445,13 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 230, 130, 0.95)',
+  },
+  todayDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.9)',
   },
   dotPlaceholder: {
     width: 4,
@@ -441,20 +505,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  monthCellCompleted: {
+    backgroundColor: 'rgba(255, 243, 180, 0.42)',
+  },
   monthCellMarked: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   monthCellSelected: {
     backgroundColor: '#fff',
   },
   monthCellToday: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.92)',
   },
   monthCellNum: {
     color: 'rgba(255,255,255,0.88)',
     fontSize: 13,
     fontWeight: '500',
+  },
+  monthCellNumCompleted: {
+    color: '#fff',
+    fontWeight: '800',
   },
   monthCellNumMarked: {
     color: '#fff',
@@ -464,11 +535,23 @@ const styles = StyleSheet.create({
     color: '#BF789C',
     fontWeight: '800',
   },
+  monthCellNumToday: {
+    color: '#fff',
+    fontWeight: '800',
+  },
   monthMarkedDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.75)',
+    position: 'absolute',
+    bottom: 2,
+  },
+  monthCompletedDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 230, 130, 0.95)',
     position: 'absolute',
     bottom: 2,
   },

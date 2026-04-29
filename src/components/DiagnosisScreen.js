@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Image,
   FlatList,
-  Linking,
   Dimensions,
   ScrollView,
   Modal,
@@ -445,28 +444,15 @@ export default function DiagnosisScreen({ navigation }) {
             <Ionicons name="bag-handle-outline" size={13} color="#D6A4A4" />
             <Text style={styles.sectionTitle}>Productos sugeridos</Text>
           </View>
-          <View style={styles.card}>
-            {Object.entries(result.recommendations.productsByCategory).map(([category, prods]) =>
-              prods.length > 0 ? (
-                <View key={category} style={styles.categoryGroup}>
-                  <Text style={styles.categoryHeading}>{category}</Text>
-                  {prods.map((product) => (
-                    <TouchableOpacity
-                      key={product.id}
-                      style={styles.productRow}
-                      onPress={() => Linking.openURL(product.link)}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.productRowName} numberOfLines={1}>{product.name}</Text>
-                      <View style={styles.productRowTag}>
-                        <Text style={styles.productRowTagText}>Ver</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : null
-            )}
-          </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Productos')}
+            activeOpacity={0.85}
+            style={styles.productsButton}
+          >
+            <Ionicons name="sparkles-outline" size={16} color="#BF789C" style={{ marginRight: 8 }} />
+            <Text style={styles.productsButtonText}>Ver productos recomendados para ti</Text>
+            <Ionicons name="chevron-forward" size={16} color="#BF789C" />
+          </TouchableOpacity>
 
           {/* TIPS */}
           <View style={styles.sectionTitleRow}>
@@ -1108,6 +1094,25 @@ const styles = StyleSheet.create({
     color: '#555',
     lineHeight: 20,
     paddingLeft: 15,
+  },
+
+  // products button
+  productsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF0F5',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderWidth: 1.5,
+    borderColor: '#EDD8E4',
+    marginBottom: 24,
+  },
+  productsButtonText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#BF789C',
   },
 
   // products

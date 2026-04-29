@@ -18,6 +18,7 @@ import { StatusBar } from "expo-status-bar";
 import { categoryOptions } from "../data/productDB";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProductsByProfile, fetchAllProducts, filterProducts } from "../firebase/products";
+import { getWeatherContext, getWeatherBoostTags } from "../services/weatherService";
 
 const defaultProductImage = require("../../assets/icon.png");
 
@@ -111,6 +112,7 @@ export default function ProductsScreen({ route, navigation }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [profileProducts, setProfileProducts] = useState([]);
   const [userFlags, setUserFlags] = useState([]);
+  const [weatherBoostTags, setWeatherBoostTags] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -134,9 +136,12 @@ export default function ProductsScreen({ route, navigation }) {
       setProfileProducts(data);
     } catch {
       setProfileProducts([]);
-    } finally {
-      setIsLoading(false);
     }
+    try {
+      const weatherCtx = await getWeatherContext();
+      if (weatherCtx?.flags?.length) setWeatherBoostTags(getWeatherBoostTags(weatherCtx.flags));
+    } catch {}
+    setIsLoading(false);
   };
 
   const CATEGORY_MAP = {
@@ -149,16 +154,20 @@ export default function ProductsScreen({ route, navigation }) {
     aceites: "Aceites",
   };
 
-  function scoreProduct(product, flags) {
-    if (!product.profiles || flags.length === 0) return 0;
-    return product.profiles.filter(f => flags.includes(f)).length;
+  function scoreProduct(product, flags, boostTags) {
+    let score = 0;
+    if (product.profiles && flags.length > 0)
+      score += product.profiles.filter(f => flags.includes(f)).length;
+    if (product.tags && boostTags.length > 0)
+      score += product.tags.filter(t => boostTags.some(bt => t.toLowerCase().includes(bt))).length * 0.5;
+    return score;
   }
 
-  function getGroupedByBrand(products, flags) {
+  function getGroupedByBrand(products, flags, boostTags) {
     const byBrand = {};
     products.forEach(p => {
       if (!byBrand[p.brand]) byBrand[p.brand] = [];
-      byBrand[p.brand].push({ ...p, _score: scoreProduct(p, flags) });
+      byBrand[p.brand].push({ ...p, _score: scoreProduct(p, flags, boostTags) });
     });
     return Object.entries(byBrand)
       .map(([brand, prods]) => ({
@@ -173,7 +182,7 @@ export default function ProductsScreen({ route, navigation }) {
     : profileProducts;
 
   const searched = filterProducts(categoryFiltered, searchQuery);
-  const brandGroups = getGroupedByBrand(searched, userFlags);
+  const brandGroups = getGroupedByBrand(searched, userFlags, weatherBoostTags);
 
   const openLink = async (url) => {
     try {

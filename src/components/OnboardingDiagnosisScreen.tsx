@@ -39,7 +39,6 @@ const slides: Slide[] = [
   { key: 'intro-3', type: 'intro', title: 'Rutina personalizada 🌸', subtitle: 'Recibirás recomendaciones hechas para ti' },
   { key: 'name', type: 'text', question: '¿Cómo te gustaría que te llamara la app?', placeholder: 'Tu nombre' },
   { key: 'age', type: 'numeric', question: 'Registra tu año de nacimiento', placeholder: '1990' },
-  { key: 'skinGoals', type: 'chips', title: 'Objetivos skincare 🌸', options: ['Mejorar acné', 'Mejorar manchas', 'Rutina según piel', 'Entender mi piel'] },
 ];
 
 const introIcons: Record<string, string> = {

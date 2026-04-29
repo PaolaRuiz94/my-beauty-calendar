@@ -49,7 +49,7 @@ function getMonthGrid(year, month) {
   return days;
 }
 
-function DayCell({ day, isSelected, isMarked, onPress, animValue }) {
+function DayCell({ day, isSelected, isMarked, isCompleted, onPress, animValue }) {
   const scale = animValue.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.1],
@@ -79,6 +79,8 @@ function DayCell({ day, isSelected, isMarked, onPress, animValue }) {
       <View style={styles.indicatorRow}>
         {isSelected ? (
           <Animated.View style={[styles.selectedDot, { opacity: dotOpacity }]} />
+        ) : isCompleted ? (
+          <View style={styles.completedDot} />
         ) : isMarked ? (
           <View style={styles.markedDot} />
         ) : (
@@ -120,6 +122,7 @@ export default function BeautyCalendarHeader({
   selectedDate,
   onDatePress,
   markedDates = {},
+  completedDates = {},
   streak = 1,
   points = 50,
   onBellPress,
@@ -235,6 +238,7 @@ export default function BeautyCalendarHeader({
                 day={day}
                 isSelected={day?.dateStr === selectedDate}
                 isMarked={day ? !!markedDates[day.dateStr] : false}
+                isCompleted={day ? !!completedDates[day.dateStr] : false}
                 isToday={day?.dateStr === TODAY}
                 onPress={handleDayPress}
               />
@@ -250,6 +254,7 @@ export default function BeautyCalendarHeader({
               day={day}
               isSelected={day.dateStr === selectedDate}
               isMarked={!!markedDates[day.dateStr]}
+              isCompleted={!!completedDates[day.dateStr]}
               onPress={() => handleDayPress(day.dateStr)}
               animValue={animValues[i]}
             />
@@ -377,6 +382,12 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.45)',
+  },
+  completedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
   },
   dotPlaceholder: {
     width: 4,

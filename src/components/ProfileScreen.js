@@ -265,7 +265,7 @@ function ProfileView() {
   const insets = useSafeAreaInsets();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(user?.name || '');
+  const [name, setName] = useState(user?.displayName || '');
   const [email, setEmail] = useState(user?.email || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -273,8 +273,8 @@ function ProfileView() {
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  const initials = user?.name
-    ? user.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+  const initials = user?.displayName
+    ? user.displayName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
     : '??';
 
   const handlePickPhoto = async () => {
@@ -302,7 +302,7 @@ function ProfileView() {
   };
 
   const handleEdit = () => {
-    setName(user?.name || '');
+    setName(user?.displayName || '');
     setEmail(user?.email || '');
     setNewPassword('');
     setConfirmPassword('');
@@ -389,7 +389,7 @@ function ProfileView() {
                     : <Ionicons name="camera" size={14} color="#fff" />}
                 </View>
               </TouchableOpacity>
-              {user?.name ? <Text style={styles.avatarName}>{user.name}</Text> : null}
+              {user?.displayName ? <Text style={styles.avatarName}>{user.displayName}</Text> : null}
               <View style={styles.badgeRow}>
                 <View style={styles.badge}>
                   <Ionicons name="sparkles" size={11} color="#fff" />
@@ -457,7 +457,7 @@ function ProfileView() {
                 <Text style={styles.sectionTitle}>Información</Text>
               </View>
               <View style={styles.card}>
-                <InfoRow icon="person-circle-outline" label="Nombre" value={user?.name} />
+                <InfoRow icon="person-circle-outline" label="Nombre" value={user?.displayName} />
                 <View style={styles.divider} />
                 <InfoRow icon="mail-outline" label="Email" value={user?.email} />
                 <View style={styles.divider} />

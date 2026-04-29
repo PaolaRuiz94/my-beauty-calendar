@@ -50,6 +50,14 @@ export default function SplashScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Auth')}
+          activeOpacity={0.7}
+          style={styles.loginLink}
+        >
+          <Text style={styles.loginLinkText}>Ya tengo cuenta  <Text style={styles.loginLinkBold}>Iniciar sesión</Text></Text>
+        </TouchableOpacity>
+
         <Text style={styles.legalText}>Tu rutina, tu ritmo.</Text>
       </View>
     </View>
@@ -125,5 +133,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#CCC',
     letterSpacing: 0.5,
+  },
+  loginLink: {
+    marginTop: 18,
+    paddingVertical: 4,
+  },
+  loginLinkText: {
+    fontSize: 14,
+    color: '#B89AAA',
+    textAlign: 'center',
+  },
+  loginLinkBold: {
+    fontWeight: '700',
+    color: '#BF789C',
   },
 });

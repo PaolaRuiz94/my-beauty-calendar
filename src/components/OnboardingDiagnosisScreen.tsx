@@ -25,6 +25,7 @@ const { width } = Dimensions.get('window');
 type RootStackParamList = {
   Main: { screen: string };
   OnboardingDiagnosis: undefined;
+  Auth: undefined;
 };
 
 type Slide =
@@ -83,7 +84,7 @@ export default function OnboardingDiagnosisScreen() {
     } catch (e) {
       console.warn('Error saving onboarding profile:', e);
     }
-    navigation.navigate('Main', { screen: 'Diagnóstico' });
+    navigation.navigate('Auth');
   };
 
   const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {

@@ -8,30 +8,42 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../auth/AuthContext';
+
+const googleLogo = require('../../assets/icon.png');
 
 export default function LoginScreen({ navigation }) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const { login, user } = useAuth();
+  const { loginWithEmail, googleRequest, promptGoogleAsync } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
 
   const handleLogin = async () => {
     setError('');
     setLoading(true);
-
     try {
-      await login(email, password);
+      await loginWithEmail(email, password);
     } catch (err) {
-      setError(err.message || 'No se pudo iniciar sesión.');
+      setError('Email o contraseña incorrectos.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError('');
+    try {
+      await promptGoogleAsync();
+    } catch {
+      setError('No se pudo iniciar sesión con Google.');
     }
   };
 
@@ -41,9 +53,27 @@ export default function LoginScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Bienvenida</Text>
-        <Text style={styles.subtitle}>Inicia sesión para continuar con tu rutina de belleza.</Text>
+        <Text style={styles.title}>Bienvenida 💖</Text>
+        <Text style={styles.subtitle}>Inicia sesión para continuar con tu rutina.</Text>
 
+        {/* Google */}
+        <TouchableOpacity
+          style={styles.googleBtn}
+          onPress={handleGoogle}
+          disabled={!googleRequest}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.googleIcon}>G</Text>
+          <Text style={styles.googleText}>Continuar con Google</Text>
+        </TouchableOpacity>
+
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>o</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Email / contraseña */}
         <View style={styles.card}>
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -67,17 +97,24 @@ export default function LoginScreen({ navigation }) {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            activeOpacity={0.85}
             onPress={handleLogin}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>{loading ? 'Ingresando...' : 'Ingresar'}</Text>
+            <LinearGradient
+              colors={['#DEB4CC', '#BF789C']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.button, loading && { opacity: 0.7 }]}
+            >
+              <Text style={styles.buttonText}>{loading ? 'Ingresando...' : 'Ingresar'}</Text>
+            </LinearGradient>
           </TouchableOpacity>
 
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>¿No tienes cuenta?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.footerLink}>Regístrate</Text>
+              <Text style={styles.footerLink}>  Regístrate</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -90,76 +127,101 @@ const makeStyles = (colors) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: '#FDF5F8',
     },
     content: {
       padding: 24,
-      paddingTop: 64,
+      paddingTop: 72,
       flexGrow: 1,
       justifyContent: 'center',
     },
-    brand: {
-      color: colors.primary,
-      fontSize: 30,
-      fontWeight: '900',
-      marginBottom: 20,
-      textAlign: 'center',
-    },
     title: {
-      fontSize: 32,
+      fontSize: 30,
       fontWeight: '800',
-      color: colors.textPrimary,
-      marginBottom: 10,
+      color: '#2D2D2D',
+      marginBottom: 8,
       textAlign: 'center',
     },
     subtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
+      fontSize: 15,
+      color: '#AAA',
       marginBottom: 28,
       textAlign: 'center',
-      lineHeight: 24,
+    },
+    googleBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#fff',
+      borderRadius: 18,
+      paddingVertical: 15,
+      paddingHorizontal: 20,
+      gap: 10,
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+      marginBottom: 20,
+    },
+    googleIcon: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: '#4285F4',
+    },
+    googleText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#333',
+    },
+    dividerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 20,
+      gap: 10,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: '#EEE',
+    },
+    dividerText: {
+      fontSize: 13,
+      color: '#CCC',
+      fontWeight: '600',
     },
     card: {
-      backgroundColor: colors.card,
-      borderRadius: 30,
-      padding: 24,
-      shadowColor: colors.textPrimary,
+      backgroundColor: '#fff',
+      borderRadius: 28,
+      padding: 22,
+      shadowColor: '#C47898',
       shadowOpacity: 0.08,
       shadowRadius: 18,
-      shadowOffset: { width: 0, height: 10 },
-      elevation: 6,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 5,
     },
     label: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '700',
-      color: colors.textPrimary,
+      color: '#555',
       marginBottom: 8,
     },
     input: {
-      backgroundColor: colors.background,
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 18,
-      color: colors.textPrimary,
+      backgroundColor: '#FDF5F8',
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 16,
+      color: '#333',
       fontSize: 15,
-      shadowColor: colors.textPrimary,
-      shadowOpacity: 0.04,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: 2,
     },
     button: {
-      backgroundColor: colors.primary,
-      borderRadius: 24,
-      paddingVertical: 16,
+      borderRadius: 18,
+      paddingVertical: 15,
       alignItems: 'center',
-      marginTop: 8,
-    },
-    buttonDisabled: {
-      opacity: 0.7,
+      marginTop: 4,
     },
     buttonText: {
-      color: colors.white,
+      color: '#fff',
       fontWeight: '700',
       fontSize: 16,
     },
@@ -170,16 +232,18 @@ const makeStyles = (colors) =>
       marginTop: 18,
     },
     footerText: {
-      color: colors.textSecondary,
-      marginRight: 6,
+      color: '#BBB',
+      fontSize: 14,
     },
     footerLink: {
-      color: colors.secondary,
+      color: '#BF789C',
       fontWeight: '700',
+      fontSize: 14,
     },
     error: {
       color: '#C44569',
       marginBottom: 12,
       textAlign: 'center',
+      fontSize: 13,
     },
   });

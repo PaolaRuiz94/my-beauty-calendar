@@ -2,6 +2,7 @@
   "expo": {
     "name": "My Beauty Calendar",
     "slug": "my-beauty-calendar",
+    "scheme": "mybcal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,8 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.mybeautycalendar.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para adaptar las recomendaciones de productos según el clima de tu ciudad."
+        "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para adaptar las recomendaciones de productos según el clima de tu ciudad.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -24,10 +27,34 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Usamos tu ubicación para adaptar las recomendaciones de productos según el clima de tu ciudad."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#BF789C"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "88c65b1f-978f-481e-a42b-c4a4959835a0"
+      }
     }
   }
 }

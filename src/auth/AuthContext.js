@@ -1,150 +1,108 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  onAuthStateChanged,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  updateEmail,
+  updatePassword,
+  signOut,
+  GoogleAuthProvider,
+} from 'firebase/auth';
+import { auth } from '../firebase/config';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 
-const AUTH_USER_KEY = '@mybeauty-calendar:user';
-const AUTH_USERS_KEY = '@mybeauty-calendar:users';
+WebBrowser.maybeCompleteAuthSession();
+
+const WEB_CLIENT_ID = '242764281250-5iihdnpdb253vtlvdar18n0dmskcgadg.apps.googleusercontent.com';
+const PROXY_REDIRECT_URI = 'https://auth.expo.io/@paolaruiz/my-beauty-calendar';
 
 const AuthContext = createContext({
   user: null,
   isLoading: true,
-  login: async () => {},
-  register: async () => {},
+  loginWithEmail: async () => {},
+  registerWithEmail: async () => {},
   logout: async () => {},
+  googleRequest: null,
+  promptGoogleAsync: async () => {},
 });
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser]           = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        const savedUser = await AsyncStorage.getItem(AUTH_USER_KEY);
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
-        }
-      } catch (error) {
-        console.warn('Error restoring auth session:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    clientId: WEB_CLIENT_ID,
+    redirectUri: PROXY_REDIRECT_URI,
+  });
 
-    restoreSession();
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser ?? null);
+      setIsLoading(false);
+    });
+    return unsub;
   }, []);
 
-  const persistUser = async (userData) => {
-    await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
-  };
-
-  const clearUser = async () => {
-    await AsyncStorage.removeItem(AUTH_USER_KEY);
-  };
-
-  const getStoredUsers = async () => {
-    const raw = await AsyncStorage.getItem(AUTH_USERS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  };
-
-  const saveStoredUsers = async (users) => {
-    await AsyncStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
-  };
-
-  const login = async (email, password) => {
-    if (!email.trim() || !password.trim()) {
-      throw new Error('Email y contraseña son obligatorios.');
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const accessToken =
+        googleResponse.authentication?.accessToken ??
+        googleResponse.params?.access_token;
+      if (accessToken) {
+        const credential = GoogleAuthProvider.credential(null, accessToken);
+        signInWithCredential(auth, credential).catch(() => {});
+      }
     }
+  }, [googleResponse]);
 
-    const users = await getStoredUsers();
-    const match = users.find(
-      (item) =>
-        item.email.toLowerCase() === email.toLowerCase() &&
-        item.password === password
-    );
-
-    if (!match) {
-      throw new Error('Email o contraseña incorrectos.');
-    }
-
-    const currentUser = { name: match.name, email: match.email };
-    setUser(currentUser);
-    await persistUser(currentUser);
+  const loginWithEmail = async (email, password) => {
+    await signInWithEmailAndPassword(auth, email.trim(), password);
   };
 
-  const register = async (name, email, password) => {
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      throw new Error('Nombre, email y contraseña son obligatorios.');
-    }
-
-    const users = await getStoredUsers();
-
-    const existing = users.some(
-      (item) => item.email.toLowerCase() === email.toLowerCase()
-    );
-
-    if (existing) {
-      throw new Error('Ya existe una cuenta con ese email.');
-    }
-
-    const newUser = {
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      password,
-    };
-
-    await saveStoredUsers([...users, newUser]);
-
-    const currentUser = { name: newUser.name, email: newUser.email };
-    setUser(currentUser);
-    await persistUser(currentUser);
+  const registerWithEmail = async (name, email, password) => {
+    const { user: newUser } = await createUserWithEmailAndPassword(auth, email.trim(), password);
+    await updateProfile(newUser, { displayName: name.trim() });
+    setUser({ ...newUser, displayName: name.trim() });
   };
 
   const updateUser = async (name, email, newPassword) => {
-    if (!name.trim() || !email.trim()) {
-      throw new Error('Nombre y email son obligatorios.');
+    const currentUser = auth.currentUser;
+    if (name && name !== currentUser.displayName) {
+      await updateProfile(currentUser, { displayName: name });
     }
-
-    const users = await getStoredUsers();
-    const emailLower = email.trim().toLowerCase();
-
-    const conflict = users.some(
-      (u) =>
-        u.email.toLowerCase() === emailLower &&
-        u.email.toLowerCase() !== user.email.toLowerCase()
-    );
-    if (conflict) throw new Error('Ya existe una cuenta con ese email.');
-
-    const updated = users.map((u) => {
-      if (u.email.toLowerCase() === user.email.toLowerCase()) {
-        return {
-          ...u,
-          name: name.trim(),
-          email: emailLower,
-          password: newPassword ? newPassword : u.password,
-        };
-      }
-      return u;
-    });
-
-    await saveStoredUsers(updated);
-    const currentUser = { name: name.trim(), email: emailLower };
-    setUser(currentUser);
-    await persistUser(currentUser);
+    if (email && email !== currentUser.email) {
+      await updateEmail(currentUser, email);
+    }
+    if (newPassword) {
+      await updatePassword(currentUser, newPassword);
+    }
+    setUser({ ...auth.currentUser });
   };
 
   const updatePhoto = async (photoURL) => {
-    const currentUser = { ...user, photoURL };
-    setUser(currentUser);
-    await persistUser(currentUser);
+    await updateProfile(auth.currentUser, { photoURL });
+    setUser({ ...auth.currentUser });
   };
 
   const logout = async () => {
-    setUser(null);
-    await clearUser();
+    await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser, updatePhoto }}>
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      loginWithEmail,
+      registerWithEmail,
+      updateUser,
+      updatePhoto,
+      logout,
+      googleRequest,
+      promptGoogleAsync,
+    }}>
       {children}
     </AuthContext.Provider>
   );

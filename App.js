@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { initProducts } from './src/firebase/products';
+import { scheduleAllNotifications } from './src/services/notificationService';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -120,21 +121,25 @@ function AuthStackScreen() {
 }
 
 function AppRouter() {
-  const { isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (isLoading) {
-    return null;
-  }
+  if (isLoading) return null;
 
   return (
     <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
-        <RootStack.Screen name="Splash" component={SplashScreen} />
-        <RootStack.Screen name="OnboardingDiagnosis" component={OnboardingDiagnosisScreen} />
-        <RootStack.Screen name="TipDetail" component={DetailScreen} />
-        <RootStack.Screen name="Main" component={MainTabNavigator} />
-        <RootStack.Screen name="Profile" component={ProfileScreen} />
-        <RootStack.Screen name="Auth" component={AuthStackScreen} />
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        {user ? (
+          <>
+            <RootStack.Screen name="Main" component={MainTabNavigator} />
+            <RootStack.Screen name="TipDetail" component={DetailScreen} />
+          </>
+        ) : (
+          <>
+            <RootStack.Screen name="Splash" component={SplashScreen} />
+            <RootStack.Screen name="OnboardingDiagnosis" component={OnboardingDiagnosisScreen} />
+            <RootStack.Screen name="Auth" component={AuthStackScreen} />
+          </>
+        )}
       </RootStack.Navigator>
     </NavigationContainer>
   );
@@ -143,6 +148,7 @@ function AppRouter() {
 export default function App() {
   useEffect(() => {
     initProducts().catch(() => {});
+    scheduleAllNotifications().catch(() => {});
   }, []);
 
   return (

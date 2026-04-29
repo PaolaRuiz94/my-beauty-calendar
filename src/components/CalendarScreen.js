@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import BeautyCalendarHeader from './BeautyCalendarHeader';
 import { fetchProductsByProfile } from '../firebase/products';
 import { getWeatherContext, getWeatherBoostTags, getWeatherHairTip } from '../services/weatherService';
+import * as Notifications from 'expo-notifications';
 
 // ─── static content ──────────────────────────────────────────────────────────
 
@@ -254,7 +255,15 @@ export default function CalendarScreen({ route, navigation }) {
   const [profileProducts, setProfileProducts] = useState([]);
   const [productModal, setProductModal] = useState({ visible: false, dateStr: '', stepIndex: 0, category: '', isNight: false });
   const [points, setPoints] = useState(0);
+  const [notifModal, setNotifModal] = useState(false);
+  const [scheduledNotifs, setScheduledNotifs] = useState([]);
   const isLoaded = useRef(false);
+
+  const openNotifModal = async () => {
+    const all = await Notifications.getAllScheduledNotificationsAsync();
+    setScheduledNotifs(all);
+    setNotifModal(true);
+  };
 
   // ── Carga desde AsyncStorage al montar ──────────────────────────────────────
   useEffect(() => {
@@ -276,6 +285,13 @@ export default function CalendarScreen({ route, navigation }) {
       isLoaded.current = true;
     };
     load();
+  }, []);
+
+  // ── Carga el clima al montar ────────────────────────────────────────────────
+  useEffect(() => {
+    getWeatherContext()
+      .then(ctx => { if (ctx) setWeather(ctx); })
+      .catch(() => {});
   }, []);
 
   // ── Guarda en AsyncStorage cada vez que cambia el estado ────────────────────
@@ -466,6 +482,7 @@ export default function CalendarScreen({ route, navigation }) {
             points={points}
             expanded={calendarExpanded}
             onGridPress={() => setCalendarExpanded(e => !e)}
+            onBellPress={openNotifModal}
           />
         </View>
 
@@ -590,6 +607,38 @@ export default function CalendarScreen({ route, navigation }) {
                 onPress={() => setProductModal(p => ({ ...p, visible: false }))}
               >
                 <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── Modal notificaciones ── */}
+        <Modal visible={notifModal} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <Text style={styles.modalTitle}>Notificaciones programadas</Text>
+              {scheduledNotifs.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 28 }}>
+                  <Ionicons name="notifications-off-outline" size={40} color="#D6A4A4" />
+                  <Text style={{ color: '#BBB', fontSize: 14, marginTop: 12, textAlign: 'center' }}>
+                    No hay notificaciones programadas.{'\n'}Activa los permisos en ajustes.
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                  {scheduledNotifs.map((n) => (
+                    <View key={n.identifier} style={styles.modalProductRow}>
+                      <Ionicons name="notifications-outline" size={18} color="#D6A4A4" style={{ marginRight: 12 }} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.modalProductName}>{n.content.title}</Text>
+                        <Text style={{ fontSize: 12, color: '#AAA', marginTop: 2 }}>{n.content.body}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setNotifModal(false)}>
+                <Text style={styles.modalCancelText}>Cerrar</Text>
               </TouchableOpacity>
             </View>
           </View>

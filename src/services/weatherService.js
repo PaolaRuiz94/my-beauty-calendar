@@ -4,7 +4,11 @@ import * as Location from 'expo-location';
 const OPENWEATHER_API_KEY = 'REDACTED';
 
 export async function getWeatherContext() {
-  const { status } = await Location.requestForegroundPermissionsAsync();
+  let { status } = await Location.getForegroundPermissionsAsync();
+  if (status !== 'granted') {
+    const result = await Location.requestForegroundPermissionsAsync();
+    status = result.status;
+  }
   if (status !== 'granted') return null;
 
   const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });

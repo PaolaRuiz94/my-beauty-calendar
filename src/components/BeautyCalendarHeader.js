@@ -126,6 +126,7 @@ export default function BeautyCalendarHeader({
   streak = 1,
   points = 50,
   onBellPress,
+  onStreakPress,
   onGridPress,
   expanded = false,
 }) {
@@ -186,26 +187,25 @@ export default function BeautyCalendarHeader({
     >
       {/* ── TOP ROW ── */}
       <View style={styles.topRow}>
-        <View style={styles.pillsContainer}>
-          <View style={styles.pill}>
-            <Text style={styles.pillText}>⚡ {streak}</Text>
-          </View>
-          <View style={styles.pill}>
-            <Ionicons name="bar-chart-outline" size={11} color="#fff" />
-            <Text style={[styles.pillText, { marginLeft: 4 }]}>{points}</Text>
-          </View>
-        </View>
+        <TouchableOpacity onPress={onStreakPress} activeOpacity={0.75} style={styles.pill}>
+          <Text style={styles.pillText}>⚡ {streak}</Text>
+        </TouchableOpacity>
 
         <Text style={styles.todayLabel}>
-          {expanded ? MONTH_NAMES[viewMonth] : 'Hoy'}
+          {expanded
+            ? `${MONTH_NAMES[viewMonth]} ${viewYear}`
+            : selectedDate === TODAY
+              ? 'Hoy'
+              : (() => {
+                  const d = new Date(selectedDate + 'T12:00:00');
+                  return `${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`;
+                })()
+          }
         </Text>
 
         <View style={styles.iconsRow}>
           <TouchableOpacity onPress={onBellPress} activeOpacity={0.7} style={styles.iconBtn}>
             <Ionicons name="notifications-outline" size={18} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onGridPress} activeOpacity={0.7} style={styles.iconBtn}>
-            <Ionicons name={expanded ? 'chevron-up' : 'grid-outline'} size={18} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>

@@ -257,6 +257,8 @@ export default function CalendarScreen({ route, navigation }) {
   const [points, setPoints] = useState(0);
   const [notifModal, setNotifModal] = useState(false);
   const [scheduledNotifs, setScheduledNotifs] = useState([]);
+  const [streakModal, setStreakModal] = useState(false);
+  const [tipLiked, setTipLiked] = useState(false);
   const isLoaded = useRef(false);
 
   const openNotifModal = async () => {
@@ -409,9 +411,6 @@ export default function CalendarScreen({ route, navigation }) {
     return out;
   };
 
-  const getFormattedDate = () =>
-    dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
-
   const calcStreak = () => {
     const today = new Date().toISOString().split('T')[0];
     let streak = 0;
@@ -483,31 +482,14 @@ export default function CalendarScreen({ route, navigation }) {
             expanded={calendarExpanded}
             onGridPress={() => setCalendarExpanded(e => !e)}
             onBellPress={openNotifModal}
+            onStreakPress={() => setStreakModal(true)}
           />
         </View>
 
-        {/* ── date label ── */}
-        <Text style={styles.dateLabel}>{getFormattedDate()}</Text>
-
-        {/* ── streak + puntos ── */}
-        <View style={styles.statsRow}>
-          <View style={styles.statPill}>
-            <Text style={styles.statEmoji}>🔥</Text>
-            <Text style={styles.statText}>{calcStreak()} {calcStreak() === 1 ? 'día' : 'días'}</Text>
-          </View>
-          <View style={styles.statPill}>
-            <Text style={styles.statEmoji}>⭐</Text>
-            <Text style={styles.statText}>{points} pts</Text>
-          </View>
-        </View>
-
         {/* ── motivational banner ── */}
-        <View style={styles.motivRow}>
+        <View style={[styles.motivRow, { marginTop: 20, marginBottom: 24 }]}>
           <Text style={styles.sparkle}>✦</Text>
           <Text style={styles.motivText}>{motText}</Text>
-          <TouchableOpacity style={styles.playBtn}>
-            <Ionicons name="play" size={13} color="#C47898" />
-          </TouchableOpacity>
         </View>
 
         {/* ── clima ── */}
@@ -527,13 +509,23 @@ export default function CalendarScreen({ route, navigation }) {
         )}
 
         {/* ── tip del día ── */}
-        <View style={styles.tipCard}>
+        <View style={[styles.tipCard, { marginTop: 16 }]}>
           <View style={styles.tipCardTop}>
             <Text style={styles.tipLabel}>TIP DEL DÍA</Text>
-            <View style={styles.tipLike}>
-              <Ionicons name="heart-outline" size={15} color="#CCC" />
-              <Text style={styles.tipLikeNum}>376</Text>
-            </View>
+            <TouchableOpacity
+              onPress={() => setTipLiked(v => !v)}
+              activeOpacity={0.7}
+              style={styles.tipLike}
+            >
+              <Ionicons
+                name={tipLiked ? 'heart' : 'heart-outline'}
+                size={17}
+                color={tipLiked ? '#E8789A' : '#CCC'}
+              />
+              <Text style={[styles.tipLikeNum, tipLiked && { color: '#E8789A' }]}>
+                {tipLiked ? 377 : 376}
+              </Text>
+            </TouchableOpacity>
           </View>
           <Text style={styles.tipText}>{tipText}</Text>
         </View>
@@ -608,6 +600,76 @@ export default function CalendarScreen({ route, navigation }) {
               >
                 <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── Modal racha / progreso ── */}
+        <Modal visible={streakModal} transparent animationType="slide">
+          <View style={[styles.modalOverlay, { justifyContent: 'flex-end' }]}>
+            <View style={styles.streakModalBox}>
+              {/* Header */}
+              <View style={styles.streakModalHeader}>
+                <View style={styles.streakPointsPill}>
+                  <Ionicons name="bar-chart-outline" size={13} color="#BF789C" />
+                  <Text style={styles.streakPointsText}>{points}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setStreakModal(false)} activeOpacity={0.7}>
+                  <Ionicons name="close" size={22} color="#999" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Número de racha */}
+              <View style={styles.streakCenter}>
+                <Text style={styles.streakBigIcon}>⚡</Text>
+                <Text style={styles.streakBigNumber}>{calcStreak()}</Text>
+                <Text style={styles.streakLabel}>
+                  {calcStreak() === 1 ? 'DÍA CONSECUTIVO' : 'DÍAS CONSECUTIVOS'}
+                </Text>
+              </View>
+
+              {/* Tarjetas días consecutivos */}
+              <Text style={styles.streakSectionTitle}>DÍAS CONSECUTIVOS</Text>
+              <View style={styles.streakCardsRow}>
+                <View style={styles.streakCard}>
+                  <Text style={styles.streakCardNumber}>{calcStreak()}</Text>
+                  <Text style={styles.streakCardLabel}>de rutina</Text>
+                </View>
+                <View style={styles.streakCard}>
+                  <Text style={styles.streakCardNumber}>0</Text>
+                  <Text style={styles.streakCardLabel}>de diario</Text>
+                </View>
+              </View>
+
+              {/* Resumen de pasos hoy */}
+              <Text style={[styles.streakSectionTitle, { marginTop: 20 }]}>PASOS DE HOY</Text>
+              <View style={styles.streakStatsList}>
+                {[
+                  {
+                    label: 'Completados',
+                    value: [
+                      ...(dayDone[selectedDate] || []),
+                      ...(nightDone[selectedDate] || []),
+                    ].filter(Boolean).length,
+                  },
+                  {
+                    label: 'Pendientes',
+                    value: [
+                      ...(dayDone[selectedDate] || []),
+                      ...(nightDone[selectedDate] || []),
+                    ].filter(v => !v).length,
+                  },
+                  {
+                    label: 'Puntos acumulados',
+                    value: points,
+                  },
+                ].map(({ label, value }) => (
+                  <View key={label} style={styles.streakStatRow}>
+                    <Text style={styles.streakStatLabel}>{label}</Text>
+                    <Text style={styles.streakStatValue}>{value}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
         </Modal>
@@ -700,6 +762,7 @@ const styles = StyleSheet.create({
   motivRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: 18,
     marginTop: 10,
     marginBottom: 16,
@@ -710,10 +773,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   motivText: {
-    flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    textAlign: 'center',
   },
   playBtn: {
     width: 36,
@@ -728,7 +791,7 @@ const styles = StyleSheet.create({
   weatherCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: '#F0EAFF',
+    backgroundColor: '#FFF5C2',
     borderRadius: 14,
     padding: 14,
     flexDirection: 'row',
@@ -739,16 +802,16 @@ const styles = StyleSheet.create({
     fontSize: 26,
   },
   weatherCity: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#9B7FC7',
+    color: '#8A6B00',
     marginBottom: 3,
   },
   weatherTip: {
-    fontSize: 12,
-    color: '#6B4FA0',
+    fontSize: 13,
+    color: '#6B5200',
     fontWeight: '500',
-    lineHeight: 17,
+    lineHeight: 18,
   },
 
   // tip card
@@ -786,9 +849,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   tipText: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#555',
-    lineHeight: 20,
+    lineHeight: 22,
   },
 
   // routine card
@@ -809,7 +872,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   routineCardTitle: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '800',
     letterSpacing: 1.2,
   },
@@ -876,9 +939,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   routineItemText: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#333',
-    lineHeight: 19,
+    lineHeight: 21,
   },
   routineItemLabel: {
     fontWeight: '700',
@@ -912,7 +975,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   addRowText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   squareBtn: {
@@ -1001,5 +1064,117 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 14,
+  },
+
+  // streak modal
+  streakModalBox: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    width: '100%',
+    height: '82%',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 48,
+    shadowColor: '#BF789C',
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 10,
+  },
+  streakModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  streakPointsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FDF0F5',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  streakPointsText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#BF789C',
+  },
+  streakCenter: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  streakBigIcon: {
+    fontSize: 36,
+    marginBottom: 4,
+  },
+  streakBigNumber: {
+    fontSize: 64,
+    fontWeight: '800',
+    color: '#2D2D2D',
+    lineHeight: 72,
+  },
+  streakLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#CCC',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginTop: 4,
+  },
+  streakSectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#D6A4A4',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  streakCardsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  streakCard: {
+    flex: 1,
+    backgroundColor: '#FDF5F8',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  streakCardNumber: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#2D2D2D',
+  },
+  streakCardLabel: {
+    fontSize: 12,
+    color: '#AAA',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  streakStatsList: {
+    backgroundColor: '#FDF5F8',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+  },
+  streakStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5EBF0',
+  },
+  streakStatLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  streakStatValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#BF789C',
   },
 });

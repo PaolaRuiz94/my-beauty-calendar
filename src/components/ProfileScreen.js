@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Modal,
+  Dimensions,
+  ActionSheetIOS,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +23,26 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase/config';
 import { useAuth } from '../auth/AuthContext';
+import {
+  addProgressPhoto,
+  subscribeToProgressPhotos,
+  deleteProgressPhoto,
+} from '../firebase/progressPhotos';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PHOTO_GAP = 4;
+const PHOTO_SIZE = (SCREEN_WIDTH - 36 - PHOTO_GAP * 2) / 3;
+
+const MONTH_NAMES = [
+  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+];
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const [, m, d] = dateStr.split('-');
+  return `${parseInt(d)} ${MONTH_NAMES[parseInt(m) - 1]}`;
+}
 
 async function uploadProfilePhoto(uri, userEmail) {
   const response = await fetch(uri);
@@ -273,6 +296,67 @@ function ProfileView() {
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // ── Progreso ────────────────────────────────────────────────────────────────
+  const [progressPhotos, setProgressPhotos] = useState([]);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [uploadingProgress, setUploadingProgress] = useState(false);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsub = subscribeToProgressPhotos(user.uid, setProgressPhotos);
+    return unsub;
+  }, [user?.uid]);
+
+  const handleAddProgressPhoto = useCallback(() => {
+    const pick = async (fromCamera) => {
+      const perm = fromCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (perm.status !== 'granted') {
+        Alert.alert('Permiso requerido', 'Necesitamos acceso para continuar.');
+        return;
+      }
+      const result = fromCamera
+        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [3, 4], quality: 0.75 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [3, 4], quality: 0.75 });
+      if (result.canceled) return;
+      try {
+        setUploadingProgress(true);
+        await addProgressPhoto(user.uid, result.assets[0].uri);
+      } catch {
+        Alert.alert('Error', 'No se pudo guardar la foto. Intenta de nuevo.');
+      } finally {
+        setUploadingProgress(false);
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancelar', 'Tomar foto', 'Elegir de galería'], cancelButtonIndex: 0 },
+        (idx) => { if (idx === 1) pick(true); if (idx === 2) pick(false); },
+      );
+    } else {
+      Alert.alert('Agregar foto', 'Elige una opción', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Tomar foto', onPress: () => pick(true) },
+        { text: 'Elegir de galería', onPress: () => pick(false) },
+      ]);
+    }
+  }, [user?.uid]);
+
+  const handleDeletePhoto = useCallback((photo) => {
+    Alert.alert('Eliminar foto', '¿Segura que quieres eliminar esta foto de progreso?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar', style: 'destructive',
+        onPress: async () => {
+          setSelectedPhoto(null);
+          await deleteProgressPhoto(user.uid, photo.id, photo.storagePath);
+        },
+      },
+    ]);
+  }, [user?.uid]);
+
   const initials = user?.displayName
     ? user.displayName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
     : '??';
@@ -464,6 +548,56 @@ function ProfileView() {
                 <InfoRow icon="lock-closed-outline" label="Contraseña" value="••••••••" />
               </View>
 
+              {/* ── Mi Progreso ── */}
+              <View style={[styles.sectionTitleRow, { marginTop: 28 }]}>
+                <Ionicons name="images-outline" size={13} color="#D6A4A4" />
+                <Text style={styles.sectionTitle}>Mi Progreso</Text>
+                <TouchableOpacity
+                  onPress={handleAddProgressPhoto}
+                  style={styles.progressAddBtn}
+                  activeOpacity={0.7}
+                  disabled={uploadingProgress}
+                >
+                  {uploadingProgress
+                    ? <ActivityIndicator size="small" color="#BF789C" />
+                    : <Ionicons name="add" size={18} color="#BF789C" />}
+                </TouchableOpacity>
+              </View>
+
+              {progressPhotos.length === 0 ? (
+                <TouchableOpacity
+                  style={styles.progressEmpty}
+                  onPress={handleAddProgressPhoto}
+                  activeOpacity={0.85}
+                  disabled={uploadingProgress}
+                >
+                  <Ionicons name="camera-outline" size={32} color="#E0C0D0" />
+                  <Text style={styles.progressEmptyText}>Agrega tu primera foto de progreso</Text>
+                  <Text style={styles.progressEmptyHint}>Documenta la evolución de tu cabello</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.progressGrid}>
+                  {progressPhotos.map((photo) => (
+                    <TouchableOpacity
+                      key={photo.id}
+                      style={styles.progressThumb}
+                      activeOpacity={0.88}
+                      onPress={() => setSelectedPhoto(photo)}
+                    >
+                      <Image source={{ uri: photo.url }} style={styles.progressThumbImg} />
+                      <View style={styles.progressThumbDate}>
+                        <Text style={styles.progressThumbDateText}>{formatDate(photo.date)}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  {uploadingProgress && (
+                    <View style={[styles.progressThumb, styles.progressThumbLoading]}>
+                      <ActivityIndicator size="small" color="#BF789C" />
+                    </View>
+                  )}
+                </View>
+              )}
+
               <View style={[styles.sectionTitleRow, { marginTop: 28 }]}>
                 <Ionicons name="information-circle-outline" size={13} color="#D6A4A4" />
                 <Text style={styles.sectionTitle}>Acerca de</Text>
@@ -490,6 +624,40 @@ function ProfileView() {
             </>
           )}
         </ScrollView>
+
+        {/* ── Modal foto de progreso ── */}
+        <Modal visible={!!selectedPhoto} transparent animationType="fade" onRequestClose={() => setSelectedPhoto(null)}>
+          <View style={styles.photoModal}>
+            <View style={[styles.photoModalTop, { paddingTop: insets.top + 12 }]}>
+              <View style={styles.photoModalDate}>
+                <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.photoModalDateText}>{formatDate(selectedPhoto?.date)}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedPhoto(null)} style={styles.photoModalClose} activeOpacity={0.8}>
+                <Ionicons name="close" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedPhoto && (
+              <Image
+                source={{ uri: selectedPhoto.url }}
+                style={styles.photoModalImage}
+                resizeMode="contain"
+              />
+            )}
+
+            <View style={[styles.photoModalBottom, { paddingBottom: insets.bottom + 16 }]}>
+              <TouchableOpacity
+                style={styles.photoModalDelete}
+                activeOpacity={0.8}
+                onPress={() => handleDeletePhoto(selectedPhoto)}
+              >
+                <Ionicons name="trash-outline" size={18} color="#fff" />
+                <Text style={styles.photoModalDeleteText}>Eliminar foto</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </KeyboardAvoidingView>
   );
@@ -808,5 +976,129 @@ const styles = StyleSheet.create({
     marginTop: 24,
     borderRadius: 18,
     overflow: 'hidden',
+  },
+
+  // progress photos
+  progressAddBtn: {
+    marginLeft: 'auto',
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: '#FDF0F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressEmpty: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 32,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#C47898',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  progressEmptyText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#BF789C',
+    textAlign: 'center',
+  },
+  progressEmptyHint: {
+    fontSize: 12,
+    color: '#CCC',
+    textAlign: 'center',
+  },
+  progressGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: PHOTO_GAP,
+  },
+  progressThumb: {
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE * 1.25,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#F5E8EC',
+  },
+  progressThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
+  progressThumbDate: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(20,8,15,0.55)',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  progressThumbDateText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  progressThumbLoading: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // fullscreen photo modal
+  photoModal: {
+    flex: 1,
+    backgroundColor: 'rgba(10,4,8,0.95)',
+    justifyContent: 'space-between',
+  },
+  photoModalTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  photoModalDate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  photoModalDateText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  photoModalClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalImage: {
+    flex: 1,
+    width: SCREEN_WIDTH,
+  },
+  photoModalBottom: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    alignItems: 'center',
+  },
+  photoModalDelete: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(200,80,80,0.75)',
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  photoModalDeleteText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

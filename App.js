@@ -15,6 +15,7 @@ import LoginScreen from './src/components/LoginScreen';
 import RegisterScreen from './src/components/RegisterScreen';
 import ProfileScreen from './src/components/ProfileScreen';
 import DiagnosisScreen from './src/components/DiagnosisScreen';
+import CategoryDetailScreen from './src/components/CategoryDetailScreen';
 import { ThemeProvider } from './src/hooks/useTheme';
 import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
@@ -132,6 +133,7 @@ function AppRouter() {
           <>
             <RootStack.Screen name="Main" component={MainTabNavigator} />
             <RootStack.Screen name="TipDetail" component={DetailScreen} />
+            <RootStack.Screen name="CategoryDetail" component={CategoryDetailScreen} options={{ headerShown: false }} />
           </>
         ) : (
           <>

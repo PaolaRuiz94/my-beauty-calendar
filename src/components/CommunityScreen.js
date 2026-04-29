@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,10 +22,13 @@ import { useAuth } from '../auth/AuthContext';
 import {
   subscribeToPosts, subscribeToComments, toggleLike, addComment, addUserPost,
 } from '../firebase/posts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import YouTubeCarousel from './YouTubeCarousel';
 
 import rizadasImage from '../../assets/rizadas.png';
 import lisasImage from '../../assets/lisas.png';
+import onduladasImage from '../../assets/onduladas.png';
+
 import transicionImage from '../../assets/transicion.png';
 import skincareImage from '../../assets/skincare.png';
 import peluqueriasImage from '../../assets/peluquerias.jpg';
@@ -54,6 +57,16 @@ const categories = [
       { id: 3, title: 'Corte de puntas', description: 'Renueva regularmente las puntas para conservar la caída lisa y evitar que el cabello luzca opaco.', body: 'Las puntas deshidratadas hacen que el cabello pierda su forma y brillo. Un corte periódico mantiene el largo limpio.', cta: 'Agenda un corte cada 8-12 semanas para mantener las puntas frescas.' },
       { id: 4, title: 'Nutrición ligera', description: 'Mascarillas hidratantes livianas que no engrasen la fibra, ideal para cabello fino y liso.', body: 'Los cabellos lisos se benefician de fórmulas ligeras que hidratan sin restar volumen.', cta: 'Elige mascarillas con texturas gel o crema ligera y aplícalas sólo en medios y puntas.' },
       { id: 5, title: 'Protección solar', description: 'Protege tu cabello del sol con sprays leave-in o accesorios. Evita que la fibra se reseque.', body: 'El sol puede resecar y desvanecer el cabello liso. Un protector solar capilar preserva la hidratación.', cta: 'Aplica un spray con filtro UV antes de exponerte al sol.' },
+    ],
+  },
+  {
+    title: 'Para onduladas',
+    data: [
+      { id: 1, title: 'Define tus ondas', description: 'Usa cremas ligeras y espumas para realzar el movimiento natural sin apelmazar.', body: 'Las ondas se definen mejor con productos de textura media que hidraten sin pesar. El scrunch suave activa la forma natural de la onda.', cta: 'Aplica crema o espuma en cabello húmedo con scrunch suave y deja secar al aire o con difusor.' },
+      { id: 2, title: 'Hidratación sin peso', description: 'Elige acondicionadores y leave-ins ligeros que nutran sin dejar el cabello lacio.', body: 'Las ondas necesitan hidratación pero sin saturarse. Un acondicionador ligero y un leave-in en spray son ideales.', cta: 'Aplica leave-in en spray sobre cabello húmedo, enfocándote en medios y puntas.' },
+      { id: 3, title: 'Control del frizz', description: 'Un gel o mousse ligero ayuda a definir las ondas y reducir el encrespamiento.', body: 'El frizz en onduladas se controla sellando la cutícula con productos ligeros y evitando tocar el cabello mientras seca.', cta: 'Aplica gel suave o mousse y no toques el cabello mientras seca. Usa difusor a temperatura baja.' },
+      { id: 4, title: 'Lavado co-wash', description: 'Alterna el shampoo con co-wash para mantener la hidratación y respetar el patrón de onda.', body: 'El co-wash (lavar con acondicionador) conserva la hidratación natural y reduce el frizz en cabellos ondulados.', cta: 'Usa co-wash 1-2 veces por semana y shampoo suave solo cuando sientas acumulación.' },
+      { id: 5, title: 'Seca con difusor', description: 'El difusor potencia las ondas naturales sin alterar su patrón. Úsalo a temperatura baja.', body: 'El secado con difusor fija la forma de la onda sin crear frizz. La temperatura baja protege la fibra.', cta: 'Inclina la cabeza y aplica el difusor en secciones con movimientos suaves hacia arriba.' },
     ],
   },
   {
@@ -101,6 +114,7 @@ const categories = [
 const sectionMeta = {
   'Para rizadas':       { image: rizadasImage,    icon: 'water-outline' },
   'Para lisas':         { image: lisasImage,       icon: 'sunny-outline' },
+  'Para onduladas':     { image: onduladasImage,    icon: 'partly-sunny-outline' },
   'Transición capilar': { image: transicionImage,  icon: 'leaf-outline' },
   'Skincare':           { image: skincareImage,    icon: 'heart-outline' },
   'Mejores peluquerías':{ image: peluqueriasImage, icon: 'cut-outline' },
@@ -211,6 +225,28 @@ export default function CommunityScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('tips');
+  const [hairTexture, setHairTexture] = useState(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@mybeauty-calendar:hairProfile')
+      .then(raw => {
+        if (!raw) return;
+        const profile = JSON.parse(raw);
+        if (profile.isCurly) setHairTexture('Para rizadas');
+        else if (profile.isWavy) setHairTexture('Para onduladas');
+        else setHairTexture('Para lisas');
+      })
+      .catch(() => {});
+  }, []);
+
+  const TEXTURE_TITLES = ['Para rizadas', 'Para lisas', 'Para onduladas'];
+
+  const sortedCategories = useMemo(() => {
+    const nonTexture = categories.filter(c => !TEXTURE_TITLES.includes(c.title));
+    if (!hairTexture) return categories;
+    const textureCategory = categories.find(c => c.title === hairTexture);
+    return textureCategory ? [textureCategory, ...nonTexture] : nonTexture;
+  }, [hairTexture]);
 
   // ── Foro state (Firestore) ──────────────────────────────────────────────────
   const [posts, setPosts] = useState([]);
@@ -370,8 +406,9 @@ export default function CommunityScreen({ navigation }) {
           </>
         )
       ) : (
-        categories.map((section, sectionIndex) => {
+        sortedCategories.map((section, sectionIndex) => {
           const { image, icon } = getSectionMeta(section.title);
+          const isPersonalized = sectionIndex === 0 && hairTexture === section.title;
           return (
             <View key={section.title}>
             {sectionIndex === 1 && (
@@ -381,15 +418,24 @@ export default function CommunityScreen({ navigation }) {
               <View style={styles.sectionTitleRow}>
                 <Ionicons name={icon} size={13} color="#D6A4A4" />
                 <Text style={styles.sectionLabel}>{section.title}</Text>
+                {isPersonalized && (
+                  <View style={styles.paraTimBadge}>
+                    <Text style={styles.paraTimBadgeText}>Para ti ✨</Text>
+                  </View>
+                )}
               </View>
 
-              <TouchableOpacity style={styles.featuredCard} activeOpacity={0.9}>
+              <TouchableOpacity
+                style={styles.featuredCard}
+                activeOpacity={0.9}
+                onPress={() => navigation.navigate('CategoryDetail', { title: section.title, data: section.data, image })}
+              >
                 <ImageBackground source={image} style={styles.featuredImage} imageStyle={styles.featuredImageRadius}>
                   <LinearGradient
                     colors={['transparent', 'rgba(30,10,20,0.72)']}
                     style={styles.featuredOverlay}
                   >
-                    <Text style={styles.featuredTag}>Destacado</Text>
+                    <Text style={styles.featuredTag}>{isPersonalized ? 'Recomendado para ti' : 'Destacado'}</Text>
                     <Text style={styles.featuredTitle}>{section.title}</Text>
                     <Text style={styles.featuredSub} numberOfLines={2}>
                       Descubre consejos y rutinas para tu cabello.
@@ -887,6 +933,18 @@ const styles = StyleSheet.create({
     color: '#D6A4A4',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
+  },
+  paraTimBadge: {
+    backgroundColor: '#F5E0EC',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginLeft: 4,
+  },
+  paraTimBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#BF789C',
   },
   featuredCard: {
     borderRadius: 24,

@@ -444,34 +444,24 @@ export default function CommunityScreen({ navigation }) {
                 </ImageBackground>
               </TouchableOpacity>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContent}>
-                {section.data.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.tipCard}
-                    activeOpacity={0.85}
-                    onPress={() =>
-                      navigation.navigate('TipDetail', {
-                        title: `${section.title} • ${item.title}`,
-                        description: item.description,
-                        body: item.body,
-                        cta: item.cta,
-                        tipKey: item.title,
-                      })
-                    }
-                  >
-                    <View style={styles.tipNum}>
-                      <Text style={styles.tipNumText}>{String(item.id).padStart(2, '0')}</Text>
-                    </View>
-                    <Text style={styles.tipTitle}>{item.title}</Text>
-                    <Text style={styles.tipDesc} numberOfLines={3}>{item.description}</Text>
-                    <View style={styles.tipFooter}>
-                      <Text style={styles.tipReadMore}>Leer más</Text>
-                      <Ionicons name="chevron-forward" size={13} color="#D6A4A4" />
-                    </View>
-                  </TouchableOpacity>
+              {/* Preview chips */}
+              <TouchableOpacity
+                style={styles.previewRow}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('CategoryDetail', { title: section.title, data: section.data, image })}
+              >
+                {section.data.slice(0, 3).map((item) => (
+                  <View key={item.id} style={styles.previewChip}>
+                    <Text style={styles.previewChipText} numberOfLines={1}>{item.title}</Text>
+                  </View>
                 ))}
-              </ScrollView>
+                {section.data.length > 3 && (
+                  <View style={styles.previewChipMore}>
+                    <Text style={styles.previewChipMoreText}>+{section.data.length - 3}</Text>
+                    <Ionicons name="chevron-forward" size={11} color="#BF789C" />
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
           );
@@ -1040,6 +1030,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#D6A4A4',
+  },
+
+  // preview chips
+  previewRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  previewChip: {
+    backgroundColor: '#FDF0F5',
+    borderRadius: 99,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#EDD8E4',
+  },
+  previewChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#BF789C',
+    maxWidth: 130,
+  },
+  previewChipMore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#F5E8EC',
+    borderRadius: 99,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  previewChipMoreText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#BF789C',
   },
 
   // foro list

@@ -11,6 +11,8 @@ import {
   Platform,
   ActionSheetIOS,
   KeyboardAvoidingView,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +25,8 @@ import { getWeatherContext, getWeatherBoostTags, getWeatherHairTip } from '../se
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../auth/AuthContext';
 import { saveDiaryEntry } from '../firebase/diary';
+import { addProgressPhoto } from '../firebase/progressPhotos';
+import * as ImagePicker from 'expo-image-picker';
 
 // ─── static content ──────────────────────────────────────────────────────────
 
@@ -306,6 +310,8 @@ export default function CalendarScreen({ route, navigation }) {
   const [diaryWashed,   setDiaryWashed]   = useState(null);
   const [diaryNote,     setDiaryNote]     = useState('');
   const [diarySaving,   setDiarySaving]   = useState(false);
+  const [diaryPhotos,   setDiaryPhotos]   = useState([]);
+  const [diaryPhotoUploading, setDiaryPhotoUploading] = useState(false);
 
   const openNotifModal = async () => {
     const all = await Notifications.getAllScheduledNotificationsAsync();
@@ -511,11 +517,47 @@ export default function CalendarScreen({ route, navigation }) {
     }));
   };
 
+  const handleDiaryPhoto = async () => {
+    if (!user?.uid) return;
+    const pick = async (fromCamera) => {
+      const perm = fromCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (perm.status !== 'granted') return;
+      const result = fromCamera
+        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [3, 4], quality: 0.75 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [3, 4], quality: 0.75 });
+      if (result.canceled) return;
+      try {
+        setDiaryPhotoUploading(true);
+        const url = await addProgressPhoto(user.uid, result.assets[0].uri, selectedDate);
+        setDiaryPhotos(prev => [...prev, url]);
+      } catch {
+        Alert.alert('Error', 'No se pudo subir la foto.');
+      } finally {
+        setDiaryPhotoUploading(false);
+      }
+    };
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancelar', 'Tomar foto', 'Elegir de galería'], cancelButtonIndex: 0 },
+        (idx) => { if (idx === 1) pick(true); if (idx === 2) pick(false); },
+      );
+    } else {
+      Alert.alert('Agregar foto', '', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Tomar foto', onPress: () => pick(true) },
+        { text: 'Elegir de galería', onPress: () => pick(false) },
+      ]);
+    }
+  };
+
   const handlePlusPress = (isNight) => {
     const openStep = () => { setStepName(''); setStepDesc(''); setAddStepModal({ visible: true, isNight }); };
     const openDiary = () => {
       setDiaryHairFeel([]); setDiaryHydration(''); setDiaryScalp('');
       setDiaryHeat(null); setDiaryWashed(null); setDiaryNote('');
+      setDiaryPhotos([]);
       setDiaryModal(true);
     };
     if (Platform.OS === 'ios') {
@@ -861,6 +903,25 @@ export default function CalendarScreen({ route, navigation }) {
                     multiline
                     maxLength={200}
                   />
+
+                  <View style={styles.diaryDivider} />
+
+                  <Text style={styles.diaryQuestion}>Fotos del cabello</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.diaryPhotosRow}>
+                    {diaryPhotos.map((url, i) => (
+                      <Image key={i} source={{ uri: url }} style={styles.diaryPhotoThumb} />
+                    ))}
+                    <TouchableOpacity
+                      style={styles.diaryPhotoAdd}
+                      onPress={handleDiaryPhoto}
+                      disabled={diaryPhotoUploading}
+                      activeOpacity={0.75}
+                    >
+                      {diaryPhotoUploading
+                        ? <ActivityIndicator size="small" color="#BF789C" />
+                        : <Ionicons name="camera-outline" size={26} color="#D6A4A4" />}
+                    </TouchableOpacity>
+                  </ScrollView>
 
                   <TouchableOpacity style={styles.stepSaveBtn} activeOpacity={0.85} onPress={saveDiary} disabled={diarySaving}>
                     <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stepSaveBtnGradient}>
@@ -1358,6 +1419,29 @@ const styles = StyleSheet.create({
     borderColor: '#F0E0E8',
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+
+  // diary photos
+  diaryPhotosRow: {
+    gap: 10,
+    paddingBottom: 4,
+  },
+  diaryPhotoThumb: {
+    width: 80,
+    height: 100,
+    borderRadius: 12,
+    backgroundColor: '#F5E8EC',
+  },
+  diaryPhotoAdd: {
+    width: 80,
+    height: 100,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E8D0D8',
+    borderStyle: 'dashed',
+    backgroundColor: '#FDF5F8',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // chips

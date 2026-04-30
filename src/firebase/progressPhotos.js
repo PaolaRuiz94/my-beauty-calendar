@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
-export async function addProgressPhoto(userId, uri) {
+export async function addProgressPhoto(userId, uri, date) {
   const timestamp = Date.now();
   const storagePath = `progress_photos/${userId}/${timestamp}.jpg`;
   const storageRef = ref(storage, storagePath);
@@ -15,9 +15,10 @@ export async function addProgressPhoto(userId, uri) {
   await addDoc(collection(db, 'users', userId, 'progressPhotos'), {
     url,
     storagePath,
-    date: new Date().toISOString().split('T')[0],
+    date: date || new Date().toISOString().split('T')[0],
     createdAt: timestamp,
   });
+  return url;
 }
 
 export function subscribeToProgressPhotos(userId, callback) {

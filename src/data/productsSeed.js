@@ -41,6 +41,8 @@ export const productsSeed = [
     tags: ['reparador', 'bond builder', 'sin sulfatos', 'daño', 'color'],
     profiles: ['isChemical', 'isHeatDamaged', 'highPorosity', 'needsProtein'],
     link: 'https://olaplex.com/products/no-4-bond-maintenance-shampoo',
+    asin: 'B07D37PQGL',
+    amazonLink: 'https://www.amazon.com/dp/B07D37PQGL?tag=malmabeauty-20',
   },
   {
     id: 'olaplex-no4c-clarifying',

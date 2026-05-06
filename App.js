@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import CalendarScreen from './src/components/CalendarScreen';
 import DetailScreen from './src/components/DetailScreen';
+import ExplorarScreen from './src/components/ExplorarScreen';
 import ProductsScreen from './src/components/ProductsScreen';
 import CommunityScreen from './src/components/CommunityScreen';
 import SplashScreen from './src/components/SplashScreen';
@@ -73,7 +74,7 @@ function CalendarStackScreen() {
 const TAB_ICONS = {
   Calendario: ['calendar', 'calendar-outline'],
   Diagnóstico: ['analytics', 'analytics-outline'],
-  Productos: ['flask', 'flask-outline'],
+  Explorar: ['compass', 'compass-outline'],
   Comunidad: ['people', 'people-outline'],
   Perfil: ['person', 'person-outline'],
 };
@@ -105,7 +106,7 @@ function MainTabNavigator() {
     >
       <Tab.Screen name="Calendario" component={CalendarStackScreen} />
       <Tab.Screen name="Diagnóstico" component={DiagnosisScreen} />
-      <Tab.Screen name="Productos" component={ProductsScreen} />
+      <Tab.Screen name="Explorar" component={ExplorarScreen} />
       <Tab.Screen name="Comunidad" component={CommunityScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>

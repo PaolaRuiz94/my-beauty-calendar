@@ -5,9 +5,11 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ScrollView,
   Modal,
   Animated,
+  PanResponder,
   Platform,
   ActionSheetIOS,
   KeyboardAvoidingView,
@@ -297,12 +299,32 @@ export default function CalendarScreen({ route, navigation }) {
   const isLoaded = useRef(false);
 
   // ── Agregar paso ────────────────────────────────────────────────────────────
+  const [addPickerModal, setAddPickerModal] = useState({ visible: false, isNight: false });
   const [addStepModal, setAddStepModal] = useState({ visible: false, isNight: false });
   const [stepName, setStepName] = useState('');
   const [stepDesc, setStepDesc] = useState('');
 
   // ── Diario ─────────────────────────────────────────────────────────────────
   const [diaryModal,    setDiaryModal]    = useState(false);
+  const diaryTranslateY = useRef(new Animated.Value(0)).current;
+  const diaryPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderMove: (_, g) => {
+        if (g.dy > 0) diaryTranslateY.setValue(g.dy);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 100) {
+          Animated.timing(diaryTranslateY, { toValue: 600, duration: 220, useNativeDriver: true }).start(() => {
+            setDiaryModal(false);
+            diaryTranslateY.setValue(0);
+          });
+        } else {
+          Animated.spring(diaryTranslateY, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
   const [diaryHairFeel, setDiaryHairFeel] = useState([]);
   const [diaryHydration,setDiaryHydration]= useState('');
   const [diaryScalp,    setDiaryScalp]    = useState('');
@@ -553,25 +575,21 @@ export default function CalendarScreen({ route, navigation }) {
   };
 
   const handlePlusPress = (isNight) => {
-    const openStep = () => { setStepName(''); setStepDesc(''); setAddStepModal({ visible: true, isNight }); };
-    const openDiary = () => {
-      setDiaryHairFeel([]); setDiaryHydration(''); setDiaryScalp('');
-      setDiaryHeat(null); setDiaryWashed(null); setDiaryNote('');
-      setDiaryPhotos([]);
-      setDiaryModal(true);
-    };
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancelar', 'Agregar paso', 'Diario del cabello'], cancelButtonIndex: 0 },
-        (idx) => { if (idx === 1) openStep(); if (idx === 2) openDiary(); },
-      );
-    } else {
-      Alert.alert('¿Qué quieres agregar?', '', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Agregar paso', onPress: openStep },
-        { text: 'Diario del cabello', onPress: openDiary },
-      ]);
-    }
+    setAddPickerModal({ visible: true, isNight });
+  };
+
+  const openStep = (isNight) => {
+    setAddPickerModal({ visible: false, isNight: false });
+    setStepName(''); setStepDesc('');
+    setAddStepModal({ visible: true, isNight });
+  };
+
+  const openDiary = () => {
+    setAddPickerModal({ visible: false, isNight: false });
+    setDiaryHairFeel([]); setDiaryHydration(''); setDiaryScalp('');
+    setDiaryHeat(null); setDiaryWashed(null); setDiaryNote('');
+    setDiaryPhotos([]);
+    setDiaryModal(true);
   };
 
   const saveDiary = async () => {
@@ -805,49 +823,91 @@ export default function CalendarScreen({ route, navigation }) {
           </View>
         </Modal>
 
-        {/* ── Modal agregar paso ── */}
-        <Modal visible={addStepModal.visible} transparent animationType="slide" onRequestClose={() => setAddStepModal(p => ({ ...p, visible: false }))}>
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalSheet}>
-                <View style={styles.modalHandle} />
-                <Text style={styles.modalTitle}>Agregar paso</Text>
-                <Text style={styles.modalCategory}>{addStepModal.isNight ? 'Rutina de noche' : 'Rutina de día'}</Text>
-                <TextInput
-                  style={styles.stepInput}
-                  placeholder="Nombre (ej. Mascarilla de proteína)"
-                  placeholderTextColor="#CCC"
-                  value={stepName}
-                  onChangeText={setStepName}
-                  autoFocus
-                />
-                <TextInput
-                  style={[styles.stepInput, { marginTop: 10, minHeight: 72, textAlignVertical: 'top' }]}
-                  placeholder="Descripción (opcional)"
-                  placeholderTextColor="#CCC"
-                  value={stepDesc}
-                  onChangeText={setStepDesc}
-                  multiline
-                />
-                <TouchableOpacity
-                  style={[styles.stepSaveBtn, !stepName.trim() && { opacity: 0.4 }]}
-                  disabled={!stepName.trim()}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    const text = stepDesc.trim() ? `${stepName.trim()}: ${stepDesc.trim()}` : stepName.trim();
-                    addUnplannedStep(text, addStepModal.isNight);
-                    setAddStepModal({ visible: false, isNight: false });
-                  }}
-                >
-                  <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stepSaveBtnGradient}>
-                    <Text style={styles.stepSaveBtnText}>Agregar paso</Text>
+        {/* ── Modal selector agregar ── */}
+        <Modal visible={addPickerModal.visible} transparent animationType="fade" onRequestClose={() => setAddPickerModal({ visible: false, isNight: false })}>
+          <TouchableWithoutFeedback onPress={() => setAddPickerModal({ visible: false, isNight: false })}>
+            <View style={styles.pickerOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.pickerSheet}>
+                  <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.pickerTitleBar}>
+                    <Text style={styles.pickerTitleText}>¿Qué quieres agregar?</Text>
                   </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.modalCancel} onPress={() => setAddStepModal({ visible: false, isNight: false })}>
-                  <Text style={styles.modalCancelText}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity style={styles.pickerOption} onPress={() => openStep(addPickerModal.isNight)} activeOpacity={0.75}>
+                    <View style={styles.pickerOptionIcon}>
+                      <Ionicons name="list-outline" size={22} color="#BF789C" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.pickerOptionTitle}>Agregar paso a la rutina</Text>
+                      <Text style={styles.pickerOptionSub}>Añade un paso personalizado a tu rutina de {addPickerModal.isNight ? 'noche' : 'día'}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color="#DDB4CC" />
+                  </TouchableOpacity>
+                  <View style={styles.pickerDivider} />
+                  <TouchableOpacity style={styles.pickerOption} onPress={openDiary} activeOpacity={0.75}>
+                    <View style={[styles.pickerOptionIcon, { backgroundColor: '#F0ECFF' }]}>
+                      <Ionicons name="book-outline" size={22} color="#7B61FF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.pickerOptionTitle}>Diario del cabello</Text>
+                      <Text style={styles.pickerOptionSub}>Registra cómo está tu cabello hoy</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color="#C0B8E8" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.modalCancel} onPress={() => setAddPickerModal({ visible: false, isNight: false })}>
+                    <Text style={styles.modalCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
             </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        {/* ── Modal agregar paso ── */}
+        <Modal visible={addStepModal.visible} transparent animationType="fade" onRequestClose={() => setAddStepModal(p => ({ ...p, visible: false }))}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <TouchableWithoutFeedback onPress={() => setAddStepModal({ visible: false, isNight: false })}>
+              <View style={styles.pickerOverlay}>
+                <TouchableWithoutFeedback onPress={() => {}}>
+                  <View style={[styles.pickerSheet, { paddingBottom: 20 }]}>
+                    <Text style={styles.modalTitle}>Agregar paso a la rutina</Text>
+                    <Text style={styles.modalCategory}>{addStepModal.isNight ? 'Rutina de noche' : 'Rutina de día'}</Text>
+                    <TextInput
+                      style={styles.stepInput}
+                      placeholder="Nombre (ej. Mascarilla de proteína)"
+                      placeholderTextColor="#CCC"
+                      value={stepName}
+                      onChangeText={setStepName}
+                      autoFocus
+                    />
+                    <TextInput
+                      style={[styles.stepInput, { marginTop: 10, minHeight: 72, textAlignVertical: 'top' }]}
+                      placeholder="Descripción (opcional)"
+                      placeholderTextColor="#CCC"
+                      value={stepDesc}
+                      onChangeText={setStepDesc}
+                      multiline
+                    />
+                    <TouchableOpacity
+                      style={[styles.stepSaveBtn, !stepName.trim() && { opacity: 0.4 }]}
+                      disabled={!stepName.trim()}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        const text = stepDesc.trim() ? `${stepName.trim()}: ${stepDesc.trim()}` : stepName.trim();
+                        addUnplannedStep(text, addStepModal.isNight);
+                        setAddStepModal({ visible: false, isNight: false });
+                      }}
+                    >
+                      <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stepSaveBtnGradient}>
+                        <Text style={styles.stepSaveBtnText}>Agregar paso a la rutina</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.modalCancel} onPress={() => setAddStepModal({ visible: false, isNight: false })}>
+                      <Text style={styles.modalCancelText}>Cancelar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
           </KeyboardAvoidingView>
         </Modal>
 
@@ -855,8 +915,8 @@ export default function CalendarScreen({ route, navigation }) {
         <Modal visible={diaryModal} transparent animationType="slide" onRequestClose={() => setDiaryModal(false)}>
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View style={[styles.modalOverlay, { justifyContent: 'flex-end' }]}>
-              <View style={styles.diarySheet}>
-                <View style={styles.modalHandle} />
+              <Animated.View style={[styles.diarySheet, { transform: [{ translateY: diaryTranslateY }] }]}>
+                <View style={styles.modalHandle} {...diaryPanResponder.panHandlers} />
                 <View style={styles.diaryHeader}>
                   <Text style={styles.diaryTitle}>Diario del cabello</Text>
                   <Text style={styles.diaryDate}>{fmtDate(selectedDate)}</Text>
@@ -930,7 +990,7 @@ export default function CalendarScreen({ route, navigation }) {
                   </TouchableOpacity>
 
                 </ScrollView>
-              </View>
+              </Animated.View>
             </View>
           </KeyboardAvoidingView>
         </Modal>
@@ -1488,6 +1548,70 @@ const styles = StyleSheet.create({
   },
   yesNoBtnTextActive: {
     color: '#fff',
+  },
+
+  // picker modal (selector agregar)
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  pickerSheet: {
+    backgroundColor: '#FDF5F8',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    width: '100%',
+    shadowColor: '#BF789C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  pickerTitleBar: {
+    borderRadius: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    marginBottom: 16,
+  },
+  pickerTitleText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 15,
+    letterSpacing: 0.3,
+  },
+  pickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 14,
+  },
+  pickerOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    backgroundColor: '#FDEAF2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2D2D2D',
+    marginBottom: 2,
+  },
+  pickerOptionSub: {
+    fontSize: 12,
+    color: '#AAA',
+    fontWeight: '500',
+  },
+  pickerDivider: {
+    height: 1,
+    backgroundColor: '#F0E0E8',
+    marginVertical: 2,
   },
 
   // streak modal

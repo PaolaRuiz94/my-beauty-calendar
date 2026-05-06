@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 
 const CONTENT = {
   'Para rizadas': {
+    fact: 'El patrón rizado evolucionó en África para proteger el cuero cabelludo del sol intenso — cada espiral actúa como un escudo natural contra el calor.',
     beauty: 'El cabello rizado es una obra de arte viva. Cada rizo es un espiral único, una firma genética que narra siglos de historia, mezcla de culturas y fortaleza heredada. Lejos de ser "difícil de manejar", el cabello rizado es abundante, lleno de personalidad y con una energía que no pasa desapercibida. Cuidarlo es un acto de amor propio.',
     origin: 'El patrón rizado tiene raíces en África, donde la densidad y la forma espiral del cabello protegían el cuero cabelludo del sol intenso. Con la diáspora africana, estas texturas viajaron por el mundo y se mezclaron con otras culturas, dando lugar a los rizos que hoy vemos en América Latina, el Caribe y Europa. Durante siglos el cabello rizado fue suprimido por estándares de belleza eurocéntricos, pero hoy el movimiento natural reivindica su valor cultural y estético.',
     women: [
@@ -24,6 +25,7 @@ const CONTENT = {
     ],
   },
   'Para lisas': {
+    fact: 'En Japón existe el "7 skin method": aplicar hidratación en 7 capas finas para que el cabello y la piel absorban los nutrientes de forma progresiva y duradera.',
     beauty: 'El cabello liso tiene una elegancia que fluye con el movimiento. Su brillo natural, su suavidad al tacto y la facilidad con la que cae crean un marco perfecto para cualquier estilo. Lejos de ser "simple", el cabello liso tiene una versatilidad infinita: puede ser voluminoso, brillante, estructurado o completamente natural, todo dependiendo de cómo lo cuides y lo uses.',
     origin: 'El cabello liso predomina en Asia oriental, Europa y América, y ha sido históricamente asociado a ideales de belleza en muchas culturas. En Japón, el ritual del cuidado capilar con aceites y técnicas ancestrales elevó el cabello liso a símbolo de salud y feminidad. En Latinoamérica, la diversidad de texturas convive con una larga historia de valoración del "pelo bueno", una narrativa que hoy se transforma hacia la aceptación de todas las texturas.',
     women: [
@@ -34,6 +36,7 @@ const CONTENT = {
     ],
   },
   'Para onduladas': {
+    fact: 'El cabello ondulado cambia de forma según la humedad ambiental — en días húmedos las ondas se intensifican porque la fibra capilar absorbe el agua del aire y se curva más.',
     beauty: 'El cabello ondulado vive entre dos mundos y lo hace con una gracia incomparable. Sus ondas naturales aportan movimiento, volumen y una textura que parece recién salida de la playa. Es un cabello que cambia con el clima, con el humor y con la humedad, lo que lo hace impredecible y emocionante. Aprender a trabajar con él —no contra él— es descubrir una de las texturas más versátiles que existen.',
     origin: 'Las ondas son frecuentes en las regiones mediterráneas, el Medio Oriente y Latinoamérica, fruto de mezclas genéticas que atravesaron continentes. En la cultura griega y romana, las ondas naturales eran símbolo de belleza y fertilidad, representadas en esculturas y pinturas. En el Caribe y Sudamérica, el cabello ondulado es parte del mestizaje cultural, una textura que lleva la historia de varias razas en una sola fibra.',
     women: [
@@ -44,6 +47,7 @@ const CONTENT = {
     ],
   },
   'Transición capilar': {
+    fact: 'Durante la transición capilar conviven dos texturas distintas en el mismo cabello — la raíz natural y la punta procesada. Cortarlas progresivamente (en lugar de todo de golpe) reduce la rotura y facilita el proceso.',
     beauty: 'La transición capilar es uno de los actos de amor propio más poderosos que una mujer puede hacer. Es la decisión de dejar atrás los procesos químicos y redescubrir la textura con la que naciste. No es solo un cambio de cabello, es un cambio de perspectiva: aprender a querer lo que siempre fue tuyo y que tal vez nunca te permitiste ver.',
     origin: 'El movimiento "natural hair" nació con fuerza en Estados Unidos a mediados del siglo XX como respuesta política y cultural al Black Power. En los 2010s resurgió en redes sociales, creando comunidades globales de mujeres que compartían su proceso de transición. En Latinoamérica el movimiento tomó fuerza como rechazo al alisado compulsivo y afirmación de identidades afrodescendientes e indígenas.',
     women: [
@@ -54,6 +58,7 @@ const CONTENT = {
     ],
   },
   'Skincare': {
+    fact: 'Cleopatra se bañaba en leche de burra para mantener su piel suave — el ácido láctico de la leche es uno de los exfoliantes más antiguos del mundo y sigue siendo un ingrediente activo en productos modernos.',
     beauty: 'Tu piel es el órgano más grande de tu cuerpo y el que más expones al mundo cada día. Cuidarla no es vanidad, es salud. Una rutina de skincare consciente y personalizada no solo mejora la apariencia de la piel, sino que crea un momento diario de conexión contigo misma, de presencia y de autocuidado que impacta cómo te sientes por dentro.',
     origin: 'El cuidado de la piel tiene miles de años de historia. En el Antiguo Egipto, Cleopatra se bañaba en leche para suavizar su piel. En China, las recetas de jade y té verde para tratar la piel datan de hace 2.000 años. En Japón, el ritual de 7 capas de hidratación (conocido como "7 skin method") sigue vigente. Hoy la industria del skincare fusiona ciencia moderna con sabiduría ancestral.',
     women: [
@@ -64,6 +69,7 @@ const CONTENT = {
     ],
   },
   'Mejores peluquerías': {
+    fact: 'En la antigua Grecia los barberos eran también filósofos y consejeros — la peluquería era el lugar donde se tomaban decisiones políticas y se compartían noticias de la ciudad.',
     beauty: 'Encontrar a tu estilista ideal es como encontrar a tu terapeuta de cabello: alguien que te escucha, entiende tu textura y sabe exactamente cómo potenciarla. Una buena peluquería no solo te corta el cabello, te da confianza. El ritual de la peluquería tiene algo de sagrado: es el lugar donde te transformas y sales siendo un poco más tú.',
     origin: 'Las peluquerías tienen origen en la antigua Grecia, donde los barberos eran también filósofos y consejeros de la comunidad. En África, el peinado ha sido durante siglos un ritual social y espiritual que marcaba estatus, identidad y celebración. En América Latina, la "peluquería de barrio" es parte de la cultura popular, un espacio de encuentro y conversación que va más allá del corte.',
     women: [
@@ -74,6 +80,7 @@ const CONTENT = {
     ],
   },
   'Colorimetría': {
+    fact: 'El balayage fue inventado en Francia en los años 70 — la palabra significa "barrer" en francés, describiendo la técnica de pintar el color a mano libre sin papel de aluminio para lograr un efecto más natural.',
     beauty: 'El color puede cambiar cómo te ves, pero sobre todo cómo te sientes. Elegir el tono correcto para tu piel, tus ojos y tu personalidad es un arte que cuando se hace bien, parece magia. La colorimetría va más allá de teñirse: es entender la armonía entre tu tono de piel y los colores que usas, tanto en el cabello como en la ropa.',
     origin: 'La teoría del color en cabello comenzó a formalizarse en el siglo XIX con el desarrollo de los primeros tintes sintéticos. En los años 60, Vidal Sassoon democratizó el color capilar como expresión artística. En los 80, la colorimetría estacional (primavera, verano, otoño, invierno) se convirtió en sistema de asesoría de imagen. Hoy, con técnicas como balayage, highlights y degradados, el color es más personalizado que nunca.',
     women: [
@@ -108,6 +115,51 @@ export default function CategoryDetailScreen({ route, navigation }) {
             <Text style={styles.heroTitle}>{title}</Text>
           </LinearGradient>
         </ImageBackground>
+
+        {/* ── Consejos carrusel ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="heart-outline" size={14} color="#BF789C" />
+            <Text style={styles.sectionLabel}>CONSEJOS PARA TI</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
+            {data.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.tipCard}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('TipDetail', {
+                  title: `${title} • ${item.title}`,
+                  description: item.description,
+                  body: item.body,
+                  cta: item.cta,
+                  tipKey: item.title,
+                })}
+              >
+                <View style={styles.tipNum}>
+                  <Text style={styles.tipNumText}>{String(index + 1).padStart(2, '0')}</Text>
+                </View>
+                <Text style={styles.tipTitle}>{item.title}</Text>
+                <Text style={styles.tipDesc} numberOfLines={3}>{item.description}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* ── ¿Sabías que? ── */}
+        {content.fact ? (
+          <View style={styles.factCard}>
+            <View style={styles.factHeader}>
+              <Ionicons name="bulb-outline" size={15} color="#BF789C" />
+              <Text style={styles.factLabel}>¿SABÍAS QUE?</Text>
+            </View>
+            <Text style={styles.factText}>{content.fact}</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.divider} />
 
         {/* ── Belleza ── */}
         <View style={styles.section}>
@@ -152,41 +204,11 @@ export default function CategoryDetailScreen({ route, navigation }) {
 
         <View style={styles.divider} />
 
-        {/* ── Consejos carrusel ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="heart-outline" size={14} color="#BF789C" />
-            <Text style={styles.sectionLabel}>CONSEJOS PARA TI</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
-            {data.map((item, index) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.tipCard}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('TipDetail', {
-                  title: `${title} • ${item.title}`,
-                  description: item.description,
-                  body: item.body,
-                  cta: item.cta,
-                  tipKey: item.title,
-                })}
-              >
-                <View style={styles.tipNum}>
-                  <Text style={styles.tipNumText}>{String(index + 1).padStart(2, '0')}</Text>
-                </View>
-                <Text style={styles.tipTitle}>{item.title}</Text>
-                <Text style={styles.tipDesc} numberOfLines={3}>{item.description}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
         {/* ── Botón productos ── */}
         <TouchableOpacity
           style={styles.productsBtn}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('Productos')}
+          onPress={() => navigation.navigate('Explorar')}
         >
           <LinearGradient
             colors={['#DEB4CC', '#BF789C']}
@@ -332,6 +354,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     lineHeight: 18,
+  },
+  factCard: {
+    marginHorizontal: 20,
+    marginVertical: 4,
+    backgroundColor: '#FDF0F5',
+    borderRadius: 18,
+    padding: 18,
+    borderLeftWidth: 3,
+    borderLeftColor: '#BF789C',
+  },
+  factHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 10,
+  },
+  factLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#BF789C',
+    letterSpacing: 1.2,
+  },
+  factText: {
+    fontSize: 14,
+    color: '#555',
+    lineHeight: 22,
+    fontStyle: 'italic',
   },
   productsBtn: {
     marginHorizontal: 20,

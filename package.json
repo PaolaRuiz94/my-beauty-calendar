@@ -35,6 +35,7 @@
   },
   "private": true,
   "devDependencies": {
+    "firebase-admin": "^13.8.0",
     "typescript": "~5.9.2"
   }
 }

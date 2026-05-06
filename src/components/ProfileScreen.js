@@ -23,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase/config';
 import { useAuth } from '../auth/AuthContext';
+import CitasModal from './CitasModal';
 import {
   addProgressPhoto,
   subscribeToProgressPhotos,
@@ -306,6 +307,9 @@ function ProfileView() {
     const unsub = subscribeToProgressPhotos(user.uid, setProgressPhotos);
     return unsub;
   }, [user?.uid]);
+
+  // ── Citas modal ───────────────────────────────────────────────────────────────
+  const [citasVisible, setCitasVisible] = useState(false);
 
   const handleAddProgressPhoto = useCallback(() => {
     const pick = async (fromCamera) => {
@@ -598,6 +602,19 @@ function ProfileView() {
                 </View>
               )}
 
+              {/* ── Mis Citas ── */}
+              <TouchableOpacity
+                style={styles.citasBtn}
+                onPress={() => setCitasVisible(true)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.citasBtnLeft}>
+                  <Ionicons name="calendar-number-outline" size={18} color="#BF789C" />
+                  <Text style={styles.citasBtnText}>Mis citas</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#D6A4A4" />
+              </TouchableOpacity>
+
               <View style={[styles.sectionTitleRow, { marginTop: 28 }]}>
                 <Ionicons name="information-circle-outline" size={13} color="#D6A4A4" />
                 <Text style={styles.sectionTitle}>Acerca de</Text>
@@ -624,6 +641,12 @@ function ProfileView() {
             </>
           )}
         </ScrollView>
+
+        <CitasModal
+          visible={citasVisible}
+          onClose={() => setCitasVisible(false)}
+          userId={user?.uid}
+        />
 
         {/* ── Modal foto de progreso ── */}
         <Modal visible={!!selectedPhoto} transparent animationType="fade" onRequestClose={() => setSelectedPhoto(null)}>
@@ -1100,5 +1123,121 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
+  },
+
+  // citas
+  citasBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    marginBottom: 0,
+    shadowColor: '#C47898',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  citasBtnLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  citasBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2D2D2D',
+  },
+  citasSubLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#D6A4A4',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  citasEmpty: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 24,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#C47898',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  citasEmptyText: {
+    fontSize: 13,
+    color: '#CCC',
+    fontWeight: '600',
+  },
+  citaRow: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 10,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    shadowColor: '#C47898',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  citaAccent: {
+    width: 5,
+  },
+  citaBody: {
+    flex: 1,
+    padding: 14,
+  },
+  citaTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  citaNombre: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#2D2D2D',
+    flex: 1,
+  },
+  citaCancelBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#F5F0F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  citaDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 8,
+  },
+  citaDate: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '600',
+  },
+  citaEstado: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF8EC',
+    borderRadius: 99,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  citaEstadoConfirmada: { backgroundColor: '#EDFFF5' },
+  citaEstadoCancelada:  { backgroundColor: '#F5F5F5' },
+  citaEstadoText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E5A020',
   },
 });

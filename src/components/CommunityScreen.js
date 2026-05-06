@@ -36,6 +36,19 @@ import colorimetriaImage from '../../assets/colorimetria.jpg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+const QUICK_TIPS = [
+  'Duerme con una funda de almohada de seda para reducir el frizz y la rotura nocturna.',
+  'Aplica los productos siempre de mayor a menor peso: agua, crema, gel, aceite.',
+  'El agua fría al final del lavado sella la cutícula y aporta más brillo.',
+  'Masajea el cuero cabelludo 5 minutos al día para estimular la circulación y el crecimiento.',
+  'Nunca peines el cabello rizado seco — siempre con agua o leave-in aplicado.',
+  'El exceso de proteína reseca: alterna tratamientos proteicos con mascarillas hidratantes.',
+  'Protege el cabello del sol igual que la piel — el UV daña la cutícula y desvanece el color.',
+  'Cortar las puntas cada 8–12 semanas evita que la rotura suba por el cabello.',
+  'Lavar con agua tibia y enjuagar con fría: el calor abre la cutícula, el frío la cierra.',
+  'Menos es más: demasiados productos al mismo tiempo saturan el cabello y lo apagan.',
+];
+
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const categories = [
@@ -437,31 +450,32 @@ export default function CommunityScreen({ navigation }) {
                   >
                     <Text style={styles.featuredTag}>{isPersonalized ? 'Recomendado para ti' : 'Destacado'}</Text>
                     <Text style={styles.featuredTitle}>{section.title}</Text>
-                    <Text style={styles.featuredSub} numberOfLines={2}>
-                      Descubre consejos y rutinas para tu cabello.
-                    </Text>
+                    <View style={styles.featuredBottomRow}>
+                      <Text style={styles.featuredSub} numberOfLines={1}>
+                        Descubre consejos y rutinas para tu cabello.
+                      </Text>
+                      <View style={styles.consejosBadge}>
+                        <Text style={styles.consejosBadgeText}>{section.data.length} consejos</Text>
+                      </View>
+                    </View>
                   </LinearGradient>
                 </ImageBackground>
               </TouchableOpacity>
 
-              {/* Preview chips */}
-              <TouchableOpacity
-                style={styles.previewRow}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('CategoryDetail', { title: section.title, data: section.data, image })}
-              >
-                {section.data.slice(0, 3).map((item) => (
-                  <View key={item.id} style={styles.previewChip}>
-                    <Text style={styles.previewChipText} numberOfLines={1}>{item.title}</Text>
-                  </View>
-                ))}
-                {section.data.length > 3 && (
-                  <View style={styles.previewChipMore}>
-                    <Text style={styles.previewChipMoreText}>+{section.data.length - 3}</Text>
-                    <Ionicons name="chevron-forward" size={11} color="#BF789C" />
-                  </View>
-                )}
-              </TouchableOpacity>
+              {/* ── Tip rápido ── */}
+              {sectionIndex < sortedCategories.length - 1 && (
+                <LinearGradient
+                  colors={['#F5DCEC', '#EDD0E8']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.quickTipCard}
+                >
+                  <Text style={styles.quickTipLabel}>✦  TIP RÁPIDO</Text>
+                  <Text style={styles.quickTipText}>
+                    {QUICK_TIPS[(sectionIndex) % QUICK_TIPS.length]}
+                  </Text>
+                </LinearGradient>
+              )}
             </View>
           </View>
           );
@@ -969,10 +983,52 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     lineHeight: 26,
   },
+  featuredBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 4,
+  },
   featuredSub: {
     color: 'rgba(255,255,255,0.78)',
     fontSize: 13,
     lineHeight: 19,
+    flex: 1,
+  },
+  quickTipCard: {
+    marginHorizontal: 4,
+    marginTop: 10,
+    marginBottom: 4,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+  },
+  quickTipLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#BF789C',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  quickTipText: {
+    fontSize: 14,
+    color: '#5A3050',
+    lineHeight: 21,
+    fontWeight: '500',
+  },
+  consejosBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  consejosBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   carouselContent: {
     paddingBottom: 6,

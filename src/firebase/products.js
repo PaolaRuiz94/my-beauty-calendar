@@ -15,13 +15,9 @@ const COL = 'products';
 // ── Seed (ejecutar una sola vez) ──────────────────────────────────────────────
 
 export async function initProducts() {
-  const snap = await getDocs(collection(db, COL));
-  const existingIds = new Set(snap.docs.map(d => d.id));
-  const missing = ALL_PRODUCTS.filter(p => !existingIds.has(p.id));
-  if (missing.length === 0) return;
-
-  await Promise.all(missing.map(({ id, ...data }) => setDoc(doc(db, COL, id), data)));
-  console.log(`✅ ${missing.length} productos nuevos cargados en Firestore`);
+  await Promise.all(
+    ALL_PRODUCTS.map(({ id, ...data }) => setDoc(doc(db, COL, id), data, { merge: true }))
+  );
 }
 
 // ── Consultas ─────────────────────────────────────────────────────────────────

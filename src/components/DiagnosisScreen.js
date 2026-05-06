@@ -445,7 +445,7 @@ export default function DiagnosisScreen({ navigation }) {
             <Text style={styles.sectionTitle}>Productos sugeridos</Text>
           </View>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Productos')}
+            onPress={() => navigation.navigate('Explorar')}
             activeOpacity={0.85}
             style={styles.productsButton}
           >

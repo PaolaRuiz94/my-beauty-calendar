@@ -9,6 +9,7 @@ import {
   Dimensions,
   ScrollView,
   Modal,
+  Linking,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,8 +23,23 @@ import { fetchRoutineVideos } from '../firebase/videos';
 import YouTubeCarousel from './YouTubeCarousel';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MODAL_VIDEO_HEIGHT = SCREEN_HEIGHT * 0.75 - 48 - 70; // 75% - título - descripción
+const MODAL_VIDEO_HEIGHT = SCREEN_HEIGHT * 0.75 - 48 - 70;
 const MODAL_WIDTH = MODAL_VIDEO_HEIGHT * (9 / 16);
+
+const STEP_TO_KEY = {
+  shampoo: 'lavado',
+  acondicionador: 'lavado',
+  tratamiento: 'tratamiento',
+  'leave-in': 'definicion',
+  'aceite sellador': 'secado',
+};
+
+function getStepVideoKey(label, texture) {
+  if (!label || !texture) return null;
+  const lower = label.toLowerCase();
+  const stepKey = lower.startsWith('método') ? 'definicion' : STEP_TO_KEY[lower];
+  return stepKey ? `${texture.toLowerCase()}_${stepKey}` : null;
+}
 
 const questions = [
   {
@@ -538,22 +554,50 @@ export default function DiagnosisScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.videoContainer}>
-                <Video
-                  ref={videoRef}
-                  source={{ uri: routineVideos[videoModal.label?.toLowerCase()]?.uri ?? 'https://firebasestorage.googleapis.com/v0/b/my-beauty-calendar-72f2b.firebasestorage.app/o/21d0150d450a4ce683e9afff4e800bdb.MOV?alt=media&token=6c11631d-e8a4-44b4-b998-654c350b8a68' }}
-                  style={styles.modalVideo}
-                  resizeMode={ResizeMode.CONTAIN}
-                  shouldPlay
-                  useNativeControls
-                />
-                <TouchableOpacity
-                  style={styles.expandBtn}
-                  onPress={() => videoRef.current?.presentFullscreenPlayer()}
-                >
-                  <Ionicons name="expand-outline" size={18} color="#fff" />
-                </TouchableOpacity>
-              </View>
+              {(() => {
+                const ytKey = getStepVideoKey(videoModal.label, result?.texture);
+                const ytVideo = ytKey ? routineVideos[ytKey] : null;
+                if (ytVideo?.youtubeId) {
+                  const ytId = ytVideo.youtubeId;
+                  return (
+                    <TouchableOpacity
+                      style={styles.ytThumbWrap}
+                      activeOpacity={0.88}
+                      onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${ytId}`)}
+                    >
+                      <Image
+                        source={{ uri: `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` }}
+                        style={styles.ytThumb}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.ytPlayOverlay}>
+                        <View style={styles.ytPlayBtn}>
+                          <Ionicons name="logo-youtube" size={28} color="#fff" />
+                        </View>
+                        <Text style={styles.ytPlayLabel}>Ver en YouTube</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }
+                return (
+                  <View style={styles.videoContainer}>
+                    <Video
+                      ref={videoRef}
+                      source={{ uri: routineVideos[videoModal.label?.toLowerCase()]?.uri ?? '' }}
+                      style={styles.modalVideo}
+                      resizeMode={ResizeMode.CONTAIN}
+                      shouldPlay
+                      useNativeControls
+                    />
+                    <TouchableOpacity
+                      style={styles.expandBtn}
+                      onPress={() => videoRef.current?.presentFullscreenPlayer()}
+                    >
+                      <Ionicons name="expand-outline" size={18} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })()}
 
               <Text style={styles.modalDesc}>{videoModal.value}</Text>
             </View>
@@ -1289,6 +1333,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5E8EC',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  ytThumbWrap: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#111',
+    marginBottom: 4,
+  },
+  ytThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  ytPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.38)',
+    gap: 8,
+  },
+  ytPlayBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF0000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ytPlayLabel: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   videoContainer: {
     position: 'relative',

@@ -603,6 +603,10 @@ function ProfileView() {
               )}
 
               {/* ── Mis Citas ── */}
+              <View style={[styles.sectionTitleRow, { marginTop: 28 }]}>
+                <Ionicons name="calendar-number-outline" size={13} color="#D6A4A4" />
+                <Text style={styles.sectionTitle}>Mis Citas</Text>
+              </View>
               <TouchableOpacity
                 style={styles.citasBtn}
                 onPress={() => setCitasVisible(true)}

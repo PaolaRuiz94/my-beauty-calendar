@@ -249,6 +249,8 @@ export default function ExplorarScreen({ navigation, route }) {
   const [peluquerias, setPeluquerias]       = useState([]);
   const [loadingPelu, setLoadingPelu]       = useState(true);
   const [userLocation, setUserLocation]     = useState(null);
+  const [userCity, setUserCity]             = useState(null);
+  const [soloMiCiudad, setSoloMiCiudad]     = useState(true);
   const [selectedFilter, setSelectedFilter] = useState('Todas');
   const [citasVisible, setCitasVisible]     = useState(false);
 
@@ -292,6 +294,9 @@ export default function ExplorarScreen({ navigation, route }) {
       if (status !== 'granted') return;
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setUserLocation(loc.coords);
+      const [place] = await Location.reverseGeocodeAsync(loc.coords);
+      const city = place?.city || place?.subregion || place?.region || null;
+      setUserCity(city);
     } catch {}
   };
 
@@ -362,6 +367,10 @@ export default function ExplorarScreen({ navigation, route }) {
 
   const peluqueriasFiltradas = peluquerias
     .filter(p => selectedFilter === 'Todas' || p.tipo === selectedFilter)
+    .filter(p => {
+      if (!soloMiCiudad || !userCity) return true;
+      return p.ciudad?.toLowerCase() === userCity.toLowerCase();
+    })
     .map(p => ({
       ...p,
       distancia: userLocation
@@ -438,6 +447,25 @@ export default function ExplorarScreen({ navigation, route }) {
             <Text style={styles.misCitasBtnText}>Ver mis citas</Text>
             <Ionicons name="chevron-forward" size={14} color="#D6A4A4" style={{ marginLeft: 'auto' }} />
           </TouchableOpacity>
+
+          {/* banner ciudad */}
+          {userCity && (
+            <View style={styles.cityBanner}>
+              <Ionicons name="location" size={14} color="#BF789C" />
+              <Text style={styles.cityBannerText} numberOfLines={1}>
+                {soloMiCiudad ? userCity : 'Todas las ciudades'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setSoloMiCiudad(v => !v)}
+                activeOpacity={0.75}
+                style={styles.cityToggleBtn}
+              >
+                <Text style={styles.cityToggleText}>
+                  {soloMiCiudad ? 'Ver todas' : `Solo ${userCity}`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* filtros */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
@@ -831,6 +859,35 @@ const styles = StyleSheet.create({
   },
   misCitasBtnText: {
     fontSize: 14,
+    fontWeight: '700',
+    color: '#BF789C',
+  },
+  cityBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: '#F0D8E8',
+  },
+  cityBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D2D',
+  },
+  cityToggleBtn: {
+    backgroundColor: '#FDF0F5',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  cityToggleText: {
+    fontSize: 12,
     fontWeight: '700',
     color: '#BF789C',
   },

@@ -1,14 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Image,
-  StyleSheet, ActivityIndicator, Linking,
+  StyleSheet, ActivityIndicator, Modal, Pressable, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import YoutubeIframe from 'react-native-youtube-iframe';
 import { searchYouTubeVideos } from '../services/youtube';
+
+const { width: SW } = Dimensions.get('window');
+const CARD_WIDTH = SW - 40;
+const VIDEO_HEIGHT = Math.round(CARD_WIDTH * 9 / 16);
 
 export default function YouTubeCarousel({ query, title = 'Videos para ti' }) {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -34,6 +40,7 @@ export default function YouTubeCarousel({ query, title = 'Videos para ti' }) {
         <Ionicons name="logo-youtube" size={16} color="#FF4444" />
         <Text style={styles.title}>{title}</Text>
       </View>
+
       <FlatList
         data={videos}
         keyExtractor={(item) => item.id}
@@ -44,7 +51,7 @@ export default function YouTubeCarousel({ query, title = 'Videos para ti' }) {
           <TouchableOpacity
             style={styles.card}
             activeOpacity={0.85}
-            onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${item.id}`)}
+            onPress={() => setSelected(item)}
           >
             <View style={styles.thumbWrap}>
               <Image source={{ uri: item.thumbnail }} style={styles.thumb} resizeMode="cover" />
@@ -57,6 +64,37 @@ export default function YouTubeCarousel({ query, title = 'Videos para ti' }) {
           </TouchableOpacity>
         )}
       />
+
+      <Modal
+        visible={!!selected}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelected(null)}
+      >
+        <Pressable style={styles.overlay} onPress={() => setSelected(null)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalTitleRow}>
+              <View style={styles.modalTitleDot} />
+              <Text style={styles.modalTitle} numberOfLines={2}>{selected?.title ?? ''}</Text>
+              <Pressable style={styles.modalClose} onPress={() => setSelected(null)}>
+                <Ionicons name="close" size={18} color="#D6A4A4" />
+              </Pressable>
+            </View>
+            {selected && (
+              <View style={styles.playerWrap}>
+                <YoutubeIframe
+                  videoId={selected.id}
+                  width={CARD_WIDTH}
+                  height={VIDEO_HEIGHT}
+                  play
+                />
+              </View>
+            )}
+            <Text style={styles.channelLabel} numberOfLines={1}>{selected?.channel ?? ''}</Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -121,5 +159,73 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#999',
     fontWeight: '500',
+  },
+  // modal
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(20,10,20,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    backgroundColor: '#1C1220',
+    borderRadius: 24,
+    overflow: 'hidden',
+    width: CARD_WIDTH,
+    shadowColor: '#D6A4A4',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(214,164,164,0.3)',
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  modalTitleDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D6A4A4',
+    flexShrink: 0,
+  },
+  modalTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#F5E0EC',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modalClose: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(214,164,164,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playerWrap: {
+    backgroundColor: '#000',
+  },
+  channelLabel: {
+    fontSize: 11,
+    color: 'rgba(245,224,236,0.5)',
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
 });

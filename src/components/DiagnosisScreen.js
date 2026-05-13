@@ -9,9 +9,9 @@ import {
   Dimensions,
   ScrollView,
   Modal,
-  Linking,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
+import YoutubeIframe from 'react-native-youtube-iframe';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,9 +22,9 @@ import { productDB, recommendationDB } from '../data/productDB';
 import { fetchRoutineVideos } from '../firebase/videos';
 import YouTubeCarousel from './YouTubeCarousel';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MODAL_VIDEO_HEIGHT = SCREEN_HEIGHT * 0.75 - 48 - 70;
-const MODAL_WIDTH = MODAL_VIDEO_HEIGHT * (9 / 16);
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MODAL_CARD_WIDTH = SCREEN_WIDTH - 48;
+const MODAL_VIDEO_HEIGHT = Math.round(MODAL_CARD_WIDTH * 9 / 16);
 
 const STEP_TO_KEY = {
   shampoo: 'lavado',
@@ -348,6 +348,7 @@ export default function DiagnosisScreen({ navigation }) {
     setResult({
       hairType: getHairType(answersObject),
       objective: getObjectiveLabel(answersObject.objective),
+      texture: answersObject.texture,
       porosity: getPorosity(answersObject.porosity),
       density: answersObject.density,
       scalpCondition: getScalpCondition(answersObject.scalp),
@@ -543,6 +544,7 @@ export default function DiagnosisScreen({ navigation }) {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
+              <View style={styles.modalHandle} />
               <View style={styles.modalTitleRow}>
                 <View style={styles.modalTitleDot} />
                 <Text style={styles.modalTitle} numberOfLines={2}>{videoModal.label}</Text>
@@ -560,23 +562,14 @@ export default function DiagnosisScreen({ navigation }) {
                 if (ytVideo?.youtubeId) {
                   const ytId = ytVideo.youtubeId;
                   return (
-                    <TouchableOpacity
-                      style={styles.ytThumbWrap}
-                      activeOpacity={0.88}
-                      onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${ytId}`)}
-                    >
-                      <Image
-                        source={{ uri: `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` }}
-                        style={styles.ytThumb}
-                        resizeMode="cover"
+                    <View style={styles.ytPlayerWrap}>
+                      <YoutubeIframe
+                        videoId={ytId}
+                        width={MODAL_CARD_WIDTH}
+                        height={MODAL_VIDEO_HEIGHT}
+                        play
                       />
-                      <View style={styles.ytPlayOverlay}>
-                        <View style={styles.ytPlayBtn}>
-                          <Ionicons name="logo-youtube" size={28} color="#fff" />
-                        </View>
-                        <Text style={styles.ytPlayLabel}>Ver en YouTube</Text>
-                      </View>
-                    </TouchableOpacity>
+                    </View>
                   );
                 }
                 return (
@@ -1284,25 +1277,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E0E0E0',
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
   // modal video flotante
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(20,10,20,0.75)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   modalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 28,
+    backgroundColor: '#1C1220',
+    borderRadius: 24,
     overflow: 'hidden',
-    width: MODAL_WIDTH,
-    height: SCREEN_HEIGHT * 0.75,
-    alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.35,
-    shadowRadius: 32,
-    elevation: 24,
+    width: MODAL_CARD_WIDTH,
+    shadowColor: '#D6A4A4',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 20,
   },
   modalTitleRow: {
     flexDirection: 'row',
@@ -1320,9 +1321,9 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#2D2D2D',
+    color: '#F5E0EC',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -1330,9 +1331,12 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#F5E8EC',
+    backgroundColor: 'rgba(214,164,164,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  ytPlayerWrap: {
+    backgroundColor: '#000',
   },
   ytThumbWrap: {
     width: '100%',
@@ -1371,7 +1375,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalVideo: {
-    width: MODAL_WIDTH,
+    width: MODAL_CARD_WIDTH,
     height: MODAL_VIDEO_HEIGHT,
     backgroundColor: '#1A1A1A',
   },
@@ -1388,7 +1392,7 @@ const styles = StyleSheet.create({
   },
   modalDesc: {
     fontSize: 13,
-    color: '#666',
+    color: 'rgba(245,224,236,0.7)',
     lineHeight: 20,
     paddingHorizontal: 18,
     paddingTop: 14,

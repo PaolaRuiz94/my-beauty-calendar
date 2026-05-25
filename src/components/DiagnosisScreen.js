@@ -1101,22 +1101,31 @@ export default function DiagnosisScreen({ navigation }) {
                     </View>
                   );
                 }
+                const videoData = ytVideo || routineVideos[ytKey];
+                if (videoData?.uri) {
+                  return (
+                    <View style={styles.videoContainer}>
+                      <Video
+                        ref={videoRef}
+                        source={{ uri: videoData.uri }}
+                        style={styles.modalVideo}
+                        resizeMode={ResizeMode.CONTAIN}
+                        shouldPlay
+                        useNativeControls
+                      />
+                      <TouchableOpacity
+                        style={styles.expandBtn}
+                        onPress={() => videoRef.current?.presentFullscreenPlayer()}
+                      >
+                        <Ionicons name="expand-outline" size={18} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }
                 return (
-                  <View style={styles.videoContainer}>
-                    <Video
-                      ref={videoRef}
-                      source={{ uri: routineVideos[videoModal.label?.toLowerCase()]?.uri ?? '' }}
-                      style={styles.modalVideo}
-                      resizeMode={ResizeMode.CONTAIN}
-                      shouldPlay
-                      useNativeControls
-                    />
-                    <TouchableOpacity
-                      style={styles.expandBtn}
-                      onPress={() => videoRef.current?.presentFullscreenPlayer()}
-                    >
-                      <Ionicons name="expand-outline" size={18} color="#fff" />
-                    </TouchableOpacity>
+                  <View style={styles.videoPlaceholder}>
+                    <Ionicons name="videocam-off-outline" size={48} color="#D6A4A4" />
+                    <Text style={styles.videoPlaceholderText}>No hay video disponible</Text>
                   </View>
                 );
               })()}
@@ -1983,6 +1992,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 14,
     width: 140,
+  },
+  videoPlaceholder: {
+    height: 180,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(214, 164, 164, 0.1)',
+    borderRadius: 12,
+    marginVertical: 12,
+  },
+  videoPlaceholderText: {
+    fontSize: 14,
+    color: '#D6A4A4',
+    marginTop: 12,
+    fontWeight: '600',
   },
 
   // loading modal

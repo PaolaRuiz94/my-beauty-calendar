@@ -950,7 +950,7 @@ export default function DiagnosisScreen({ navigation }) {
                 <TouchableOpacity
                   style={styles.routineRow}
                   activeOpacity={0.7}
-                  onPress={() => setVideoModal({ visible: true, label: step.label, value: step.value })}
+                  onPress={() => setVideoModal({ visible: true, label: step.label, value: step.value, videos: [], isLoadingVideos: false })}
                 >
                   <View style={styles.routineLabelRow}>
                     <View style={styles.routineDot} />

@@ -1071,18 +1071,20 @@ export default function DiagnosisScreen({ navigation }) {
                 <View style={styles.loadingContainer}>
                   <Text style={styles.loadingText}>Buscando videos...</Text>
                 </View>
-              ) : videoModal.videos.length > 0 ? (
-                <ScrollView style={styles.videosScrollView} horizontal>
-                  {videoModal.videos.map((video, idx) => (
-                    <TouchableOpacity key={idx} style={styles.videoThumbnail}>
-                      <Image source={{ uri: video.thumbnail }} style={styles.videoThumbnailImage} />
-                      <View style={styles.playButtonOverlay}>
-                        <Ionicons name="play-circle" size={40} color="#fff" />
-                      </View>
-                      <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+              ) : videoModal.videos && videoModal.videos.length > 0 ? (
+                <View style={styles.videosContainer}>
+                  <ScrollView style={styles.videosScrollView} horizontal showsHorizontalScrollIndicator={false}>
+                    {videoModal.videos.map((video, idx) => (
+                      <TouchableOpacity key={idx} style={styles.videoThumbnail}>
+                        <Image source={{ uri: video.thumbnail }} style={styles.videoThumbnailImage} />
+                        <View style={styles.playButtonOverlay}>
+                          <Ionicons name="play-circle" size={40} color="#fff" />
+                        </View>
+                        <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
               ) : (() => {
                 const ytKey = getStepVideoKey(videoModal.label, result?.texture);
                 const ytVideo = ytKey ? routineVideos[ytKey] : null;
@@ -1948,14 +1950,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 150,
   },
-  videosScrollView: {
-    maxHeight: 240,
+  videosContainer: {
+    height: 240,
     marginVertical: 12,
+  },
+  videosScrollView: {
+    flex: 1,
   },
   videoThumbnail: {
     marginHorizontal: 8,
     width: 140,
     alignItems: 'center',
+    paddingVertical: 4,
   },
   videoThumbnailImage: {
     width: 140,
@@ -1976,6 +1982,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     lineHeight: 14,
+    width: 140,
   },
 
   // loading modal

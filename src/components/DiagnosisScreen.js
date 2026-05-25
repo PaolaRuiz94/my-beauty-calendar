@@ -11,6 +11,7 @@ import {
   Modal,
   Animated,
 } from 'react-native';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Video, ResizeMode } from 'expo-av';
 import YoutubeIframe from 'react-native-youtube-iframe';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -306,6 +307,14 @@ export default function DiagnosisScreen({ navigation }) {
     if (prev >= 0) {
       setCurrentQuestion(prev);
       flatListRef.current?.scrollToIndex({ index: prev, animated: true });
+    }
+  };
+
+  const handleSwipeGesture = (event) => {
+    const { nativeEvent } = event;
+    // Detectar swipe hacia la derecha (> 50 px)
+    if (nativeEvent.translationX > 50 && Math.abs(nativeEvent.velocityX) > Math.abs(nativeEvent.velocityY)) {
+      handleBack();
     }
   };
 
@@ -1173,103 +1182,105 @@ export default function DiagnosisScreen({ navigation }) {
         </View>
       </LinearGradient>
 
-      <FlatList
-        ref={flatListRef}
-        data={questions}
-        keyExtractor={(item) => item.id}
-        horizontal
-        pagingEnabled
-        scrollEnabled={false}
-        showsHorizontalScrollIndicator={false}
-        getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewConfig}
-        renderItem={({ item, index }) => {
-          // Opciones dinámicas para subtipo de rizo
-          const itemOptions = item.id === 'curlType'
-            ? (CURL_TYPE_OPTIONS[answers.texture] || [])
-            : item.options;
+      <PanGestureHandler onHandlerStateChange={handleSwipeGesture} activeOffsetX={[-10, 10]} activeOffsetY={[-1000, 1000]}>
+        <FlatList
+          ref={flatListRef}
+          data={questions}
+          keyExtractor={(item) => item.id}
+          horizontal
+          pagingEnabled
+          scrollEnabled={false}
+          showsHorizontalScrollIndicator={false}
+          getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewConfig}
+          renderItem={({ item, index }) => {
+            // Opciones dinámicas para subtipo de rizo
+            const itemOptions = item.id === 'curlType'
+              ? (CURL_TYPE_OPTIONS[answers.texture] || [])
+              : item.options;
 
-          const currentAnswerForItem = answers[item.id];
+            const currentAnswerForItem = answers[item.id];
 
-          return (
-            <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.slideContent}
-                keyboardShouldPersistTaps="handled"
-              >
-                <Text style={styles.stepLabel}>
-                  {item.id === 'photo'
-                    ? 'Paso final · Opcional'
-                    : item.multiSelect
-                    ? 'Selección múltiple'
-                    : `Pregunta ${index + 1} de ${questions.length}`}
-                </Text>
-                <Text style={styles.question}>{item.title}</Text>
+            return (
+              <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.slideContent}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <Text style={styles.stepLabel}>
+                    {item.id === 'photo'
+                      ? 'Paso final · Opcional'
+                      : item.multiSelect
+                      ? 'Selección múltiple'
+                      : `Pregunta ${index + 1} de ${questions.length}`}
+                  </Text>
+                  <Text style={styles.question}>{item.title}</Text>
 
-                {item.id === 'photo' ? (
-                  <TouchableOpacity style={styles.uploadButton} onPress={pickImage} activeOpacity={0.85}>
-                    {image ? (
-                      <Image source={{ uri: image }} style={styles.uploadImage} />
-                    ) : (
-                      <>
-                        <View style={styles.uploadIconWrap}>
-                          <Ionicons name="camera-outline" size={34} color="#D6A4A4" />
-                        </View>
-                        <Text style={styles.uploadText}>Subir foto de tu cabello</Text>
-                        <Text style={styles.uploadSubText}>Toca para seleccionar</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.optionsContainer}>
-                    {itemOptions.map((option) => {
-                      const isActive = item.multiSelect
-                        ? Array.isArray(currentAnswerForItem) && currentAnswerForItem.includes(option.value)
-                        : currentAnswerForItem === option.value;
-                      return (
-                        <TouchableOpacity
-                          key={option.value}
-                          style={[styles.optionCard, isActive && styles.optionCardActive]}
-                          activeOpacity={0.85}
-                          onPress={() => handleSelectOption(item.id, option.value)}
-                        >
-                          {isActive && (
-                            <LinearGradient
-                              colors={['#D6A4A4', '#BF789C']}
-                              start={{ x: 0, y: 0 }}
-                              end={{ x: 1, y: 1 }}
-                              style={StyleSheet.absoluteFill}
-                            />
-                          )}
-                          <View style={styles.optionCardInner}>
-                            <View style={[styles.optionRadio, isActive && styles.optionRadioActive]}>
-                              {isActive && (
-                                item.multiSelect
-                                  ? <Ionicons name="checkmark" size={12} color="#fff" />
-                                  : <View style={styles.optionRadioDot} />
-                              )}
-                            </View>
-                            <View style={styles.optionTextBlock}>
-                              <Text style={[styles.optionTitle, isActive && styles.optionTitleActive]}>
-                                {option.title}
-                              </Text>
-                              <Text style={[styles.optionDesc, isActive && styles.optionDescActive]}>
-                                {option.desc}
-                              </Text>
-                            </View>
+                  {item.id === 'photo' ? (
+                    <TouchableOpacity style={styles.uploadButton} onPress={pickImage} activeOpacity={0.85}>
+                      {image ? (
+                        <Image source={{ uri: image }} style={styles.uploadImage} />
+                      ) : (
+                        <>
+                          <View style={styles.uploadIconWrap}>
+                            <Ionicons name="camera-outline" size={34} color="#D6A4A4" />
                           </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-              </ScrollView>
-            </View>
-          );
-        }}
-      />
+                          <Text style={styles.uploadText}>Subir foto de tu cabello</Text>
+                          <Text style={styles.uploadSubText}>Toca para seleccionar</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.optionsContainer}>
+                      {itemOptions.map((option) => {
+                        const isActive = item.multiSelect
+                          ? Array.isArray(currentAnswerForItem) && currentAnswerForItem.includes(option.value)
+                          : currentAnswerForItem === option.value;
+                        return (
+                          <TouchableOpacity
+                            key={option.value}
+                            style={[styles.optionCard, isActive && styles.optionCardActive]}
+                            activeOpacity={0.85}
+                            onPress={() => handleSelectOption(item.id, option.value)}
+                          >
+                            {isActive && (
+                              <LinearGradient
+                                colors={['#D6A4A4', '#BF789C']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={StyleSheet.absoluteFill}
+                              />
+                            )}
+                            <View style={styles.optionCardInner}>
+                              <View style={[styles.optionRadio, isActive && styles.optionRadioActive]}>
+                                {isActive && (
+                                  item.multiSelect
+                                    ? <Ionicons name="checkmark" size={12} color="#fff" />
+                                    : <View style={styles.optionRadioDot} />
+                                )}
+                              </View>
+                              <View style={styles.optionTextBlock}>
+                                <Text style={[styles.optionTitle, isActive && styles.optionTitleActive]}>
+                                  {option.title}
+                                </Text>
+                                <Text style={[styles.optionDesc, isActive && styles.optionDescActive]}>
+                                  {option.desc}
+                                </Text>
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </ScrollView>
+              </View>
+            );
+          }}
+        />
+      </PanGestureHandler>
 
       <View style={[styles.nextContainer, { paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.buttonRow}>

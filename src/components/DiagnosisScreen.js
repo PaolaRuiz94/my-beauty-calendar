@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { productDB, recommendationDB } from '../data/productDB';
 import { fetchRoutineVideos } from '../firebase/videos';
+import { searchYouTubeVideos } from '../services/youtube';
 import YouTubeCarousel from './YouTubeCarousel';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -216,7 +217,7 @@ export default function DiagnosisScreen({ navigation }) {
   const [isLoadingDiagnosis, setIsLoadingDiagnosis] = useState(false);
   const [routinePlan, setRoutinePlan] = useState([]);
   const [image, setImage] = useState(null);
-  const [videoModal, setVideoModal] = useState({ visible: false, label: '', value: '' });
+  const [videoModal, setVideoModal] = useState({ visible: false, label: '', value: '', videos: [], isLoadingVideos: false });
   const [routineVideos, setRoutineVideos] = useState({});
   const flatListRef = useRef(null);
   const videoRef = useRef(null);
@@ -551,12 +552,17 @@ export default function DiagnosisScreen({ navigation }) {
   };
 
   const getCategorizedProducts = (products) => {
-    const categories = { Shampoo: [], Acondicionador: [], Tratamiento: [], 'Crema de Peinar': [], Gel: [], Espumas: [], Aceites: [] };
+    const categoriesMap = new Map();
+    // Orden personalizado
+    ['Shampoo', 'Tratamiento', 'Acondicionador', 'Crema de Peinar', 'Gel', 'Espumas', 'Aceites'].forEach(cat => categoriesMap.set(cat, []));
+
     products.forEach((product) => {
       const key = product.category?.trim();
-      if (categories[key]) categories[key].push(product);
+      if (categoriesMap.has(key)) categoriesMap.get(key).push(product);
     });
-    return categories;
+
+    // Convertir a objeto manteniendo orden
+    return Object.fromEntries(categoriesMap);
   };
 
   const getRoutineSteps = (profile) => {
@@ -655,76 +661,94 @@ export default function DiagnosisScreen({ navigation }) {
     if (isTransicion) tips.push({
       title: 'Cuidado en transición capilar',
       description: 'Tu cabello tiene dos zonas con necesidades distintas: la raíz natural necesita hidratación y definición, mientras que las puntas tratadas necesitan reparación. Trabaja en secciones y evita estirar el punto de demarcación para reducir el quiebre.',
+      videoQuery: 'transición capilar cabello cuidado',
     });
     if (isScalpOilyWithDryEnds) tips.push({
       title: 'Tratamiento por zonas',
       description: 'Tu raíz produce exceso de sebo pero las puntas están secas o dañadas. Aplica el shampoo solo en la raíz y el acondicionador/mascarilla solo en medios y puntas. Los aceites pesados en la raíz agravan la oleosidad.',
+      videoQuery: 'tratamiento cabello raíz grasosa puntas secas',
     });
     if (isCoily) tips.push({
       title: 'Hidratación profunda para cabello coily',
       description: 'El patrón coily/afro es naturalmente más seco porque el sebo tarda en bajar por la espiral del cabello. Aplica el método LOC o LCO cada vez que mojes y usa mascarillas intensivas semanales. El pre-poo con aceite antes del lavado protege las puntas.',
+      videoQuery: 'cabello coily afro hidratación LOC LCO método',
     });
     if (isCurlyOrWavy && fineStrand) tips.push({
       title: 'Productos ligeros para rizo fino',
       description: 'Tu cabello fino y rizado necesita definición sin peso. Las mousses y espumas ligeras definen sin aplanar el rizo. Las cremas muy pesadas o el exceso de aceite quitan volumen. Prefiere geles fluidos sobre cremas densas.',
+      videoQuery: 'cabello rizado fino productos ligeros definición',
     });
     if (hasDandruff) tips.push({
       title: 'Control de caspa',
       description: 'La caspa puede ser oleosa (escamas amarillentas) o seca (escamas blancas). Usa shampoo con zinc piritionato o ketoconazol 2 veces/semana. Evita agua muy caliente y alterna con shampoo nutritivo para no resecar el cuero cabelludo.',
+      videoQuery: 'control caspa shampoo anticaspa',
     });
     if (hasHairLoss) tips.push({
       title: 'Estimular el folículo capilar',
       description: 'Incorpora un tónico estimulante con cafeína o biotina directamente en el cuero cabelludo. Masajea 3-5 minutos al aplicarlo para activar la circulación. Evita colas y peinados muy tensos que traccionan el folículo.',
+      videoQuery: 'caída cabello estimular folículos masaje cuero cabelludo',
     });
     if (hasSensitivity) tips.push({
       title: 'Cuero cabelludo sensible',
       description: 'Evita productos con alcohol deshidratante, parfum y sulfatos agresivos. Enjuaga siempre con agua fría al final para cerrar los poros. Haz una prueba de parche antes de introducir nuevos productos.',
+      videoQuery: 'cuero cabelludo sensible irritación productos suaves',
     });
     if (lowElasticity) tips.push({
       title: 'Recupera la elasticidad',
       description: 'La elasticidad baja indica déficit de proteína en la corteza. Incorpora una mascarilla proteica ligera (hidrolizada) cada 2-3 semanas y sigue siempre con una hidratante. Si el cabello se vuelve rígido o crujiente, pausa la proteína y enfócate en hidratación.',
+      videoQuery: 'elasticidad cabello proteína tratamiento recuperar',
     });
     if (coarseStrand) tips.push({
       title: 'Cabello grueso — penetración profunda',
       description: 'La cutícula gruesa necesita calor suave para abrir y absorber productos. Aplica mascarillas bajo un gorro de ducha durante 20-30 min. Los aceites densos como coco o aguacate penetran mejor que los silicones.',
+      videoQuery: 'cabello grueso mascarilla profunda penetración',
     });
     if (isChemical && dryScalp) tips.push({
       title: 'Reparación sin agravar la sequedad',
       description: 'El proceso químico combinado con cuero cabelludo seco requiere bond builders (como Olaplex) que reparan sin resecar. Lava máximo 2 veces por semana con shampoo ultra suave libre de sulfatos.',
+      videoQuery: 'cabello procesado cuero cabelludo seco Olaplex reparación',
     });
     if (oilyScalp && !isScalpOilyWithDryEnds) tips.push({
       title: 'Limpieza selectiva en raíz',
       description: 'Aplica el shampoo exclusivamente en el cuero cabelludo, sin frotar el largo. Lavar las puntas con frecuencia las reseca y aumenta la producción de sebo. Termina con agua fría para cerrar los poros.',
+      videoQuery: 'cuero cabelludo grasoso limpieza selectiva raíz',
     });
     if (highPorosity) tips.push({
       title: 'Sella la cutícula abierta',
       description: 'La porosidad alta indica cutículas levantadas que pierden humedad fácilmente. Termina siempre con agua fría, aplica aceite después del leave-in para sellar, y evita agua caliente que abre más la cutícula.',
+      videoQuery: 'porosidad alta cabello sellar cutícula agua fría',
     });
     if (lowPorosity) tips.push({
       title: 'Activa la absorción con calor suave',
       description: 'La porosidad baja resiste la entrada de productos. Aplica tratamientos con el cabello húmedo y cálido (gorro de vapor o toalla tibia), dejando actuar más tiempo. El calor suave abre la cutícula temporalmente.',
+      videoQuery: 'porosidad baja cabello calor vapor absorción',
     });
     if (needsProtein && !lowElasticity) tips.push({
       title: 'Balance proteína / hidratación',
       description: 'Si el cabello se siente rígido o crujiente, es exceso de proteína; si se estira sin volver y se rompe fácil, falta proteína. Siempre sigue un tratamiento proteico con una mascarilla hidratante.',
+      videoQuery: 'balance proteína hidratación cabello tratamiento',
     });
     if (isCurlyOrWavy && stylingMethod) tips.push({
       title: `Método ${stylingMethod} para tus rizos`,
       description: stylingMethod === 'LOC'
         ? 'Alta porosidad → LOC: Leave-in (hidratación) → Oil (sella antes de que se evapore) → Cream (define). El aceite entre capas protege la humedad del leave-in.'
         : 'Porosidad media → LCO: Leave-in → Cream (define y penetra mejor) → Oil (sella al final). La crema funciona mejor sobre el leave-in antes del aceite en tu tipo de porosidad.',
+      videoQuery: `método ${stylingMethod} cabello rizado rizos`,
     });
     if (heatFrequency === 'Frecuente' || (isHeatDamaged && !isAlisado)) tips.push({
       title: 'Protección térmica siempre',
       description: 'Aplica siempre un protector térmico antes de cualquier herramienta con calor. Usa temperatura máxima de 180°C y no repases la misma sección más de dos veces.',
+      videoQuery: 'protector térmico cabello heat protectant secador',
     });
     if (damageLevel === 'Alto') tips.push({
       title: 'Reconstrucción progresiva',
       description: 'Con daño alto, los tratamientos reparadores semanales son esenciales durante al menos 4-6 semanas. Evita el calor directo y usa difusor a temperatura baja si necesitas secar.',
+      videoQuery: 'cabello dañado reparación tratamiento intensivo',
     });
     if (damageLevel === 'Bajo' && !lowElasticity && !hasDandruff && !hasHairLoss) tips.push({
       title: 'Mantén la salud sin sobretratar',
       description: 'Tu cabello está en buen estado. Elige productos ligeros y evita acumular tratamientos innecesarios. Una rutina simple y consistente es más efectiva que muchos productos.',
+      videoQuery: 'rutina cabello simple mantenimiento salud',
     });
     return tips.slice(0, 5);
   };
@@ -963,7 +987,11 @@ export default function DiagnosisScreen({ navigation }) {
             <TouchableOpacity
               key={index}
               style={styles.tipCard}
-              onPress={() => setVideoModal({ visible: true, label: tip.title, value: tip.description })}
+              onPress={async () => {
+                setVideoModal(prev => ({ ...prev, isLoadingVideos: true, label: tip.title, value: tip.description, videos: [] }));
+                const videos = await searchYouTubeVideos(tip.videoQuery, 6);
+                setVideoModal(prev => ({ ...prev, visible: true, isLoadingVideos: false, videos }));
+              }}
               activeOpacity={0.85}
             >
               <View style={styles.tipCardTop}>
@@ -1023,7 +1051,7 @@ export default function DiagnosisScreen({ navigation }) {
           visible={videoModal.visible}
           transparent
           animationType="fade"
-          onRequestClose={() => setVideoModal({ visible: false, label: '', value: '' })}
+          onRequestClose={() => setVideoModal({ visible: false, label: '', value: '', videos: [], isLoadingVideos: false })}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
@@ -1032,14 +1060,30 @@ export default function DiagnosisScreen({ navigation }) {
                 <View style={styles.modalTitleDot} />
                 <Text style={styles.modalTitle} numberOfLines={2}>{videoModal.label}</Text>
                 <TouchableOpacity
-                  onPress={() => setVideoModal({ visible: false, label: '', value: '' })}
+                  onPress={() => setVideoModal({ visible: false, label: '', value: '', videos: [], isLoadingVideos: false })}
                   style={styles.modalClose}
                 >
                   <Ionicons name="close" size={18} color="#888" />
                 </TouchableOpacity>
               </View>
 
-              {(() => {
+              {videoModal.isLoadingVideos ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Buscando videos...</Text>
+                </View>
+              ) : videoModal.videos.length > 0 ? (
+                <ScrollView style={styles.videosScrollView} horizontal>
+                  {videoModal.videos.map((video, idx) => (
+                    <TouchableOpacity key={idx} style={styles.videoThumbnail}>
+                      <Image source={{ uri: video.thumbnail }} style={styles.videoThumbnailImage} />
+                      <View style={styles.playButtonOverlay}>
+                        <Ionicons name="play-circle" size={40} color="#fff" />
+                      </View>
+                      <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              ) : (() => {
                 const ytKey = getStepVideoKey(videoModal.label, result?.texture);
                 const ytVideo = ytKey ? routineVideos[ytKey] : null;
                 if (ytVideo?.youtubeId) {
@@ -1896,6 +1940,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 14,
     paddingBottom: 20,
+  },
+
+  loadingContainer: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 150,
+  },
+  videosScrollView: {
+    maxHeight: 240,
+    marginVertical: 12,
+  },
+  videoThumbnail: {
+    marginHorizontal: 8,
+    width: 140,
+    alignItems: 'center',
+  },
+  videoThumbnailImage: {
+    width: 140,
+    height: 84,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  playButtonOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  videoTitle: {
+    fontSize: 11,
+    color: '#2D2D2D',
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 14,
   },
 
   // loading modal

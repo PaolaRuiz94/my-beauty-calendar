@@ -1069,21 +1069,16 @@ export default function DiagnosisScreen({ navigation }) {
 
               {videoModal.isLoadingVideos ? (
                 <View style={styles.loadingContainer}>
-                  <Text style={styles.loadingText}>Buscando videos...</Text>
+                  <Text style={styles.loadingText}>Buscando video...</Text>
                 </View>
               ) : videoModal.videos && videoModal.videos.length > 0 ? (
-                <View style={styles.videosContainer}>
-                  <ScrollView style={styles.videosScrollView} horizontal showsHorizontalScrollIndicator={false}>
-                    {videoModal.videos.map((video, idx) => (
-                      <TouchableOpacity key={idx} style={styles.videoThumbnail}>
-                        <Image source={{ uri: video.thumbnail }} style={styles.videoThumbnailImage} />
-                        <View style={styles.playButtonOverlay}>
-                          <Ionicons name="play-circle" size={40} color="#fff" />
-                        </View>
-                        <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                <View style={styles.ytPlayerWrap}>
+                  <YoutubeIframe
+                    videoId={videoModal.videos[0].id}
+                    width={MODAL_CARD_WIDTH}
+                    height={MODAL_VIDEO_HEIGHT}
+                    play
+                  />
                 </View>
               ) : (() => {
                 const ytKey = getStepVideoKey(videoModal.label, result?.texture);

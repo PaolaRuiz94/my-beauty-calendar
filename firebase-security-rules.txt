@@ -1,0 +1,23 @@
+// Copia esto en Firebase Console > Firestore > Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permitir leer routine_videos a cualquier usuario autenticado
+    match /routine_videos/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if false; // Solo administrador en console
+    }
+
+    // Permitir leer tip_videos a cualquier usuario autenticado
+    match /tip_videos/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Otras colecciones que puedas tener
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

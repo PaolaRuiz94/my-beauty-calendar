@@ -72,7 +72,7 @@ const questions = [
       { value: 'Lacio', title: 'Lacio', desc: 'Textura suave y lineal, sin rizos ni ondas.' },
       { value: 'Ondulado', title: 'Ondulado', desc: 'Movimiento natural con ondas que van de sutiles a pronunciadas.' },
       { value: 'Rizado', title: 'Rizado', desc: 'Rizos definidos, desde amplios hasta pequeños y apretados.' },
-      { value: 'Coily', title: 'Coily / Afro', desc: 'Patrón muy apretado con espirales o zig-zag, máxima retracción.' },
+      { value: 'Coily', title: 'Afrorizado', desc: 'Patrón muy apretado con espirales o zig-zag, máxima retracción.' },
       { value: 'Transición', title: 'Transición capilar', desc: 'Cabello que mezcla zona natural nueva y zona con proceso químico anterior.' },
     ],
   },
@@ -684,8 +684,8 @@ export default function DiagnosisScreen({ navigation }) {
     });
     if (isCoily) tips.push({
       title: 'Hidratación profunda para cabello coily',
-      description: 'El patrón coily/afro es naturalmente más seco porque el sebo tarda en bajar por la espiral del cabello. Aplica el método LOC o LCO cada vez que mojes y usa mascarillas intensivas semanales. El pre-poo con aceite antes del lavado protege las puntas.',
-      videoQuery: 'cabello coily afro hidratación LOC LCO método',
+      description: 'El cabello afrorizado es naturalmente más seco porque el sebo tarda en bajar por la espiral del cabello. Aplica el método LOC o LCO cada vez que mojes y usa mascarillas intensivas semanales. El pre-poo con aceite antes del lavado protege las puntas.',
+      videoQuery: 'cabello afrorizado hidratación LOC LCO método',
     });
     if (isCurlyOrWavy && fineStrand) tips.push({
       title: 'Productos ligeros para rizo fino',

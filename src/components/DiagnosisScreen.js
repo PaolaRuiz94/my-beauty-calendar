@@ -295,6 +295,20 @@ export default function DiagnosisScreen({ navigation }) {
     flatListRef.current?.scrollToIndex({ index: next, animated: true });
   };
 
+  const handleBack = () => {
+    let prev = currentQuestion - 1;
+    // Saltar curlType al retroceder si es necesario
+    if (prev >= 0 && questions[prev].id === 'curlType') {
+      if (answers.texture === 'Lacio' || answers.texture === 'Transición') {
+        prev--;
+      }
+    }
+    if (prev >= 0) {
+      setCurrentQuestion(prev);
+      flatListRef.current?.scrollToIndex({ index: prev, animated: true });
+    }
+  };
+
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0 && viewableItems[0].index != null) {
       setCurrentQuestion(viewableItems[0].index);
@@ -1258,30 +1272,57 @@ export default function DiagnosisScreen({ navigation }) {
       />
 
       <View style={[styles.nextContainer, { paddingBottom: insets.bottom + 16 }]}>
-        <TouchableOpacity
-          onPress={handleNext}
-          activeOpacity={0.85}
-          disabled={!hasCurrentAnswer}
-        >
-          <LinearGradient
-            colors={!hasCurrentAnswer
-              ? ['#E2C8D4', '#CCB0C0']
-              : ['#D6A4A4', '#BF789C']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.nextButton}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            onPress={handleBack}
+            activeOpacity={0.85}
+            disabled={currentQuestion === 0}
+            style={styles.backButtonWrapper}
           >
-            <Text style={styles.nextText}>
-              {isLastQuestion ? 'Ver mi diagnóstico' : 'Siguiente'}
-            </Text>
-            <Ionicons
-              name={isLastQuestion ? 'sparkles-outline' : 'arrow-forward'}
-              size={18}
-              color="#fff"
-              style={{ marginLeft: 8 }}
-            />
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={currentQuestion === 0
+                ? ['#E2C8D4', '#CCB0C0']
+                : ['#F5E0EC', '#E8D0DC']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.backButton}
+            >
+              <Ionicons
+                name="arrow-back"
+                size={18}
+                color={currentQuestion === 0 ? '#BFBFBF' : '#D6A4A4'}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.backText, currentQuestion === 0 && { color: '#BFBFBF' }]}>Atrás</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleNext}
+            activeOpacity={0.85}
+            disabled={!hasCurrentAnswer}
+            style={styles.nextButtonWrapper}
+          >
+            <LinearGradient
+              colors={!hasCurrentAnswer
+                ? ['#E2C8D4', '#CCB0C0']
+                : ['#D6A4A4', '#BF789C']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.nextButton}
+            >
+              <Text style={styles.nextText}>
+                {isLastQuestion ? 'Ver mi diagnóstico' : 'Siguiente'}
+              </Text>
+              <Ionicons
+                name={isLastQuestion ? 'sparkles-outline' : 'arrow-forward'}
+                size={18}
+                color="#fff"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -1512,6 +1553,30 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 20,
     right: 20,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  backButtonWrapper: {
+    flex: 0.35,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    paddingVertical: 16,
+  },
+  backText: {
+    color: '#D6A4A4',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  nextButtonWrapper: {
+    flex: 1,
   },
   nextButton: {
     flexDirection: 'row',

@@ -312,9 +312,11 @@ export default function DiagnosisScreen({ navigation }) {
 
   const handleSwipeGesture = (event) => {
     const { nativeEvent } = event;
-    // Detectar swipe hacia la derecha (> 50 px)
-    if (nativeEvent.translationX > 50 && Math.abs(nativeEvent.velocityX) > Math.abs(nativeEvent.velocityY)) {
-      handleBack();
+    // Detectar swipe hacia la derecha al finalizar el gesto
+    if (nativeEvent.state === State.END) {
+      if (nativeEvent.translationX > 50 && Math.abs(nativeEvent.velocityX) > Math.abs(nativeEvent.velocityY)) {
+        handleBack();
+      }
     }
   };
 

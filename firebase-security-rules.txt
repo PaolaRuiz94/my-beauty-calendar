@@ -3,6 +3,21 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Permitir que los usuarios lean/escriban en su propio documento y subcollecciones
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Fotos de progreso
+      match /progressPhotos/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Citas
+      match /appointments/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
     // Permitir leer routine_videos a cualquier usuario autenticado
     match /routine_videos/{document=**} {
       allow read: if request.auth != null;

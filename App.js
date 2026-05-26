@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initProducts } from './src/firebase/products';
 import { scheduleAllNotifications } from './src/services/notificationService';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -155,10 +156,12 @@ export default function App() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppRouter />
-      </AuthProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRouter />
+        </AuthProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

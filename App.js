@@ -151,7 +151,9 @@ function AppRouter() {
 
 export default function App() {
   useEffect(() => {
-    initProducts().catch(() => {});
+    // initProducts se omite: usamos datos locales como source of truth
+    // Si en futuro configuras Firestore con permisos de escritura, descomenta:
+    // initProducts().catch(() => {});
     scheduleAllNotifications().catch(() => {});
   }, []);
 

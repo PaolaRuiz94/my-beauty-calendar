@@ -15,40 +15,103 @@ const COL = 'products';
 // ── Seed (ejecutar una sola vez) ──────────────────────────────────────────────
 
 export async function initProducts() {
-  await Promise.all(
-    ALL_PRODUCTS.map(({ id, ...data }) => setDoc(doc(db, COL, id), data, { merge: true }))
-  );
+  try {
+    console.log("🔍 [initProducts] Starting initialization of", ALL_PRODUCTS.length, "products");
+    await Promise.all(
+      ALL_PRODUCTS.map(({ id, ...data }) => {
+        return setDoc(doc(db, COL, id), data, { merge: true }).catch((err) => {
+          console.warn(`⚠️  [initProducts] Skipping ${id} (likely permission issue)`, err.code);
+        });
+      })
+    );
+    console.log("✅ [initProducts] Initialization complete");
+  } catch (error) {
+    console.warn("⚠️  [initProducts] Warning:", error.code);
+  }
 }
 
 // ── Consultas ─────────────────────────────────────────────────────────────────
 
 export async function fetchProductsByCategory(category) {
-  const q = query(
-    collection(db, COL),
-    where('category', '==', category)
-  );
-  const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
+  try {
+    const q = query(
+      collection(db, COL),
+      where('category', '==', category)
+    );
+    const snap = await getDocs(q);
+    const result = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => a.brand.localeCompare(b.brand));
+    if (result.length > 0) return result;
+  } catch (error) {
+    console.warn("⚠️  [fetchProductsByCategory] Firestore unavailable, using local data");
+  }
+  // Fallback local
+  return ALL_PRODUCTS
+    .filter(p => p.category === category)
     .sort((a, b) => a.brand.localeCompare(b.brand));
 }
 
 export async function fetchProductsByProfile(profileFlags = []) {
-  if (profileFlags.length === 0) return fetchAllProducts();
-  const flags = profileFlags.slice(0, 30);
-  const q = query(
-    collection(db, COL),
-    where('profiles', 'array-contains-any', flags),
+  if (profileFlags.length === 0) {
+    console.log("🔍 [fetchProductsByProfile] Empty flags, returning all products");
+    return fetchAllProducts();
+  }
+
+  console.log("🔍 [fetchProductsByProfile] Querying with flags:", profileFlags);
+
+  // Firestore limits array-contains-any to 10 values.
+  if (profileFlags.length > 10) {
+    console.log("⚠️  [fetchProductsByProfile] >10 flags, using local filter fallback");
+    const allProducts = await fetchAllProducts();
+    const filtered = allProducts.filter((product) =>
+      product.profiles?.some((profile) => profileFlags.includes(profile))
+    );
+    console.log("🔍 [fetchProductsByProfile] Filtered result:", filtered.length, "products");
+    return filtered;
+  }
+
+  try {
+    const q = query(
+      collection(db, COL),
+      where('profiles', 'array-contains-any', profileFlags),
+    );
+    console.log("🔍 [fetchProductsByProfile] Executing Firestore query");
+    const snap = await getDocs(q);
+    const result = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    console.log("🔍 [fetchProductsByProfile] Query returned:", result.length, "products");
+    if (result.length > 0) return result;
+  } catch (error) {
+    console.warn("⚠️  [fetchProductsByProfile] Firestore unavailable, using local data");
+  }
+
+  // Fallback local
+  const filtered = ALL_PRODUCTS.filter((product) =>
+    product.profiles?.some((profile) => profileFlags.includes(profile))
   );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  console.log("🔍 [fetchProductsByProfile] Local fallback:", filtered.length, "products");
+  return filtered;
 }
 
 export async function fetchAllProducts() {
-  const snap = await getDocs(collection(db, COL));
-  return snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => a.brand.localeCompare(b.brand));
+  try {
+    const snap = await getDocs(collection(db, COL));
+    const result = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => a.brand.localeCompare(b.brand));
+    
+    if (result.length > 0) {
+      console.log("✅ [fetchAllProducts] Loaded", result.length, "products from Firestore");
+      return result;
+    }
+  } catch (error) {
+    // Silencioso: fallback esperado
+  }
+
+  // Fallback local (default)
+  const result = ALL_PRODUCTS.sort((a, b) => a.brand.localeCompare(b.brand));
+  console.log("✅ [fetchAllProducts] Using", result.length, "products from local data");
+  return result;
 }
 
 // Búsqueda local sobre los productos ya cargados (sin índice extra en Firestore)

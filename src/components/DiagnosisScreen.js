@@ -354,6 +354,7 @@ export default function DiagnosisScreen({ navigation }) {
     const lowDensity = density === 'Escasa';
     const highDensity = density === 'Abundante';
     const fineDensity = lowDensity; // alias de compatibilidad
+    const denseDensity = highDensity; // alias para productos con perfil de densidad alta
 
     const isColor = chemical === 'Color';
     const isAlisado = chemical === 'Alisado';
@@ -405,7 +406,7 @@ export default function DiagnosisScreen({ navigation }) {
       highPorosity, lowPorosity, oilyScalp, dryScalp,
       needsProtein, needsClarifying, isScalpOilyWithDryEnds,
       stylingMethod, proteinFrequencyWeeks, damageLevel,
-      isShort, isLong,
+      isShort, isLong, denseDensity,
     };
   };
 
@@ -526,54 +527,65 @@ export default function DiagnosisScreen({ navigation }) {
   };
 
   const getRecommendedProducts = (profile) => {
-    const {
-      oilyScalp, dryScalp, highPorosity, lowPorosity, isCurlyOrWavy,
-      isChemical, isAlisado, isColor, needsProtein,
-      fineStrand, fineDensity, isCoily, lowElasticity,
-    } = profile;
-    const scored = new Map();
-    const add = (products, score) => {
-      for (const p of products) {
-        if (!p?.link) continue;
-        if (scored.has(p.link)) scored.get(p.link).score += score;
-        else scored.set(p.link, { product: p, score });
-      }
+    const categoryEntries = Object.entries(productDB);
+    const allProducts = categoryEntries.flatMap(([category, products]) => products.map((product) => ({ category, product })));
+
+    const normalize = (value) => String(value || '').toLowerCase();
+    const hasTag = (product, tag) => (product.tags || []).some((t) => normalize(t).includes(tag));
+    const matchesAnyTag = (product, tags) => tags.some((tag) => hasTag(product, tag));
+
+    const scoreProduct = ({ product, category }) => {
+      let score = 0;
+      const tags = (product.tags || []).map(normalize);
+      const addIf = (condition, value) => { if (condition) score += value; };
+
+      addIf(profile.isChemical, matchesAnyTag(product, ['reparador', 'daño', 'protección', 'protectora']) ? 2 : 1);
+      addIf(profile.isColor, matchesAnyTag(product, ['brillo', 'protección', 'reparador', 'suavidad']) ? 2 : 0);
+      addIf(profile.isAlisado, matchesAnyTag(product, ['alisado', 'desenredo', 'ligero', 'suave']) ? 2 : 0);
+      addIf(profile.isHeatDamaged, matchesAnyTag(product, ['reparador', 'daño', 'protección', 'suavidad']) ? 2 : 0);
+      addIf(profile.oilyScalp, matchesAnyTag(product, ['ligero', 'suave', 'diario']) ? 2 : 0);
+      addIf(profile.dryScalp, matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 2 : 0);
+      addIf(profile.highPorosity, matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 2 : 0);
+      addIf(profile.lowPorosity, matchesAnyTag(product, ['ligero', 'sin peso', 'suave']) ? 2 : 0);
+      addIf(profile.needsProtein, matchesAnyTag(product, ['reparador', 'fortalecimiento', 'daño']) ? 2 : 0);
+      addIf(profile.lowElasticity, matchesAnyTag(product, ['reparador', 'fortalecimiento', 'daño']) ? 2 : 0);
+      addIf(profile.hasDandruff, matchesAnyTag(product, ['suave', 'limpia', 'equilibrio']) ? 1 : 0);
+      addIf(profile.hasSensitivity, matchesAnyTag(product, ['suave', 'ligero']) ? 1 : 0);
+      addIf(profile.isCurlyOrWavy, matchesAnyTag(product, ['rizos', 'definición', 'anti-frizz', 'fijación', 'control']) ? 2 : 0);
+      addIf(profile.fineStrand, matchesAnyTag(product, ['ligero', 'definición', 'suavidad']) ? 1 : 0);
+      addIf(profile.coarseStrand, matchesAnyTag(product, ['nutritivo', 'suavidad', 'reparador']) ? 1 : 0);
+      addIf(profile.fineDensity, matchesAnyTag(product, ['ligero', 'volumen', 'definición']) ? 1 : 0);
+      addIf(profile.highDensity, matchesAnyTag(product, ['ligero', 'volumen', 'nutritivo']) ? 1 : 0);
+      addIf(profile.objective === 'hidratación', matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 3 : 0);
+      addIf(profile.objective === 'reparación', matchesAnyTag(product, ['reparador', 'daño', 'fortalecimiento']) ? 3 : 0);
+      addIf(profile.objective === 'definición', matchesAnyTag(product, ['definición', 'rizos', 'fijación', 'control']) ? 3 : 0);
+      addIf(profile.objective === 'volumen', matchesAnyTag(product, ['volumen', 'ligera', 'textura']) ? 3 : 0);
+      addIf(profile.objective === 'crecimiento', matchesAnyTag(product, ['suavidad', 'equilibrio', 'ligero']) ? 1 : 0);
+      addIf(profile.length === 'Largo', matchesAnyTag(product, ['brillo', 'nutritivo', 'suavidad']) ? 1 : 0);
+      addIf(profile.length === 'Corto', matchesAnyTag(product, ['volumen', 'ligero', 'definición']) ? 1 : 0);
+
+      if (category === 'shampoo' && profile.scalp === 'Grasa' && tags.includes('reparador')) score -= 1;
+      if ((category === 'cremaDePeinar' || category === 'espumas' || category === 'gel') && profile.texture === 'Lacio') score -= 1;
+
+      return score;
     };
-    if (isAlisado) {
-      add(productDB.shampoo.filter(p => p.brand === 'Olaplex'), 6);
-      add(productDB.tratamiento.filter(p => p.brand === 'Olaplex'), 6);
-      add(productDB.acondicionador.filter(p => p.brand === 'Olaplex'), 6);
-      add(productDB.aceites.filter(p => p.brand === 'Olaplex'), 6);
-    } else if (isColor) {
-      add(productDB.shampoo.filter(p => p.brand === 'Olaplex'), 4);
-      add(productDB.tratamiento.filter(p => p.brand === 'Olaplex'), 4);
-    } else if (isChemical) {
-      add(productDB.shampoo.filter(p => p.brand === 'Olaplex'), 5);
-      add(productDB.tratamiento.filter(p => p.brand === 'Olaplex'), 5);
-      add(productDB.acondicionador.filter(p => p.brand === 'Olaplex'), 5);
-      add(productDB.aceites.filter(p => p.brand === 'Olaplex'), 5);
-    }
-    if (oilyScalp) add(recommendationDB.balance, 3);
-    else if (dryScalp) add(productDB.shampoo.filter(p => p.tags.includes('hidratante') || p.tags.includes('suave')), 3);
-    else add(productDB.shampoo, 1);
-    if (highPorosity) add(recommendationDB.hydra, 3);
-    if (needsProtein || lowElasticity) add(recommendationDB.repair, 3);
-    if (lowPorosity) add(recommendationDB.volume, 2);
-    if (isCurlyOrWavy) {
-      add(recommendationDB.curl, 3);
-      if (fineStrand || fineDensity) add(productDB.espumas, 2);
-    } else if (fineStrand || fineDensity) {
-      add(recommendationDB.volume, 2);
-    }
-    if (isCoily) add(productDB.tratamiento, 2);
-    add(productDB.acondicionador, 1);
-    const oils = oilyScalp ? productDB.aceites.filter(p => p.tags.includes('ligero')) : productDB.aceites;
-    add(oils.length ? oils : productDB.aceites, 2);
-    if (scored.size === 0) add(recommendationDB.balance, 1);
-    const sorted = [...scored.values()].sort((a, b) => b.score - a.score).map(e => e.product);
-    const hasOil = sorted.some(p => p.category?.trim() === 'Aceites');
-    if (!hasOil && productDB.aceites?.length > 0) sorted.push(productDB.aceites[0]);
-    return sorted;
+
+    const categoryBest = {};
+    allProducts
+      .map((entry) => ({ ...entry, score: scoreProduct(entry) }))
+      .sort((a, b) => b.score - a.score)
+      .forEach(({ category, product, score }) => {
+        if (categoryBest[category]) return;
+        categoryBest[category] = { product, score };
+      });
+
+    const recommended = Object.keys(productDB).map((category) => {
+      const best = categoryBest[category];
+      if (best && best.score > 0) return best.product;
+      return productDB[category][0];
+    });
+
+    return recommended;
   };
 
   const getCategorizedProducts = (products) => {
@@ -825,7 +837,56 @@ export default function DiagnosisScreen({ navigation }) {
 
     setTimeout(() => {
       const profile = buildHairProfile(answersObject);
-      AsyncStorage.setItem('@mybeauty-calendar:hairProfile', JSON.stringify(profile)).catch(() => {});
+      
+      // Crear una versión limpia del perfil solo con flags booleanos
+      const profileFlags = {
+        // Textura
+        isLacio: profile.isLacio,
+        isOndulado: profile.isOndulado,
+        isRizado: profile.isRizado,
+        isCoily: profile.isCoily,
+        isTransicion: profile.isTransicion,
+        isCurly: profile.isCurly,
+        isWavy: profile.isWavy,
+        isCurlyOrWavy: profile.isCurlyOrWavy,
+        // Densidad
+        lowDensity: profile.lowDensity,
+        highDensity: profile.highDensity,
+        fineDensity: profile.fineDensity,
+        denseDensity: profile.denseDensity,
+        // Porosidad
+        highPorosity: profile.highPorosity,
+        lowPorosity: profile.lowPorosity,
+        // Cuero cabelludo
+        oilyScalp: profile.oilyScalp,
+        dryScalp: profile.dryScalp,
+        // Otros
+        isChemical: profile.isChemical,
+        isColor: profile.isColor,
+        isAlisado: profile.isAlisado,
+        isVarios: profile.isVarios,
+        isHeatDamaged: profile.isHeatDamaged,
+        needsProtein: profile.needsProtein,
+        needsClarifying: profile.needsClarifying,
+        isScalpOilyWithDryEnds: profile.isScalpOilyWithDryEnds,
+        lowElasticity: profile.lowElasticity,
+        hasDandruff: profile.hasDandruff,
+        hasSensitivity: profile.hasSensitivity,
+        hasHairLoss: profile.hasHairLoss,
+        fineStrand: profile.fineStrand,
+        coarseStrand: profile.coarseStrand,
+      };
+      
+      const trueFlags = Object.entries(profileFlags)
+        .filter(([, v]) => v === true)
+        .map(([k]) => k);
+      console.log("✅ [generateResult] Profile flags (true values):", trueFlags);
+      
+      AsyncStorage.setItem('@mybeauty-calendar:hairProfile', JSON.stringify(profileFlags))
+        .catch((err) => {
+          console.error("❌ [generateResult] Error saving profile:", err);
+        });
+      
       const { damageLevel, stylingMethod } = profile;
       const recommendedProducts = getRecommendedProducts(profile);
       const routinePlanResult = getRoutinePlan(profile);
@@ -1779,6 +1840,7 @@ const styles = StyleSheet.create({
     color: '#8A6B00',
   },
 
+  // product categories and cards
   // products
   categoryGroup: {
     paddingTop: 14,

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useFocusEffect } from '@react-navigation/native';
 import { categoryOptions } from "../data/productDB";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProductsByProfile, fetchAllProducts, filterProducts } from "../firebase/products";
@@ -158,34 +159,62 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
     Linking.openURL(`https://www.amazon.com/s?k=${query}&tag=${AFFILIATE_TAG}`);
   };
 
-  useEffect(() => {
-    loadProfileProducts();
-  }, []);
-
-  const loadProfileProducts = async () => {
+  const loadProfileProducts = useCallback(async () => {
     setIsLoading(true);
     try {
       const raw = await AsyncStorage.getItem("@mybeauty-calendar:hairProfile");
+      
       let data = [];
       let flags = [];
+      
       if (raw) {
         const profile = JSON.parse(raw);
-        flags = Object.entries(profile).filter(([, v]) => v === true).map(([k]) => k);
-        data = flags.length > 0 ? await fetchProductsByProfile(flags) : await fetchAllProducts();
+        flags = Object.entries(profile)
+          .filter(([, v]) => v === true)
+          .map(([k]) => k);
+        
+        if (flags.length > 0) {
+          console.log("✅ [ProductsScreen] Loaded", flags.length, "profile flags");
+          data = await fetchProductsByProfile(flags);
+          if (data.length === 0) {
+            data = await fetchAllProducts();
+          }
+        } else {
+          data = await fetchAllProducts();
+        }
       } else {
         data = await fetchAllProducts();
       }
+
+      if (data.length > 0) {
+        const availableCategories = Array.from(new Set(data.map((p) => p.category))).filter(Boolean);
+        if (availableCategories.length > 0) {
+          const defaultCategory = ALL_CATEGORIES.find((option) => availableCategories.includes(option.title));
+          setSelectedCategory(defaultCategory ? defaultCategory.id : ALL_CATEGORIES[0]?.id || "shampoo");
+        }
+        console.log("✅ [ProductsScreen] Loaded", data.length, "products");
+      }
+
       setUserFlags(flags);
       setProfileProducts(data);
-    } catch {
+    } catch (error) {
+      console.error("❌ [ProductsScreen] Error loading products:", error);
       setProfileProducts([]);
     }
+    
     try {
       const weatherCtx = await getWeatherContext();
       if (weatherCtx?.flags?.length) setWeatherBoostTags(getWeatherBoostTags(weatherCtx.flags));
     } catch {}
+    
     setIsLoading(false);
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfileProducts();
+    }, [loadProfileProducts])
+  );
 
   const CATEGORY_MAP = {
     shampoo: "Shampoo",

@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from '@react-navigation/native';
 import { categoryOptions } from "../data/productDB";
+import { amazonProductCatalog, getAmazonProductById } from "../data/amazonProductCatalog";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProductsByProfile, fetchAllProducts, filterProducts } from "../firebase/products";
 import { getWeatherContext, getWeatherBoostTags } from "../services/weatherService";
@@ -115,11 +116,32 @@ function ProductCard({ product, onBuy, onAddToCart, inCart }) {
 
 const AFFILIATE_TAG = 'malmabeauty-20';
 
+function normalizeText(value = "") {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+
 function buildAmazonUrl(product) {
-  if (product.amazonLink) return product.amazonLink;
-  if (product.asin) return `https://www.amazon.com/dp/${product.asin}?tag=${AFFILIATE_TAG}`;
-  const query = encodeURIComponent(`${product.brand} ${product.name}`);
-  return `https://www.amazon.com/s?k=${query}&tag=${AFFILIATE_TAG}`;
+  const directProduct = product?.id ? getAmazonProductById(product.id) : null;
+  const matchedByName = !directProduct && product?.brand && product?.name
+    ? amazonProductCatalog.find((entry) =>
+        normalizeText(entry?.brand) === normalizeText(product.brand) &&
+        normalizeText(entry?.name) === normalizeText(product.name)
+      ) || null
+    : null;
+
+  const catalogEntry = directProduct || matchedByName;
+
+  if (catalogEntry?.amazonLink) return catalogEntry.amazonLink;
+  if (catalogEntry?.asin) return `https://www.amazon.com/dp/${catalogEntry.asin}?tag=${AFFILIATE_TAG}`;
+  if (product?.amazonLink) return product.amazonLink;
+  if (product?.asin) return `https://www.amazon.com/dp/${product.asin}?tag=${AFFILIATE_TAG}`;
+
+  return null;
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -258,6 +280,10 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
 
   const openLink = async (url) => {
     try {
+      if (!url) {
+        alert("Aún no tenemos un enlace directo de Amazon para este producto.");
+        return;
+      }
       await Linking.openURL(url);
     } catch {
       alert("No se puede abrir el enlace.");

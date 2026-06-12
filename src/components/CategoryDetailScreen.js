@@ -202,25 +202,6 @@ export default function CategoryDetailScreen({ route, navigation }) {
           ))}
         </View>
 
-        <View style={styles.divider} />
-
-        {/* ── Botón productos ── */}
-        <TouchableOpacity
-          style={styles.productsBtn}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('Explorar')}
-        >
-          <LinearGradient
-            colors={['#DEB4CC', '#BF789C']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.productsBtnGradient}
-          >
-            <Ionicons name="flask-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.productsBtnText}>Ver productos recomendados</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
       </ScrollView>
     </View>
   );

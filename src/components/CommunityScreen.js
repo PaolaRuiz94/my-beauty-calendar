@@ -23,7 +23,6 @@ import {
   subscribeToPosts, subscribeToComments, toggleLike, addComment, addUserPost,
 } from '../firebase/posts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import YouTubeCarousel from './YouTubeCarousel';
 
 import rizadasImage from '../../assets/rizadas.png';
 import lisasImage from '../../assets/lisas.png';
@@ -424,9 +423,6 @@ export default function CommunityScreen({ navigation }) {
           const isPersonalized = sectionIndex === 0 && hairTexture === section.title;
           return (
             <View key={section.title}>
-            {sectionIndex === 1 && (
-              <YouTubeCarousel query="rutina capilar cuidado cabello consejos" title="Videos recomendados" />
-            )}
             <View style={styles.section}>
               <View style={styles.sectionTitleRow}>
                 <Ionicons name={icon} size={13} color="#D6A4A4" />

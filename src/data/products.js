@@ -30,6 +30,7 @@ const CATALOG = [
     category: 'Shampoo',
     tags: ['hidratante', 'seco', 'suavidad'],
     asin: 'B0BZZJYKZ6',
+    image: 'https://static.thcdn.com/productimg/original/14510090-7535341190052363.jpg',
     sourceLink: 'https://www.kerastase.com.co/nutritive/bain-satin-2',
   },
   {
@@ -72,6 +73,7 @@ const CATALOG = [
     category: 'Shampoo',
     tags: [],
     asin: 'B09FTGJT22',
+    image: 'https://static.thcdn.com/productimg/original/13193427-8725341191174450.jpg',
     sourceLink: 'https://www.kerastase.com.co/specifique/bain-divalent',
   },
   {
@@ -81,6 +83,7 @@ const CATALOG = [
     category: 'Shampoo',
     tags: [],
     asin: null,
+    image: 'https://static.thcdn.com/productimg/original/12049183-1415341195141971.jpg',
     sourceLink: 'https://www.kerastase.com.co/soleil/bain-apres-soleil',
   },
   {
@@ -180,6 +183,7 @@ const CATALOG = [
     category: 'Shampoo',
     tags: [],
     asin: 'B0BS56C3G3',
+    image: 'https://static.thcdn.com/productimg/original/12432688-1445341190221704.jpg',
     sourceLink: 'https://www.kerastase.com.co/genesis/bain-hydra-fortifiant',
   },
   {
@@ -189,6 +193,7 @@ const CATALOG = [
     category: 'Shampoo',
     tags: [],
     asin: 'B01KNWRJYY',
+    image: 'https://static.thcdn.com/productimg/original/10555451-1865341190131137.jpg',
     sourceLink: 'https://www.kerastase.com.co/resistance/bain-force-architecte',
   },
   {
@@ -198,6 +203,7 @@ const CATALOG = [
     category: 'Shampoo',
     tags: [],
     asin: 'B07KQPKGH6',
+    image: 'https://static.thcdn.com/productimg/original/12590271-3175341192804065.jpg',
     sourceLink: 'https://www.kerastase.com.co/blond-absolu/bain-lumiere',
   },
   {
@@ -207,6 +213,7 @@ const CATALOG = [
     category: 'Shampoo',
     tags: [],
     asin: 'B002H1F064',
+    image: 'https://static.thcdn.com/productimg/original/11309647-9715341191704766.jpg',
     sourceLink: 'https://www.kerastase.com.co/specifique/bain-riche-dermo-calm',
   },
   {
@@ -281,6 +288,7 @@ const CATALOG = [
     category: 'Shampoo',
     tags: [],
     asin: 'B07KNY5K5X',
+    image: 'https://gisou.com/cdn/shop/files/02_Shampoo_PG__D_e35dfc7c-bf88-424a-a39a-bd2013102e95.jpg',
     sourceLink: 'https://gisou.com/products/honey-infused-shampoo',
   },
   {
@@ -357,6 +365,7 @@ const CATALOG = [
     category: 'Tratamiento',
     tags: ['nutritivo', 'seco', 'suavizante'],
     asin: 'B0BZZK3R5S',
+    image: 'https://static.thcdn.com/productimg/original/14510094-1995341190626152.jpg',
     sourceLink: 'https://www.kerastase.com.co/nutritive/masque-nutri-intense',
   },
   {
@@ -407,6 +416,7 @@ const CATALOG = [
     category: 'Tratamiento',
     tags: [],
     asin: 'B09RF4321L',
+    image: 'https://static.thcdn.com/productimg/original/12672068-5695063329258686.jpg',
     sourceLink: 'https://www.kerastase.com.co/chronologiste/masque-regenerant',
   },
   {
@@ -443,6 +453,7 @@ const CATALOG = [
     category: 'Tratamiento',
     tags: [],
     asin: 'B0877818P3',
+    image: 'https://static.thcdn.com/productimg/original/12432686-2975341189879551.jpg',
     sourceLink: 'https://www.kerastase.com.co/genesis/masque-reconstituant',
   },
   {
@@ -452,6 +463,7 @@ const CATALOG = [
     category: 'Tratamiento',
     tags: [],
     asin: 'B094R8CJH9',
+    image: 'https://static.thcdn.com/productimg/original/12914405-2585341194353190.jpg',
     sourceLink: 'https://www.kerastase.com.co/curl-manifesto/masque-beurre-haute-nutrition',
   },
   {
@@ -461,6 +473,7 @@ const CATALOG = [
     category: 'Tratamiento',
     tags: [],
     asin: 'B07SN4BQTB',
+    image: 'https://static.beautytocare.com/media/catalog/product/k/e/kerastase-discipline-masque-oleo-relax-hair-mask-200ml.jpg',
     sourceLink: 'https://www.kerastase.com.co/discipline/masque-oleo-relax',
   },
   {
@@ -470,6 +483,7 @@ const CATALOG = [
     category: 'Tratamiento',
     tags: [],
     asin: 'B0060P0UUO',
+    image: 'https://static.thcdn.com/productimg/original/10563907-6835341190339835.jpg',
     sourceLink: 'https://www.kerastase.com.co/resistance/masque-force-architecte',
   },
   {
@@ -479,6 +493,7 @@ const CATALOG = [
     category: 'Tratamiento',
     tags: [],
     asin: 'B0BMT5ZY4V',
+    image: 'https://static.thcdn.com/productimg/original/11994699-2645341194294084.jpg',
     sourceLink: 'https://www.kerastase.com.co/blond-absolu/masque-ultra-violet',
   },
   {
@@ -544,6 +559,7 @@ const CATALOG = [
     category: 'Tratamiento',
     tags: [],
     asin: 'B09J1Q6H9K',
+    image: 'https://gisou.com/cdn/shop/files/02_HIHM_75ml_PG_PACKSHOT1_1.jpg',
     sourceLink: 'https://gisou.com/products/honey-infused-hair-mask',
   },
   {
@@ -600,6 +616,7 @@ const CATALOG = [
     category: 'Acondicionador',
     tags: ['ligero', 'suavidad', 'nutritivo'],
     asin: 'B0BZZLS9HH',
+    image: 'https://static.thcdn.com/productimg/original/14510092-5655341190340918.jpg',
     sourceLink: 'https://www.kerastase.com.co/nutritive/lait-vital',
   },
   {
@@ -641,6 +658,7 @@ const CATALOG = [
     category: 'Acondicionador',
     tags: [],
     asin: 'B01DX8NMI2',
+    image: 'https://static.thcdn.com/productimg/1600/1600/11258168-1224583085973191.jpg',
     sourceLink: 'https://www.kerastase.com.co/nutritive/fondant-magistral',
   },
   {
@@ -686,6 +704,7 @@ const CATALOG = [
     category: 'Acondicionador',
     tags: [],
     asin: null,
+    image: 'https://static.thcdn.com/productimg/original/12672067-1045063329080573.jpg',
     sourceLink: 'https://www.kerastase.com.co/chronologiste/revitalisant-regenerant',
   },
   {
@@ -741,6 +760,7 @@ const CATALOG = [
     category: 'Acondicionador',
     tags: [],
     asin: 'B0FKZJYVJW',
+    image: 'https://gisou.com/cdn/shop/files/02_Conditioner_PG__D_d8035243-6552-45cd-bb66-7000d24fdb32.jpg',
     sourceLink: 'https://gisou.com/products/honey-infused-conditioner',
   },
   {
@@ -817,6 +837,7 @@ const CATALOG = [
     category: 'Crema de Peinar',
     tags: ['anti-frizz', 'rizos', 'suavidad'],
     asin: 'B00KMW5C4U',
+    image: 'https://static.thcdn.com/productimg/original/10951821-1675341191199218.jpg',
     sourceLink: 'https://www.kerastase.com.co/discipline/fluidissime-spray',
   },
   {
@@ -858,6 +879,7 @@ const CATALOG = [
     category: 'Crema de Peinar',
     tags: [],
     asin: 'B00KMW5C4U',
+    image: 'https://static.thcdn.com/productimg/original/10951821-1675341191199218.jpg',
     sourceLink: 'https://www.kerastase.com.co/discipline/fluidissime-spray',
   },
   {
@@ -867,6 +889,7 @@ const CATALOG = [
     category: 'Crema de Peinar',
     tags: [],
     asin: 'B0BMTVRWC6',
+    image: 'https://static.thcdn.com/productimg/original/12914403-3285341194066534.jpg',
     sourceLink: 'https://www.kerastase.com.co/curl-manifesto/creme-de-jour-fondamentale',
   },
   {
@@ -903,6 +926,7 @@ const CATALOG = [
     category: 'Crema de Peinar',
     tags: [],
     asin: 'B083JLYQCY',
+    image: 'https://static.thcdn.com/productimg/original/12432687-1455341190050902.jpg',
     sourceLink: 'https://www.kerastase.com.co/genesis/defense-thermique',
   },
   {
@@ -940,6 +964,7 @@ const CATALOG = [
     category: 'Crema de Peinar',
     tags: [],
     asin: 'B09F56QPTK',
+    image: 'https://gisou.com/cdn/shop/files/Leavein_PDP_DTC_01.jpg',
     sourceLink: 'https://gisou.com/products/honey-infused-leave-in-conditioner',
   },
   {
@@ -1025,6 +1050,7 @@ const CATALOG = [
     category: 'Gel',
     tags: [],
     asin: 'B094RCCSKT',
+    image: 'https://static.thcdn.com/productimg/original/12914401-2065341193780646.jpg',
     sourceLink: 'https://www.kerastase.com.co/curl-manifesto/gelee-courbature',
   },
   {
@@ -1051,6 +1077,7 @@ const CATALOG = [
     category: 'Espumas',
     tags: ['volumen', 'ligera', 'textura'],
     asin: 'B00JQNCIYI',
+    image: 'https://static.thcdn.com/productimg/original/10802598-1825341190395365.jpg',
     sourceLink: 'https://www.kerastase.com.co/couture-styling/mousse-bouffante',
   },
   {
@@ -1147,6 +1174,7 @@ const CATALOG = [
     category: 'Aceites',
     tags: ['brillo', 'nutritivo', 'acabado sedoso'],
     asin: 'B07GWS4BSJ',
+    image: 'https://static.thcdn.com/productimg/original/15229252-1705341192538373.jpg',
     sourceLink: 'https://www.kerastase.com.co/elixir-ultime/original-serum',
   },
   {
@@ -1205,6 +1233,7 @@ const CATALOG = [
     category: 'Aceites',
     tags: [],
     asin: 'B0BZZJWGPQ',
+    image: 'https://static.thcdn.com/productimg/original/14510098-3255341190748762.jpg',
     sourceLink: 'https://www.kerastase.com.co/nutritive/8h-magic-night-serum',
   },
   {
@@ -1214,6 +1243,7 @@ const CATALOG = [
     category: 'Aceites',
     tags: [],
     asin: 'B01MYA4MON',
+    image: 'https://static.thcdn.com/productimg/1600/1600/11401012-1814583087994018.jpg',
     sourceLink: 'https://www.kerastase.com.co/aura-botanica/concentre-essentiel',
   },
   {
@@ -1250,6 +1280,7 @@ const CATALOG = [
     category: 'Aceites',
     tags: [],
     asin: 'B08MBWGWBQ',
+    image: 'https://gisou.com/cdn/shop/files/02_HIHO_100ml_PG_PACKSHOT1_D_94c5ae27-3afb-4bb5-80b3-74736ecd6e1f.jpg',
     sourceLink: 'https://gisou.com/products/honey-infused-hair-oil',
   },
   {
@@ -1259,6 +1290,7 @@ const CATALOG = [
     category: 'Aceites',
     tags: [],
     asin: 'B0D366XFCB',
+    image: 'https://static.thcdn.com/productimg/original/14874588-1305078425891020.jpg',
     sourceLink: 'https://gisou.com/products/propolis-infused-repair-serum',
   },
   {

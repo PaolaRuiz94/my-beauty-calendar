@@ -23,7 +23,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase/config';
 import { useAuth } from '../auth/AuthContext';
-import CitasModal from './CitasModal';
 import {
   addProgressPhoto,
   subscribeToProgressPhotos,
@@ -308,8 +307,6 @@ function ProfileView() {
     return unsub;
   }, [user?.uid]);
 
-  // ── Citas modal ───────────────────────────────────────────────────────────────
-  const [citasVisible, setCitasVisible] = useState(false);
 
   const handleAddProgressPhoto = useCallback(() => {
     const pick = async (fromCamera) => {
@@ -602,23 +599,6 @@ function ProfileView() {
                 </View>
               )}
 
-              {/* ── Mis Citas ── */}
-              <View style={[styles.sectionTitleRow, { marginTop: 28 }]}>
-                <Ionicons name="calendar-number-outline" size={13} color="#D6A4A4" />
-                <Text style={styles.sectionTitle}>Mis Citas</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.citasBtn}
-                onPress={() => setCitasVisible(true)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.citasBtnLeft}>
-                  <Ionicons name="calendar-number-outline" size={18} color="#BF789C" />
-                  <Text style={styles.citasBtnText}>Mis citas</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#D6A4A4" />
-              </TouchableOpacity>
-
               <View style={[styles.sectionTitleRow, { marginTop: 28 }]}>
                 <Ionicons name="information-circle-outline" size={13} color="#D6A4A4" />
                 <Text style={styles.sectionTitle}>Acerca de</Text>
@@ -645,12 +625,6 @@ function ProfileView() {
             </>
           )}
         </ScrollView>
-
-        <CitasModal
-          visible={citasVisible}
-          onClose={() => setCitasVisible(false)}
-          userId={user?.uid}
-        />
 
         {/* ── Modal foto de progreso ── */}
         <Modal visible={!!selectedPhoto} transparent animationType="fade" onRequestClose={() => setSelectedPhoto(null)}>

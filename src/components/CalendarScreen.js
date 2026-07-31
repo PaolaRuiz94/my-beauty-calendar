@@ -345,18 +345,55 @@ export default function CalendarScreen({ route, navigation }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [d, n, dd, nd] = await Promise.all([
+        const [savedDay, savedNight, dd, nd] = await Promise.all([
           AsyncStorage.getItem('@mybeauty-calendar:dayByDate'),
           AsyncStorage.getItem('@mybeauty-calendar:nightByDate'),
           AsyncStorage.getItem('@mybeauty-calendar:dayDone'),
           AsyncStorage.getItem('@mybeauty-calendar:nightDone'),
         ]);
         const pts = await AsyncStorage.getItem('@mybeauty-calendar:points');
-        if (d)   setDayByDate(JSON.parse(d));
-        if (n)   setNightByDate(JSON.parse(n));
+        if (savedDay)   setDayByDate(JSON.parse(savedDay));
+        if (savedNight) setNightByDate(JSON.parse(savedNight));
         if (dd)  setDayDone(JSON.parse(dd));
         if (nd)  setNightDone(JSON.parse(nd));
         if (pts) setPoints(JSON.parse(pts));
+
+        // Si el calendario está vacío, auto-poblar desde el diagnóstico guardado
+        if (!savedDay) {
+          const [planRaw, profileRaw] = await Promise.all([
+            AsyncStorage.getItem('@mybeauty-calendar:diagnosisRoutinePlan'),
+            AsyncStorage.getItem('@mybeauty-calendar:hairProfile'),
+          ]);
+          if (planRaw) {
+            const plan = JSON.parse(planRaw);
+            if (Array.isArray(plan) && plan.length > 0) {
+              let products = [];
+              if (profileRaw) {
+                try {
+                  const profile = JSON.parse(profileRaw);
+                  const flags = Object.entries(profile).filter(([, v]) => v === true).map(([k]) => k);
+                  products = await fetchProductsByProfile(flags);
+                } catch {}
+              }
+              const today = new Date();
+              const newDay = {};
+              const newNight = {};
+              for (let i = 0; i < 30; i++) {
+                const dateObj = new Date(today);
+                dateObj.setDate(today.getDate() + i);
+                const dateStr = dateObj.toISOString().split('T')[0];
+                const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
+                newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
+                newNight[dateStr] = (dayPlan.nightSteps || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
+              }
+              setProfileProducts(products);
+              setDayByDate(newDay);
+              setNightByDate(newNight);
+              const first = Object.keys(newDay)[0];
+              if (first) setSelectedDate(first);
+            }
+          }
+        }
       } catch {}
       isLoaded.current = true;
     };

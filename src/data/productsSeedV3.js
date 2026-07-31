@@ -224,6 +224,7 @@ export const productsSeedV3 = [
     category: 'Tratamiento',
     tags: ['rizos', 'mascarilla', 'hidratante', 'definición', 'anti-frizz'],
     profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Hydrate-Mask-6-7-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/curl-mask',
   },
 
@@ -237,6 +238,7 @@ export const productsSeedV3 = [
     category: 'Shampoo',
     tags: ['brillo', 'suavidad', 'luminoso', 'sedoso', 'delicado'],
     profiles: ['dryScalp', 'highPorosity', 'isChemical'],
+    image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Glow-Cleanser-10-1-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/glow-cleanser',
   },
   {
@@ -247,6 +249,7 @@ export const productsSeedV3 = [
     category: 'Acondicionador',
     tags: ['brillo', 'suavizante', 'luminosidad', 'sedoso', 'fibra'],
     profiles: ['dryScalp', 'highPorosity'],
+    image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Glow-Conditioner-8-4-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/glow-conditioner',
   },
   {
@@ -257,6 +260,7 @@ export const productsSeedV3 = [
     category: 'Tratamiento',
     tags: ['brillo intenso', 'suavidad', 'luminoso', 'sedoso', 'tratamiento'],
     profiles: ['dryScalp', 'highPorosity', 'isChemical'],
+    image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Glow-Mask-6-7-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/glow-mask',
   },
   {
@@ -267,6 +271,7 @@ export const productsSeedV3 = [
     category: 'Aceites',
     tags: ['brillo', 'sérum', 'luminosidad', 'sin residuo', 'suavidad'],
     profiles: ['dryScalp', 'fineDensity', 'isHeatDamaged'],
+    image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Glow-Essence-1-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/glow-serum',
   },
   {
@@ -277,6 +282,7 @@ export const productsSeedV3 = [
     category: 'Aceites',
     tags: ['brillo', 'gotas', 'ultra-concentrado', 'luminosidad', 'acabado'],
     profiles: ['fineDensity', 'isHeatDamaged', 'dryScalp'],
+    image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Glow-Essence-1-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/glow-drops',
   },
 
@@ -290,6 +296,7 @@ export const productsSeedV3 = [
     category: 'Shampoo',
     tags: ['ultra-nutritivo', 'muy seco', 'poroso', 'grueso', 'nutrición'],
     profiles: ['dryScalp', 'highPorosity', 'denseDensity'],
+    image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Replenish-Cleanser-10-1-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/indulge-cleanser',
   },
   {
@@ -300,6 +307,7 @@ export const productsSeedV3 = [
     category: 'Acondicionador',
     tags: ['ultra-nutritivo', 'muy seco', 'rebelde', 'suavidad extrema', 'transformador'],
     profiles: ['dryScalp', 'highPorosity', 'denseDensity'],
+    image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Replenish-Conditioner-8-4-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/indulge-conditioner',
   },
   {
@@ -310,6 +318,7 @@ export const productsSeedV3 = [
     category: 'Tratamiento',
     tags: ['ultra-rica', 'muy seco', 'poroso', 'manejabilidad', 'profunda'],
     profiles: ['dryScalp', 'highPorosity', 'denseDensity'],
+    image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Replenish-Mask-6-7-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/indulge-mask',
   },
   {
@@ -320,6 +329,7 @@ export const productsSeedV3 = [
     category: 'Aceites',
     tags: ['nutritivo', 'muy seco', 'poroso', 'sellador', 'anti-frizz'],
     profiles: ['dryScalp', 'highPorosity', 'denseDensity'],
+    image: 'https://curlshops.com/wp-content/uploads/2024/03/Indulging-Oil.jpg',
     link: 'https://authenticbeautyconcept.com/products/indulge-oil',
   },
 ];

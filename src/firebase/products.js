@@ -7,8 +7,18 @@ import { productsSeed } from '../data/productsSeed';
 import { productsSeedV2 } from '../data/productsSeedV2';
 import { productsSeedV3 } from '../data/productsSeedV3';
 import { productsSeedV4 } from '../data/productsSeedV4';
+import { PRODUCTS } from '../data/products';
 
-const ALL_PRODUCTS = [...productsSeed, ...productsSeedV2, ...productsSeedV3, ...productsSeedV4];
+// Lookup por ID con ASINs actualizados de products.js
+const catalogById = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
+
+// Seed files tienen descriptions/profiles; products.js tiene ASINs correctos
+const ALL_PRODUCTS = [...productsSeed, ...productsSeedV2, ...productsSeedV3, ...productsSeedV4].map(p => {
+  const catalog = catalogById[p.id];
+  if (!catalog) return p;
+  if (catalog.image) console.log('MERGE IMAGE:', p.id, catalog.image.slice(0, 50));
+  return { ...p, asin: catalog.asin, amazonLink: catalog.amazonLink, ...(catalog.image ? { image: catalog.image } : {}) };
+});
 
 const COL = 'products';
 
@@ -53,64 +63,19 @@ export async function fetchProductsByCategory(category) {
 }
 
 export async function fetchProductsByProfile(profileFlags = []) {
-  if (profileFlags.length === 0) {
-    console.log("🔍 [fetchProductsByProfile] Empty flags, returning all products");
-    return fetchAllProducts();
-  }
+  if (profileFlags.length === 0) return fetchAllProducts();
 
-  console.log("🔍 [fetchProductsByProfile] Querying with flags:", profileFlags);
-
-  // Firestore limits array-contains-any to 10 values.
-  if (profileFlags.length > 10) {
-    console.log("⚠️  [fetchProductsByProfile] >10 flags, using local filter fallback");
-    const allProducts = await fetchAllProducts();
-    const filtered = allProducts.filter((product) =>
-      product.profiles?.some((profile) => profileFlags.includes(profile))
-    );
-    console.log("🔍 [fetchProductsByProfile] Filtered result:", filtered.length, "products");
-    return filtered;
-  }
-
-  try {
-    const q = query(
-      collection(db, COL),
-      where('profiles', 'array-contains-any', profileFlags),
-    );
-    console.log("🔍 [fetchProductsByProfile] Executing Firestore query");
-    const snap = await getDocs(q);
-    const result = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    console.log("🔍 [fetchProductsByProfile] Query returned:", result.length, "products");
-    if (result.length > 0) return result;
-  } catch (error) {
-    console.warn("⚠️  [fetchProductsByProfile] Firestore unavailable, using local data");
-  }
-
-  // Fallback local
   const filtered = ALL_PRODUCTS.filter((product) =>
     product.profiles?.some((profile) => profileFlags.includes(profile))
   );
-  console.log("🔍 [fetchProductsByProfile] Local fallback:", filtered.length, "products");
   return filtered;
 }
 
 export async function fetchAllProducts() {
-  try {
-    const snap = await getDocs(collection(db, COL));
-    const result = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => a.brand.localeCompare(b.brand));
-    
-    if (result.length > 0) {
-      console.log("✅ [fetchAllProducts] Loaded", result.length, "products from Firestore");
-      return result;
-    }
-  } catch (error) {
-    // Silencioso: fallback esperado
-  }
-
-  // Fallback local (default)
-  const result = ALL_PRODUCTS.sort((a, b) => a.brand.localeCompare(b.brand));
-  console.log("✅ [fetchAllProducts] Using", result.length, "products from local data");
+  const result = [...ALL_PRODUCTS].sort((a, b) => a.brand.localeCompare(b.brand));
+  const withImage = result.filter(p => p.image);
+  console.log("✅ [fetchAllProducts]", result.length, "products,", withImage.length, "with image field");
+  withImage.slice(0, 3).forEach(p => console.log('  IMG:', p.id, p.image?.slice(0, 40)));
   return result;
 }
 

@@ -18,13 +18,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from '@react-navigation/native';
-import { categoryOptions } from "../data/productDB";
-import { amazonProductCatalog, getAmazonProductById } from "../data/amazonProductCatalog";
+import { categoryOptions, amazonProductCatalog, getAmazonProductById } from '../data/products';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProductsByProfile, fetchAllProducts, filterProducts } from "../firebase/products";
 import { getWeatherContext, getWeatherBoostTags } from "../services/weatherService";
 
 const defaultProductImage = require("../../assets/icon.png");
+
+const getProductImage = (product) => {
+  if (product.image) {
+    console.log('HAS IMAGE FIELD:', product.name, product.image.slice(0, 60));
+    return { uri: product.image };
+  }
+  if (product.asin) return { uri: `https://m.media-amazon.com/images/P/${product.asin}.01._SL500_.jpg` };
+  return defaultProductImage;
+};
 
 const ALL_CATEGORIES = [...categoryOptions];
 
@@ -59,12 +67,27 @@ function CategoryChip({ option, isSelected, onPress }) {
 // ─── ProductCard ──────────────────────────────────────────────────────────────
 
 function ProductCard({ product, onBuy, onAddToCart, inCart }) {
+  const [fallback, setFallback] = React.useState(0);
+
+  const imgSource = React.useMemo(() => {
+    if (product.image && fallback === 0) return { uri: product.image };
+    if (!product.asin || fallback >= 2) return defaultProductImage;
+    if (fallback === 0) return { uri: `https://m.media-amazon.com/images/P/${product.asin}.01._SL500_.jpg` };
+    return { uri: `https://images-na.ssl-images-amazon.com/images/P/${product.asin}.01.LZZZZZZZ.jpg` };
+  }, [product.asin, product.image, fallback]);
+
   return (
     <View style={styles.productCard}>
       <View style={styles.productCardTop}>
         <Image
-          source={product.image ? { uri: product.image } : defaultProductImage}
+          source={imgSource}
           style={styles.productImage}
+          resizeMode="cover"
+          onError={() => setFallback(f => f + 1)}
+          onLoad={(e) => {
+            const { width, height } = e.nativeEvent.source;
+            if (width <= 1 || height <= 1) setFallback(f => f + 1);
+          }}
         />
         <View style={styles.productInfo}>
           {product.brand ? (
@@ -136,10 +159,11 @@ function buildAmazonUrl(product) {
 
   const catalogEntry = directProduct || matchedByName;
 
-  if (catalogEntry?.amazonLink) return catalogEntry.amazonLink;
+  // ASIN directo primero (link /dp/), búsqueda solo como último recurso
   if (catalogEntry?.asin) return `https://www.amazon.com/dp/${catalogEntry.asin}?tag=${AFFILIATE_TAG}`;
-  if (product?.amazonLink) return product.amazonLink;
   if (product?.asin) return `https://www.amazon.com/dp/${product.asin}?tag=${AFFILIATE_TAG}`;
+  if (catalogEntry?.amazonLink) return catalogEntry.amazonLink;
+  if (product?.amazonLink) return product.amazonLink;
 
   return null;
 }
@@ -458,7 +482,7 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
                     <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
                       {cart.map(p => (
                         <View key={p.id} style={styles.cartItem}>
-                          <Image source={p.image ? { uri: p.image } : defaultProductImage} style={styles.cartItemImage} />
+                          <Image source={getProductImage(p)} style={styles.cartItemImage} />
                           <View style={{ flex: 1 }}>
                             <Text style={styles.cartItemBrand}>{p.brand}</Text>
                             <Text style={styles.cartItemName} numberOfLines={2}>{p.name}</Text>
@@ -674,7 +698,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginRight: 14,
     backgroundColor: "#F7ECEE",
-    resizeMode: "cover",
   },
   productInfo: {
     flex: 1,

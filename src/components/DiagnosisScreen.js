@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { productDB, recommendationDB } from '../data/productDB';
+import { productDB, recommendationDB } from '../data/products';
 import { fetchRoutineVideos } from '../firebase/videos';
 import { searchYouTubeVideos } from '../services/youtube';
 import YouTubeCarousel from './YouTubeCarousel';
@@ -228,6 +228,16 @@ export default function DiagnosisScreen({ navigation }) {
     fetchRoutineVideos()
       .then(setRoutineVideos)
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.multiGet([
+      '@mybeauty-calendar:diagnosisResult',
+      '@mybeauty-calendar:diagnosisRoutinePlan',
+    ]).then(([[, savedResult], [, savedPlan]]) => {
+      if (savedResult) setResult(JSON.parse(savedResult));
+      if (savedPlan) setRoutinePlan(JSON.parse(savedPlan));
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -886,12 +896,12 @@ export default function DiagnosisScreen({ navigation }) {
         .catch((err) => {
           console.error("❌ [generateResult] Error saving profile:", err);
         });
+
       
       const { damageLevel, stylingMethod } = profile;
       const recommendedProducts = getRecommendedProducts(profile);
       const routinePlanResult = getRoutinePlan(profile);
-      setRoutinePlan(routinePlanResult);
-      setResult({
+      const resultObject = {
         hairType: getHairType(answersObject),
         objective: getObjectiveLabel(answersObject.objective),
         texture: answersObject.texture,
@@ -910,7 +920,13 @@ export default function DiagnosisScreen({ navigation }) {
           tips: getPersonalizedTips(profile),
           frequency: getFrequencyRecommendations(profile),
         },
-      });
+      };
+      setRoutinePlan(routinePlanResult);
+      setResult(resultObject);
+      AsyncStorage.multiSet([
+        ['@mybeauty-calendar:diagnosisResult', JSON.stringify(resultObject)],
+        ['@mybeauty-calendar:diagnosisRoutinePlan', JSON.stringify(routinePlanResult)],
+      ]).catch(() => {});
       setIsLoadingDiagnosis(false);
     }, 1800);
   };
@@ -920,6 +936,11 @@ export default function DiagnosisScreen({ navigation }) {
     setAnswers({});
     setCurrentQuestion(0);
     setImage(null);
+    AsyncStorage.multiRemove([
+      '@mybeauty-calendar:hairProfile',
+      '@mybeauty-calendar:diagnosisResult',
+      '@mybeauty-calendar:diagnosisRoutinePlan',
+    ]).catch(() => {});
   };
 
   // ── RESULT SCREEN ────────────────────────────────────────────────────────────

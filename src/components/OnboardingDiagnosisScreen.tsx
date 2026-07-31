@@ -13,6 +13,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAuth } from '../auth/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 // @ts-ignore
 import { Ionicons } from '@expo/vector-icons';
@@ -56,6 +57,7 @@ function toggleSelection(item: string, list: string[], setList: SetList) {
 
 export default function OnboardingDiagnosisScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [name, setName] = useState('');
@@ -84,7 +86,11 @@ export default function OnboardingDiagnosisScreen() {
     } catch (e) {
       console.warn('Error saving onboarding profile:', e);
     }
-    navigation.navigate('Auth');
+    if (user) {
+      navigation.navigate('Main', { screen: 'Diagnóstico' });
+    } else {
+      navigation.navigate('Auth');
+    }
   };
 
   const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {

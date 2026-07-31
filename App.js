@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initProducts } from './src/firebase/products';
@@ -80,10 +81,10 @@ const TAB_ICONS = {
   Perfil: ['person', 'person-outline'],
 };
 
-function MainTabNavigator() {
+function MainTabNavigator({ initialTab = 'Calendario' }) {
   return (
     <Tab.Navigator
-      initialRouteName="Calendario"
+      initialRouteName={initialTab}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
@@ -125,14 +126,25 @@ function AuthStackScreen() {
 
 function AppRouter() {
   const { user, isLoading } = useAuth();
+  const [hasDiagnosis, setHasDiagnosis] = useState(null);
 
-  if (isLoading) return null;
+  useEffect(() => {
+    if (!user) { setHasDiagnosis(null); return; }
+    AsyncStorage.getItem('@mybeauty-calendar:diagnosisResult')
+      .then(val => setHasDiagnosis(!!val))
+      .catch(() => setHasDiagnosis(true));
+  }, [user]);
+
+  if (isLoading || (user && hasDiagnosis === null)) return null;
 
   return (
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>
+            {!hasDiagnosis && (
+              <RootStack.Screen name="OnboardingDiagnosis" component={OnboardingDiagnosisScreen} />
+            )}
             <RootStack.Screen name="Main" component={MainTabNavigator} />
             <RootStack.Screen name="TipDetail" component={DetailScreen} />
             <RootStack.Screen name="CategoryDetail" component={CategoryDetailScreen} options={{ headerShown: false }} />

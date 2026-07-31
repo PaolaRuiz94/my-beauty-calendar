@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, ActivityIndicator, KeyboardAvoidingView,
+  Modal, TextInput, ActivityIndicator,
   Platform, TouchableWithoutFeedback, Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +14,7 @@ import { collection, getDocs, addDoc, query, orderBy, serverTimestamp } from 'fi
 import { db } from '../firebase/config';
 import { useAuth } from '../auth/AuthContext';
 import ProductsScreen from './ProductsScreen';
-import CitasModal from './CitasModal';
+import { searchNearbySalons, mapsUrl } from '../services/googlePlaces';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -33,11 +34,16 @@ const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 's
 const DIAS_LABEL = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-function getHorarioHoy(horarios) {
-  const dia = DIAS[new Date().getDay()];
-  const h = horarios?.[dia];
-  if (!h?.activo) return 'Cerrado hoy';
-  return `${h.abre} – ${h.cierra}`;
+function getHorarioHoy(horarios, openNow) {
+  if (horarios) {
+    const dia = DIAS[new Date().getDay()];
+    const h = horarios[dia];
+    if (!h?.activo) return 'Cerrado hoy';
+    return `${h.abre} – ${h.cierra}`;
+  }
+  if (openNow === true)  return 'Abierto ahora';
+  if (openNow === false) return 'Cerrado ahora';
+  return null;
 }
 
 function getTimeSlots(horarios, fechaStr) {
@@ -69,7 +75,7 @@ function getNextDays(n = 7) {
   return days;
 }
 
-const FILTERS = ['Todas', 'Tradicional', 'Para rizadas'];
+const FILTERS = ['Tradicional', 'Para rizadas'];
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
@@ -88,13 +94,15 @@ function StarRating({ rating, size = 13 }) {
   );
 }
 
-function PeluqueriaCard({ peluqueria, distancia, onReservar, onVerPerfil }) {
-  const horarioHoy = getHorarioHoy(peluqueria.horarios);
-  const abierto = horarioHoy !== 'Cerrado hoy';
+function PeluqueriaCard({ peluqueria, distancia, onVerPerfil }) {
+  const horarioHoy = getHorarioHoy(peluqueria.horarios, peluqueria.openNow);
+  const abierto = horarioHoy !== 'Cerrado hoy' && horarioHoy !== 'Cerrado ahora';
   const esCurly = peluqueria.tipo === 'Para rizadas';
+  const isGoogle = peluqueria.isGooglePlace;
 
-  const llamar = () => Linking.openURL(`tel:${peluqueria.telefono}`);
+  const llamar   = () => Linking.openURL(`tel:${peluqueria.telefono}`);
   const whatsapp = () => Linking.openURL(`whatsapp://send?phone=57${peluqueria.telefono}`);
+  const verMaps  = () => Linking.openURL(mapsUrl(peluqueria));
 
   return (
     <TouchableOpacity style={styles.peluqueriaCard} onPress={onVerPerfil} activeOpacity={0.92}>
@@ -130,15 +138,17 @@ function PeluqueriaCard({ peluqueria, distancia, onReservar, onVerPerfil }) {
         <Text style={styles.ratingNum}>{peluqueria.rating?.toFixed(1)}</Text>
         <Text style={styles.ratingCount}>({peluqueria.totalResenias})</Text>
         <View style={{ flex: 1 }} />
-        <View style={[styles.horarioBadge, !abierto && styles.horarioCerrado]}>
-          <Text style={[styles.horarioText, !abierto && styles.horarioTextCerrado]}>
-            {horarioHoy}
-          </Text>
-        </View>
+        {horarioHoy && (
+          <View style={[styles.horarioBadge, !abierto && styles.horarioCerrado]}>
+            <Text style={[styles.horarioText, !abierto && styles.horarioTextCerrado]}>
+              {horarioHoy}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.cardActionsRow}>
-        {peluqueria.telefono && (
+        {!isGoogle && peluqueria.telefono && (
           <>
             <TouchableOpacity style={styles.contactIconBtn} onPress={llamar} activeOpacity={0.8}>
               <Ionicons name="call-outline" size={17} color="#BF789C" />
@@ -148,92 +158,19 @@ function PeluqueriaCard({ peluqueria, distancia, onReservar, onVerPerfil }) {
             </TouchableOpacity>
           </>
         )}
-        <TouchableOpacity style={[styles.reservarBtn, { flex: 1 }]} onPress={onReservar} activeOpacity={0.85}>
+        <TouchableOpacity style={[styles.reservarBtn, { flex: 1 }]} onPress={verMaps} activeOpacity={0.85}>
           <LinearGradient
-            colors={['#DEB4CC', '#BF789C']}
+            colors={['#4A90E2', '#2D6DB5']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.reservarBtnGradient}
           >
-            <Ionicons name="calendar-outline" size={15} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.reservarBtnText}>Reservar</Text>
+            <Ionicons name="map-outline" size={15} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.reservarBtnText}>Ver en Maps</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
-  );
-}
-
-function MiniCalendar({ selectedDate, onSelect }) {
-  const [viewDate, setViewDate] = useState(() => {
-    const d = new Date(); d.setDate(1); return d;
-  });
-
-  const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const DAY_LABELS = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-
-  const today = new Date(); today.setHours(0,0,0,0);
-  const firstDow = new Date(year, month, 1).getDay();
-  const offset = firstDow === 0 ? 6 : firstDow - 1;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const cells = [...Array(offset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-
-  const goBack = () => {
-    const prev = new Date(year, month - 1, 1);
-    if (prev >= new Date(today.getFullYear(), today.getMonth(), 1)) setViewDate(prev);
-  };
-
-  return (
-    <View style={styles.calendar}>
-      <View style={styles.calendarHeader}>
-        <TouchableOpacity onPress={goBack} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={20} color="#BF789C" />
-        </TouchableOpacity>
-        <Text style={styles.calendarMonthLabel}>{MONTHS[month]} {year}</Text>
-        <TouchableOpacity onPress={() => setViewDate(new Date(year, month + 1, 1))} activeOpacity={0.7}>
-          <Ionicons name="chevron-forward" size={20} color="#BF789C" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.calendarDayLabels}>
-        {DAY_LABELS.map(l => <Text key={l} style={styles.calendarDayLabel}>{l}</Text>)}
-      </View>
-
-      <View style={styles.calendarGrid}>
-        {cells.map((day, i) => {
-          if (!day) return <View key={`e-${i}`} style={styles.calendarCell} />;
-          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const cellDate = new Date(year, month, day);
-          const isPast = cellDate < today;
-          const isSelected = selectedDate === dateStr;
-          const isToday = cellDate.getTime() === today.getTime();
-
-          return (
-            <TouchableOpacity
-              key={dateStr}
-              style={styles.calendarCell}
-              onPress={() => !isPast && onSelect(dateStr)}
-              activeOpacity={isPast ? 1 : 0.75}
-              disabled={isPast}
-            >
-              {isSelected ? (
-                <LinearGradient colors={['#DEB4CC', '#BF789C']} style={styles.calendarDayCircle}>
-                  <Text style={[styles.calendarDayText, { color: '#fff', fontWeight: '800' }]}>{day}</Text>
-                </LinearGradient>
-              ) : (
-                <View style={[styles.calendarDayCircle, isToday && styles.calendarDayToday, isPast && { opacity: 0.25 }]}>
-                  <Text style={[styles.calendarDayText, isToday && { color: '#BF789C', fontWeight: '700' }]}>{day}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
   );
 }
 
@@ -251,20 +188,20 @@ export default function ExplorarScreen({ navigation, route }) {
   const [userLocation, setUserLocation]     = useState(null);
   const [userCity, setUserCity]             = useState(null);
   const [soloMiCiudad, setSoloMiCiudad]     = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState('Todas');
-  const [citasVisible, setCitasVisible]     = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState('Tradicional');
+  const [hairProfile, setHairProfile]       = useState(null);
+  const [filterPersonalizado, setFilterPersonalizado] = useState(false);
+
+  // Google Places
+  const [googlePlaces, setGooglePlaces]     = useState([]);
+  const [loadingGoogle, setLoadingGoogle]   = useState(false);
+  const [googleError, setGoogleError]       = useState(null);
 
   // modal perfil
   const [perfilModal, setPerfilModal] = useState({ visible: false, peluqueria: null });
   const [resenias, setResenias]       = useState([]);
 
   // modal reserva
-  const [reservaModal, setReservaModal]   = useState({ visible: false, peluqueria: null });
-  const [reservaFecha, setReservaFecha]   = useState('');
-  const [reservaHora, setReservaHora]     = useState('');
-  const [reservaNombre, setReservaNombre] = useState('');
-  const [guardando, setGuardando]         = useState(false);
-  const [reservaExito, setReservaExito]   = useState(false);
 
   // modal reseña
   const [reseniaModal, setReseniaModal]     = useState(false);
@@ -275,7 +212,31 @@ export default function ExplorarScreen({ navigation, route }) {
   useEffect(() => {
     fetchPeluquerias();
     requestLocation();
+    AsyncStorage.getItem('@mybeauty-calendar:hairProfile')
+      .then(raw => { if (raw) setHairProfile(JSON.parse(raw)); })
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!hairProfile) return;
+    if (hairProfile.isCurlyOrWavy || hairProfile.isCoily) {
+      setSelectedFilter('Para rizadas');
+      setFilterPersonalizado(true);
+    } else if (hairProfile.isLacio) {
+      setSelectedFilter('Tradicional');
+      setFilterPersonalizado(true);
+    }
+  }, [hairProfile]);
+
+  useEffect(() => {
+    if (!userLocation) return;
+    setGoogleError(null);
+    setLoadingGoogle(true);
+    searchNearbySalons(userLocation.latitude, userLocation.longitude, { tipo: selectedFilter })
+      .then(setGooglePlaces)
+      .catch(e => setGoogleError(e.message))
+      .finally(() => setLoadingGoogle(false));
+  }, [userLocation, selectedFilter]);
 
   const fetchPeluquerias = async () => {
     try {
@@ -317,33 +278,6 @@ export default function ExplorarScreen({ navigation, route }) {
     fetchResenias(peluqueria.id);
   };
 
-  const openReserva = (peluqueria) => {
-    setPerfilModal({ visible: false, peluqueria: null });
-    setReservaFecha('');
-    setReservaHora('');
-    setReservaNombre(user?.displayName || '');
-    setReservaExito(false);
-    setReservaModal({ visible: true, peluqueria });
-  };
-
-  const confirmarReserva = async () => {
-    if (!reservaFecha || !reservaHora || !reservaNombre.trim()) return;
-    setGuardando(true);
-    try {
-      await addDoc(collection(db, 'reservas'), {
-        clienteUid: user?.uid || '',
-        clienteNombre: reservaNombre.trim(),
-        peluqueriaId: reservaModal.peluqueria.id,
-        peluqueriaNombre: reservaModal.peluqueria.nombre,
-        fecha: reservaFecha,
-        hora: reservaHora,
-        estado: 'pendiente',
-        creadoEn: serverTimestamp(),
-      });
-      setReservaExito(true);
-    } catch {}
-    setGuardando(false);
-  };
 
   const guardarResenia = async () => {
     if (!reseniaPuntos || !reseniaTexto.trim()) return;
@@ -365,8 +299,18 @@ export default function ExplorarScreen({ navigation, route }) {
     setGuardandoResenia(false);
   };
 
+  const getHairTypeName = (profile) => {
+    if (!profile) return null;
+    if (profile.isCoily) return 'Afrorizado';
+    if (profile.isRizado) return 'Rizado';
+    if (profile.isOndulado) return 'Ondulado';
+    if (profile.isTransicion) return 'Transición capilar';
+    if (profile.isLacio) return 'Lacio';
+    return null;
+  };
+
   const peluqueriasFiltradas = peluquerias
-    .filter(p => selectedFilter === 'Todas' || p.tipo === selectedFilter)
+    .filter(p => p.tipo === selectedFilter)
     .filter(p => {
       if (!soloMiCiudad || !userCity) return true;
       return p.ciudad?.toLowerCase() === userCity.toLowerCase();
@@ -384,7 +328,6 @@ export default function ExplorarScreen({ navigation, route }) {
     });
 
   const nextDays = getNextDays(7);
-  const timeSlots = getTimeSlots(reservaModal.peluqueria?.horarios, reservaFecha);
 
   return (
     <View style={styles.screen}>
@@ -437,19 +380,8 @@ export default function ExplorarScreen({ navigation, route }) {
       {activeTab === 'peluquerias' && (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.peluScroll}>
 
-          {/* botón mis citas */}
-          <TouchableOpacity
-            style={styles.misCitasBtn}
-            onPress={() => setCitasVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="calendar-number-outline" size={16} color="#BF789C" />
-            <Text style={styles.misCitasBtnText}>Ver mis citas</Text>
-            <Ionicons name="chevron-forward" size={14} color="#D6A4A4" style={{ marginLeft: 'auto' }} />
-          </TouchableOpacity>
-
-          {/* banner ciudad */}
-          {userCity && (
+          {/* banner ciudad — solo cuando no hay Google Places */}
+          {userCity && !userLocation && (
             <View style={styles.cityBanner}>
               <Ionicons name="location" size={14} color="#BF789C" />
               <Text style={styles.cityBannerText} numberOfLines={1}>
@@ -467,40 +399,78 @@ export default function ExplorarScreen({ navigation, route }) {
             </View>
           )}
 
+          {/* banner de personalización */}
+          {filterPersonalizado && hairProfile && getHairTypeName(hairProfile) && (
+            <View style={styles.hairBanner}>
+              <Ionicons name="sparkles-outline" size={13} color="#BF789C" />
+              <Text style={styles.hairBannerText}>
+                Mostrando peluquerías para cabello{' '}
+                <Text style={styles.hairBannerBold}>{getHairTypeName(hairProfile)}</Text>
+              </Text>
+              <TouchableOpacity
+                onPress={() => { setSelectedFilter('Tradicional'); setFilterPersonalizado(false); }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close-circle-outline" size={16} color="#D6A4A4" />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* filtros */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
             {FILTERS.map(f => (
               <TouchableOpacity
                 key={f}
                 style={[styles.filterChip, selectedFilter === f && styles.filterChipActive]}
-                onPress={() => setSelectedFilter(f)}
+                onPress={() => { setSelectedFilter(f); setFilterPersonalizado(false); }}
                 activeOpacity={0.8}
               >
                 <Text style={[styles.filterChipText, selectedFilter === f && styles.filterChipTextActive]}>
                   {f}
                 </Text>
+                {filterPersonalizado && selectedFilter === f && (
+                  <View style={styles.filterParaTiDot} />
+                )}
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           {/* lista */}
-          {loadingPelu ? (
+          {(userLocation ? loadingGoogle : loadingPelu) ? (
             <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 60 }} />
-          ) : peluqueriasFiltradas.length === 0 ? (
+          ) : googleError && userLocation ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="key-outline" size={44} color="#EDD0D8" />
+              <Text style={styles.emptyText}>
+                {['REQUEST_DENIED', 'INVALID_REQUEST', 'EXPO_PUBLIC_GOOGLE_PLACES_KEY no configurada'].includes(googleError)
+                  ? 'Falta configurar la Google Places API key.\nAbre el archivo .env y reemplaza TU_API_KEY_AQUI con tu clave de Google Cloud.'
+                  : `No se pudieron cargar peluquerías.\n(${googleError})`}
+              </Text>
+            </View>
+          ) : (userLocation ? googlePlaces : peluqueriasFiltradas).length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="cut-outline" size={44} color="#EDD0D8" />
-              <Text style={styles.emptyText}>No hay peluquerías en esta categoría.</Text>
+              <Text style={styles.emptyText}>No hay peluquerías en esta zona.</Text>
             </View>
           ) : (
-            peluqueriasFiltradas.map(p => (
-              <PeluqueriaCard
-                key={p.id}
-                peluqueria={p}
-                distancia={p.distancia}
-                onVerPerfil={() => openPerfil(p)}
-                onReservar={() => openReserva(p)}
-              />
-            ))
+            <>
+              {(userLocation ? googlePlaces : peluqueriasFiltradas).map(p => {
+                const distancia = userLocation
+                  ? haversineKm(userLocation.latitude, userLocation.longitude, p.lat, p.lng)
+                  : p.distancia;
+                return (
+                  <PeluqueriaCard
+                    key={p.id}
+                    peluqueria={p}
+                    distancia={distancia}
+                    onVerPerfil={p.isGooglePlace ? undefined : () => openPerfil(p)}
+                  />
+                );
+              })}
+              {userLocation && (
+                <Text style={styles.googleAttrib}>Resultados de Google Maps</Text>
+              )}
+            </>
           )}
         </ScrollView>
       )}
@@ -595,22 +565,6 @@ export default function ExplorarScreen({ navigation, route }) {
                       ))
                     )}
 
-                    {/* botón reservar */}
-                    <TouchableOpacity
-                      style={styles.reservarBtnLarge}
-                      onPress={() => openReserva(perfilModal.peluqueria)}
-                      activeOpacity={0.85}
-                    >
-                      <LinearGradient
-                        colors={['#DEB4CC', '#BF789C']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.reservarBtnGradient}
-                      >
-                        <Ionicons name="calendar-outline" size={17} color="#fff" style={{ marginRight: 8 }} />
-                        <Text style={styles.reservarBtnText}>Reservar cita</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
                   </ScrollView>
                 )}
               </View>
@@ -618,113 +572,6 @@ export default function ExplorarScreen({ navigation, route }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
-      {/* ── Modal reserva ── */}
-      <Modal
-        visible={reservaModal.visible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setReservaModal({ visible: false, peluqueria: null })}
-      >
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <TouchableWithoutFeedback onPress={() => setReservaModal({ visible: false, peluqueria: null })}>
-            <View style={styles.reservaOverlay}>
-              <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={styles.reservaCenteredSheet}>
-                  {reservaExito ? (
-                    <View style={styles.exitoContainer}>
-                      <Text style={styles.exitoEmoji}>🎉</Text>
-                      <Text style={styles.exitoTitle}>¡Reserva enviada!</Text>
-                      <Text style={styles.exitoSub}>
-                        {reservaModal.peluqueria?.nombre} recibirá tu solicitud y la confirmará pronto.
-                      </Text>
-                      <TouchableOpacity
-                        style={styles.exitoBtn}
-                        onPress={() => setReservaModal({ visible: false, peluqueria: null })}
-                        activeOpacity={0.85}
-                      >
-                        <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.reservarBtnGradient}>
-                          <Text style={styles.reservarBtnText}>Listo</Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                      <Text style={styles.reservaTitulo}>Reservar en {reservaModal.peluqueria?.nombre}</Text>
-
-                      {/* nombre */}
-                      <Text style={styles.reservaLabel}>Tu nombre</Text>
-                      <TextInput
-                        style={styles.reservaInput}
-                        value={reservaNombre}
-                        onChangeText={setReservaNombre}
-                        placeholder="Tu nombre completo"
-                        placeholderTextColor="#CCC"
-                      />
-
-                      {/* calendario */}
-                      <Text style={styles.reservaLabel}>Fecha</Text>
-                      <MiniCalendar
-                        selectedDate={reservaFecha}
-                        onSelect={(d) => { setReservaFecha(d); setReservaHora(''); }}
-                      />
-
-                      {/* hora */}
-                      {reservaFecha ? (
-                        <>
-                          <Text style={styles.reservaLabel}>Hora</Text>
-                          {timeSlots.length === 0 ? (
-                            <Text style={styles.cerradoText}>Cerrado ese día</Text>
-                          ) : (
-                            <View style={styles.horasGrid}>
-                              {timeSlots.map(slot => (
-                                <TouchableOpacity
-                                  key={slot}
-                                  style={[styles.horaChip, reservaHora === slot && styles.horaChipActive]}
-                                  onPress={() => setReservaHora(slot)}
-                                  activeOpacity={0.8}
-                                >
-                                  <Text style={[styles.horaChipText, reservaHora === slot && styles.horaChipTextActive]}>
-                                    {slot}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          )}
-                        </>
-                      ) : null}
-
-                      {/* confirmar */}
-                      <TouchableOpacity
-                        style={[
-                          styles.reservarBtnLarge,
-                          { marginTop: 24 },
-                          (!reservaFecha || !reservaHora || !reservaNombre.trim()) && { opacity: 0.4 },
-                        ]}
-                        disabled={!reservaFecha || !reservaHora || !reservaNombre.trim() || guardando}
-                        onPress={confirmarReserva}
-                        activeOpacity={0.85}
-                      >
-                        <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.reservarBtnGradient}>
-                          {guardando
-                            ? <ActivityIndicator size="small" color="#fff" />
-                            : <Text style={styles.reservarBtnText}>Confirmar reserva</Text>}
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </ScrollView>
-                  )}
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <CitasModal
-        visible={citasVisible}
-        onClose={() => setCitasVisible(false)}
-        userId={user?.uid}
-      />
 
       {/* ── Modal reseña ── */}
       <Modal visible={reseniaModal} transparent animationType="fade" onRequestClose={() => setReseniaModal(false)}>
@@ -915,6 +762,39 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: '#fff',
+  },
+  filterParaTiDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFD700',
+  },
+
+  // banner cabello personalizado
+  hairBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FDF0F6',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0D5E8',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 12,
+  },
+  hairBannerText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#A07090',
+    lineHeight: 17,
+  },
+  hairBannerBold: {
+    fontWeight: '700',
+    color: '#BF789C',
   },
 
   // card peluquería
@@ -1160,6 +1040,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#BBB',
     textAlign: 'center',
+  },
+  googleAttrib: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: '#CCC',
+    marginTop: 4,
+    marginBottom: 16,
   },
 
   // modals

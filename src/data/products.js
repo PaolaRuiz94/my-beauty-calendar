@@ -159,15 +159,6 @@ const CATALOG = [
     sourceLink: 'https://www.garnier.com.co/fructis/rizos-definidos-shampoo',
   },
   {
-    id: 'briogeo-scalp-revival-shampoo',
-    brand: 'Briogeo',
-    name: 'Scalp Revival Charcoal Shampoo',
-    category: 'Shampoo',
-    tags: [],
-    asin: 'B06XNYHNQ3',
-    sourceLink: 'https://www.briogeohair.com/products/scalp-revival-charcoal-coconut-oil-micro-exfoliating-shampoo',
-  },
-  {
     id: 'novex-brazilian-keratin-shampoo',
     brand: 'Novex',
     name: 'Brazilian Keratin Shampoo',
@@ -1207,15 +1198,6 @@ const CATALOG = [
     tags: [],
     asin: 'B003AY949G',
     sourceLink: 'https://www.moroccanoil.com/products/moroccanoil-treatment-light',
-  },
-  {
-    id: 'briogeo-farewell-frizz-spray',
-    brand: 'Briogeo',
-    name: 'Farewell Frizz Rosarco Milk Spray',
-    category: 'Aceites',
-    tags: [],
-    asin: 'B07MGKNJJZ',
-    sourceLink: 'https://www.briogeohair.com/products/farewell-frizz-rosarco-milk-leave-in-conditioning-spray',
   },
   {
     id: 'ogx-argan-penetrating-oil',

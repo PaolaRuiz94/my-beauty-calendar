@@ -549,7 +549,7 @@ export default function DiagnosisScreen({ navigation }) {
       const tags = (product.tags || []).map(normalize);
       const addIf = (condition, value) => { if (condition) score += value; };
 
-      addIf(profile.isChemical, matchesAnyTag(product, ['reparador', 'daño', 'protección', 'protectora']) ? 2 : 1);
+      addIf(profile.isChemical, matchesAnyTag(product, ['reparador', 'daño', 'protección', 'protectora']) ? 2 : 0);
       addIf(profile.isColor, matchesAnyTag(product, ['brillo', 'protección', 'reparador', 'suavidad']) ? 2 : 0);
       addIf(profile.isAlisado, matchesAnyTag(product, ['alisado', 'desenredo', 'ligero', 'suave']) ? 2 : 0);
       addIf(profile.isHeatDamaged, matchesAnyTag(product, ['reparador', 'daño', 'protección', 'suavidad']) ? 2 : 0);
@@ -576,6 +576,26 @@ export default function DiagnosisScreen({ navigation }) {
 
       if (category === 'shampoo' && profile.scalp === 'Grasa' && tags.includes('reparador')) score -= 1;
       if ((category === 'cremaDePeinar' || category === 'espumas' || category === 'gel') && profile.texture === 'Lacio') score -= 1;
+
+      const STYLING_CATS = ['cremaDePeinar', 'espumas', 'gel'];
+      if (product.weightClass && STYLING_CATS.includes(category)) {
+        const needsHeavy = profile.isCoily || profile.isRizado;
+        const needsMedium = profile.isOndulado;
+        const needsLight = profile.isLacio;
+        if (needsHeavy) {
+          if (product.weightClass === 'pesado') score += 3;
+          else if (product.weightClass === 'medio') score += 1;
+          else score -= 3;
+        } else if (needsMedium) {
+          if (product.weightClass === 'pesado') score += 1;
+          else if (product.weightClass === 'medio') score += 2;
+          else score -= 1;
+        } else if (needsLight) {
+          if (product.weightClass === 'ligero') score += 2;
+          else if (product.weightClass === 'medio') score += 0;
+          else score -= 2;
+        }
+      }
 
       return score;
     };

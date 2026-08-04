@@ -278,6 +278,27 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
       score += product.profiles.filter(f => flags.includes(f)).length;
     if (product.tags && boostTags.length > 0)
       score += product.tags.filter(t => boostTags.some(bt => t.toLowerCase().includes(bt))).length * 0.5;
+
+    const STYLING_CATS = ['Crema de Peinar', 'Espumas', 'Gel'];
+    if (product.weightClass && STYLING_CATS.includes(product.category)) {
+      const needsHeavy = flags.includes('isCoily') || flags.includes('isRizado');
+      const needsMedium = flags.includes('isOndulado');
+      const needsLight = flags.includes('isLacio');
+      if (needsHeavy) {
+        if (product.weightClass === 'pesado') score += 3;
+        else if (product.weightClass === 'medio') score += 1;
+        else score -= 3;
+      } else if (needsMedium) {
+        if (product.weightClass === 'pesado') score += 1;
+        else if (product.weightClass === 'medio') score += 2;
+        else score -= 1;
+      } else if (needsLight) {
+        if (product.weightClass === 'ligero') score += 2;
+        else if (product.weightClass === 'medio') score += 0;
+        else score -= 2;
+      }
+    }
+
     return score;
   }
 

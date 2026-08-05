@@ -439,38 +439,55 @@ export default function DiagnosisScreen({ navigation }) {
     return map[value] || 'Objetivo personalizado';
   };
 
-  const getRoutinePlan = (profile) => {
+  const getRoutinePlan = (profile, products = []) => {
+    const byCategory = {};
+    products.forEach(p => { byCategory[p.category] = p; });
+    const tag = (text, category) => {
+      const p = byCategory[category];
+      return p ? `${text} — ${p.brand} ${p.name}` : text;
+    };
+    const tagGelOrMousse = (text) => {
+      const p = byCategory['Gel'] || byCategory['Espumas'];
+      return p ? `${text} — ${p.brand} ${p.name}` : text;
+    };
     const {
       isCurly, isWavy, isCurlyOrWavy, isCoily, isTransicion, objective,
       oilyScalp, dryScalp, highPorosity, needsProtein, isChemical, isHeatDamaged,
       damageLevel, fineStrand, hasDandruff, hasHairLoss,
     } = profile;
 
-    const detoxShampoo = hasDandruff
-      ? 'Shampoo anticaspa clarificante (zinc o ketoconazol) en cuero cabelludo'
-      : oilyScalp
-      ? 'Shampoo clarificante (detox) solo en raíz para resetear el cabello'
-      : 'Shampoo clarificante (detox) para resetear el cabello';
+    const detoxShampoo = tag(
+      hasDandruff ? 'Shampoo anticaspa clarificante (zinc o ketoconazol) en cuero cabelludo'
+      : oilyScalp  ? 'Shampoo clarificante (detox) solo en raíz para resetear el cabello'
+                   : 'Shampoo clarificante (detox) para resetear el cabello',
+      'Shampoo'
+    );
 
-    const hydraShampoo = hasDandruff
-      ? 'Shampoo anticaspa suave + masaje circular (alterna con clarificante)'
-      : oilyScalp
-      ? 'Shampoo equilibrante solo en la raíz'
-      : dryScalp
-      ? 'Shampoo nutritivo suave con masaje circular en cuero cabelludo'
-      : 'Shampoo hidratante (sin frotar medios ni puntas)';
+    const hydraShampoo = tag(
+      hasDandruff ? 'Shampoo anticaspa suave + masaje circular (alterna con clarificante)'
+      : oilyScalp  ? 'Shampoo equilibrante solo en la raíz'
+      : dryScalp   ? 'Shampoo nutritivo suave con masaje circular en cuero cabelludo'
+                   : 'Shampoo hidratante (sin frotar medios ni puntas)',
+      'Shampoo'
+    );
 
-    const deepTreatment = objective === 'reparación' || damageLevel === 'Alto'
-      ? 'Mascarilla reparadora profunda con bond builders (20-30 min)'
-      : objective === 'hidratación' || highPorosity || isCoily
-      ? 'Mascarilla hidratante profunda (15-20 min bajo gorro de vapor)'
-      : objective === 'volumen'
-      ? 'Mascarilla voluminizadora ligera (10 min)'
-      : 'Mascarilla nutritiva (15 min)';
+    const deepTreatment = tag(
+      objective === 'reparación' || damageLevel === 'Alto'
+        ? 'Mascarilla reparadora profunda con bond builders (20-30 min)'
+        : objective === 'hidratación' || highPorosity || isCoily
+        ? 'Mascarilla hidratante profunda (15-20 min bajo gorro de vapor)'
+        : objective === 'volumen'
+        ? 'Mascarilla voluminizadora ligera (10 min)'
+        : 'Mascarilla nutritiva (15 min)',
+      'Tratamiento'
+    );
 
-    const conditioner = highPorosity
-      ? 'Acondicionador nutritivo (todo el largo) — enjuague con agua fría'
-      : 'Acondicionador en medios y puntas — enjuague templado';
+    const conditioner = tag(
+      highPorosity
+        ? 'Acondicionador nutritivo (todo el largo) — enjuague con agua fría'
+        : 'Acondicionador en medios y puntas — enjuague templado',
+      'Acondicionador'
+    );
 
     const tonico = hasHairLoss
       ? 'Tónico estimulante (cafeína o biotina) con masaje de 5 min en cuero cabelludo'
@@ -484,49 +501,57 @@ export default function DiagnosisScreen({ navigation }) {
 
     const stylingDaySteps = (isCurly || isCoily)
       ? [
-          isCoily
-            ? 'Crema de peinar densa en cabello muy húmedo por secciones (praying hands o shingling)'
-            : 'Crema de peinar en cabello húmedo (medios → puntas, scrunch)',
-          fineStrand
-            ? 'Espuma o gel ligero para rizos (scrunch suave, no presionar)'
-            : isCoily
-            ? 'Gel fuerte o manteca de styling sobre la crema (sellar y definir)'
-            : 'Gel para definir y fijar rizos (scrunch)',
+          tag(
+            isCoily
+              ? 'Crema de peinar densa en cabello muy húmedo por secciones (praying hands o shingling)'
+              : 'Crema de peinar en cabello húmedo (medios → puntas, scrunch)',
+            'Crema de Peinar'
+          ),
+          tagGelOrMousse(
+            fineStrand
+              ? 'Espuma o gel ligero para rizos (scrunch suave, no presionar)'
+              : isCoily
+              ? 'Gel fuerte o manteca de styling sobre la crema (sellar y definir)'
+              : 'Gel para definir y fijar rizos (scrunch)'
+          ),
         ]
       : isWavy
-      ? ['Leave-in ligero o crema suave (medios y puntas)', 'Espuma o gel ligero para ondas (scrunch)']
+      ? [tag('Leave-in ligero o crema suave (medios y puntas)', 'Crema de Peinar'), tagGelOrMousse('Espuma o gel ligero para ondas (scrunch)')]
       : isTransicion
-      ? ['Leave-in hidratante en zona de raíz natural', 'Crema de peinar ligera en puntas para unificar textura']
-      : ['Leave-in ligero o sérum (medios y puntas)'];
+      ? [tag('Leave-in hidratante en zona de raíz natural', 'Crema de Peinar'), tag('Crema de peinar ligera en puntas para unificar textura', 'Crema de Peinar')]
+      : [tag('Leave-in ligero o sérum (medios y puntas)', 'Crema de Peinar')];
 
     const refreshDaySteps = (isCurly || isCoily)
-      ? ['Spray de agua + crema ligera para reactivar rizos (scrunch)', 'Gel o mousse para sellar y refrescar', 'Aceite ligero en puntas']
+      ? ['Spray de agua + crema ligera para reactivar rizos (scrunch)', tagGelOrMousse('Gel o mousse para sellar y refrescar'), tag('Aceite ligero en puntas', 'Aceites')]
       : isWavy
-      ? ['Spray refrescante + espuma ligera en cabello húmedo', 'Aceite ligero en puntas']
+      ? ['Spray refrescante + espuma ligera en cabello húmedo', tag('Aceite ligero en puntas', 'Aceites')]
       : isTransicion
-      ? ['Spray de agua en zona natural para rehidratar', 'Aceite ligero en puntas tratadas']
-      : ['Shampoo en seco en raíz si es necesario', 'Aceite ligero solo en puntas'];
+      ? ['Spray de agua en zona natural para rehidratar', tag('Aceite ligero en puntas tratadas', 'Aceites')]
+      : ['Shampoo en seco en raíz si es necesario', tag('Aceite ligero solo en puntas', 'Aceites')];
 
-    const nightOil = isChemical || damageLevel === 'Alto'
-      ? 'Aceite reparador (argán o queratina) solo en puntas'
-      : highPorosity
-      ? 'Aceite nutritivo sellador (coco o argán) en medios y puntas'
-      : isHeatDamaged
-      ? 'Aceite reparador ligero en puntas'
-      : oilyScalp
-      ? 'Aceite ultra ligero solo en puntas (máx. 2 gotas)'
-      : 'Aceite nutritivo ligero en puntas';
+    const nightOil = tag(
+      isChemical || damageLevel === 'Alto'
+        ? 'Aceite reparador (argán o queratina) solo en puntas'
+        : highPorosity
+        ? 'Aceite nutritivo sellador (coco o argán) en medios y puntas'
+        : isHeatDamaged
+        ? 'Aceite reparador ligero en puntas'
+        : oilyScalp
+        ? 'Aceite ultra ligero solo en puntas (máx. 2 gotas)'
+        : 'Aceite nutritivo ligero en puntas',
+      'Aceites'
+    );
 
     const nightSteps = ['Gorro de seda o pañuelo de satín (protege del roce al dormir)', tonico, nightOil];
 
     const plan3DaySteps = needsProtein
       ? [
-          'Pre-poo: aceite en medios y puntas (15 min antes)',
-          `Tratamiento proteico (dejar actuar ${isChemical ? '20' : '30'} min)`,
-          'Acondicionador hidratante para equilibrar proteína',
+          tag('Pre-poo: aceite en medios y puntas (15 min antes)', 'Aceites'),
+          tag(`Tratamiento proteico (dejar actuar ${isChemical ? '20' : '30'} min)`, 'Tratamiento'),
+          tag('Acondicionador hidratante para equilibrar proteína', 'Acondicionador'),
           ...stylingDaySteps,
         ]
-      : ['Aceite ligero en puntas', isCurlyOrWavy ? 'Crema o mousse para mantener la forma' : 'Leave-in suave si es necesario'];
+      : [tag('Aceite ligero en puntas', 'Aceites'), isCurlyOrWavy ? tagGelOrMousse('Crema o mousse para mantener la forma') : tag('Leave-in suave si es necesario', 'Crema de Peinar')];
 
     return [
       { day: 1, title: 'Lavado detox + reinicio', daySteps: [detoxShampoo, deepTreatment, conditioner, ...stylingDaySteps], nightSteps },
@@ -945,7 +970,7 @@ export default function DiagnosisScreen({ navigation }) {
       
       const { damageLevel, stylingMethod } = profile;
       const recommendedProducts = getRecommendedProducts(profile);
-      const routinePlanResult = getRoutinePlan(profile);
+      const routinePlanResult = getRoutinePlan(profile, recommendedProducts);
       const resultObject = {
         hairType: getHairType(answersObject),
         objective: getObjectiveLabel(answersObject.objective),
@@ -1109,24 +1134,19 @@ export default function DiagnosisScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* PRODUCTOS SUGERIDOS */}
-          <View style={styles.sectionTitleRow}>
+          <View style={[styles.sectionTitleRow, { marginTop: 28 }]}>
             <Ionicons name="bag-handle-outline" size={13} color="#D6A4A4" />
             <Text style={styles.sectionTitle}>Productos sugeridos</Text>
           </View>
-          <View style={styles.card}>
-            {result.recommendations.products.map((product, i) => (
-              <View key={product.id}>
-                {i > 0 && <View style={styles.divider} />}
-                <View style={styles.routineRow}>
-                  <View style={styles.routineLabelRow}>
-                    <View style={styles.routineDot} />
-                    <Text style={styles.routineLabel}>{product.category}</Text>
-                  </View>
-                  <Text style={styles.routineValue}>{product.brand} — {product.name}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Explorar')}
+            activeOpacity={0.85}
+            style={styles.productsButton}
+          >
+            <Ionicons name="sparkles-outline" size={16} color="#8A6B00" style={{ marginRight: 8 }} />
+            <Text style={styles.productsButtonText}>Ver productos recomendados para ti</Text>
+            <Ionicons name="chevron-forward" size={16} color="#8A6B00" />
+          </TouchableOpacity>
 
           {/* TIPS */}
           <View style={styles.sectionTitleRow}>

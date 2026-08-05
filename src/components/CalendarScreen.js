@@ -154,7 +154,7 @@ function RoutineItem({ item, index, isCompleted, onToggle, accentColor, onProduc
     <View style={styles.routineItem}>
       <ProductThumb index={index} />
       <View style={styles.routineItemContent}>
-        <Text style={styles.routineItemText} numberOfLines={2}>
+        <Text style={styles.routineItemText}>
           {label
             ? <Text style={styles.routineItemLabel}>{index + 1}. {label}: </Text>
             : <Text style={styles.routineItemLabel}>{index + 1}. </Text>}

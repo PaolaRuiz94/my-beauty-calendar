@@ -61,7 +61,7 @@ export const productsSeedV2 = [
     description: 'Mascarilla ultra-nutritiva para rizos con manteca de karité y aceite de coco. Hidrata, define y reduce el frizz.',
     category: 'Tratamiento',
     tags: ['rizos', 'karité', 'coco', 'ultra-nutritiva', 'anti-frizz'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isRizado', 'isCoily'],
     link: 'https://www.kerastase.com.co/curl-manifesto/masque-beurre-haute-nutrition',
   },
   {
@@ -71,7 +71,7 @@ export const productsSeedV2 = [
     description: 'Mascarilla para cabello con frizz y rebelde. Suaviza, alisa y controla el encrespamiento.',
     category: 'Tratamiento',
     tags: ['anti-frizz', 'rebelde', 'suavizante', 'alisante', 'control'],
-    profiles: ['dryScalp', 'isHeatDamaged'],
+    profiles: ['dryScalp', 'isHeatDamaged', 'isLacio', 'isOndulado'],
     link: 'https://www.kerastase.com.co/discipline/masque-oleo-relax',
   },
   {
@@ -113,7 +113,7 @@ export const productsSeedV2 = [
     category: 'Gel',
     tags: ['rizos', 'gel ligero', 'definición', 'anti-frizz', 'sin rigidez'],
     weightClass: 'medio',
-    profiles: ['isCurlyOrWavy', 'fineDensity', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'fineDensity', 'highPorosity', 'isRizado'],
     link: 'https://www.kerastase.com.co/curl-manifesto/gelee-courbature',
   },
   {
@@ -156,7 +156,7 @@ export const productsSeedV2 = [
     description: 'Shampoo sin sulfatos para rizos y ondas. Limpia suavemente manteniendo la hidratación y definición del rizo.',
     category: 'Shampoo',
     tags: ['rizos', 'sin sulfatos', 'ondas', 'hidratante', 'definición'],
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://novexhair.com/products/my-curls-shampoo',
   },
   {
@@ -166,7 +166,7 @@ export const productsSeedV2 = [
     description: 'Acondicionador para rizos con aceite de coco y manteca de karité. Hidrata, desenreda y define el rizo.',
     category: 'Acondicionador',
     tags: ['rizos', 'coco', 'karité', 'desenredo', 'definición'],
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://novexhair.com/products/my-curls-conditioner',
   },
   {
@@ -177,7 +177,7 @@ export const productsSeedV2 = [
     category: 'Crema de Peinar',
     tags: ['leave-in', 'rizos', 'glicerina', 'coco', 'anti-frizz'],
     weightClass: 'medio',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://novexhair.com/products/my-curls-leave-in',
   },
   {
@@ -257,7 +257,7 @@ export const productsSeedV2 = [
     description: 'Shampoo con aceite de coco para cabello seco y rizado. Hidrata, suaviza y reduce el frizz.',
     category: 'Shampoo',
     tags: ['coco', 'hidratante', 'seco', 'rizos', 'anti-frizz'],
-    profiles: ['isCurlyOrWavy', 'dryScalp', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'dryScalp', 'highPorosity', 'isRizado', 'isCoily'],
     link: 'https://novexhair.com/products/coconut-oil-shampoo',
   },
   {
@@ -267,7 +267,7 @@ export const productsSeedV2 = [
     description: 'Mascarilla con aceite de coco para cabello seco y rizado. Hidratación intensa y definición de rizos.',
     category: 'Tratamiento',
     tags: ['coco', 'hidratante', 'rizos', 'definición', 'intensiva'],
-    profiles: ['isCurlyOrWavy', 'dryScalp', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'dryScalp', 'highPorosity', 'isRizado', 'isCoily'],
     link: 'https://novexhair.com/products/coconut-oil-mask',
   },
   {
@@ -297,7 +297,7 @@ export const productsSeedV2 = [
     description: 'Aceite de ricino negro para estimular el crecimiento, sellar la hidratación y fortalecer las puntas.',
     category: 'Aceites',
     tags: ['ricino negro', 'crecimiento', 'sellador', 'fortalecedor', 'puntas'],
-    profiles: ['highPorosity', 'isCurlyOrWavy', 'needsProtein'],
+    profiles: ['highPorosity', 'isCurlyOrWavy', 'needsProtein', 'isCoily', 'isRizado'],
     link: 'https://novexhair.com/products/gold-black-castor-oil',
   },
 
@@ -310,7 +310,7 @@ export const productsSeedV2 = [
     description: 'Shampoo con aceite de ricino negro para cabello natural, rizado y coily. Limpia, fortalece y estimula el crecimiento.',
     category: 'Shampoo',
     tags: ['ricino negro', 'natural', 'rizos', 'coily', 'crecimiento'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isCoily', 'isRizado'],
     link: 'https://www.africanpride.com/black-castor-miracle-shampoo',
   },
   {
@@ -320,7 +320,7 @@ export const productsSeedV2 = [
     description: 'Shampoo hidratante con aloe vera y agua de coco. Hidratación intensa para cabello natural muy seco.',
     category: 'Shampoo',
     tags: ['aloe vera', 'agua de coco', 'hidratante', 'natural', 'muy seco'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isCoily', 'isRizado'],
     link: 'https://www.africanpride.com/moisture-miracle-shampoo',
   },
   {
@@ -331,7 +331,7 @@ export const productsSeedV2 = [
     category: 'Crema de Peinar',
     tags: ['ricino negro', 'leave-in', 'rizos', 'natural', 'desenredo'],
     weightClass: 'medio',
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isCoily', 'isRizado'],
     link: 'https://www.africanpride.com/black-castor-miracle-leave-in',
   },
   {
@@ -342,7 +342,7 @@ export const productsSeedV2 = [
     category: 'Crema de Peinar',
     tags: ['ricino negro', 'leche', 'rizos', 'activador', 'hidratante'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isCoily', 'isRizado'],
     link: 'https://www.africanpride.com/black-castor-miracle-curl-milk',
   },
   {
@@ -352,7 +352,7 @@ export const productsSeedV2 = [
     description: 'Acondicionador profundo con aceite de ricino negro. Restaura la humedad, fortalece y define los rizos.',
     category: 'Tratamiento',
     tags: ['ricino negro', 'profundo', 'rizos', 'fortalecedor', 'hidratante'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'needsProtein'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'needsProtein', 'isCoily', 'isRizado'],
     link: 'https://www.africanpride.com/black-castor-miracle-deep-conditioner',
   },
   {
@@ -362,7 +362,7 @@ export const productsSeedV2 = [
     description: 'Acondicionador con aloe vera y agua de coco para cabello natural. Suaviza, hidrata y facilita el desenredo.',
     category: 'Acondicionador',
     tags: ['aloe vera', 'agua de coco', 'suavizante', 'natural', 'desenredo'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isCoily', 'isRizado'],
     link: 'https://www.africanpride.com/moisture-miracle-conditioner',
   },
   {
@@ -372,7 +372,7 @@ export const productsSeedV2 = [
     description: 'Mascarilla con miel y aceite de coco para cabello natural muy seco. Hidratación profunda y brillo intenso.',
     category: 'Tratamiento',
     tags: ['miel', 'coco', 'muy seco', 'natural', 'hidratación profunda'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isCoily', 'isRizado'],
     link: 'https://www.africanpride.com/moisture-miracle-deep-conditioner',
   },
   {
@@ -382,7 +382,7 @@ export const productsSeedV2 = [
     description: 'Sérum con aceite de ricino negro para fortalecer, restaurar y estimular el crecimiento capilar.',
     category: 'Aceites',
     tags: ['ricino negro', 'sérum', 'fortalecedor', 'crecimiento', 'restaurador'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'needsProtein'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'needsProtein', 'isCoily', 'isRizado'],
     link: 'https://www.africanpride.com/black-castor-miracle-serum',
   },
   {
@@ -392,7 +392,7 @@ export const productsSeedV2 = [
     description: 'Aceite para cuero cabelludo y trenzas con aceite de ricino y vitamina E. Hidrata, estimula y reduce la picazón.',
     category: 'Aceites',
     tags: ['cuero cabelludo', 'trenzas', 'ricino', 'vitamina E', 'crecimiento'],
-    profiles: ['dryScalp', 'isCurlyOrWavy'],
+    profiles: ['dryScalp', 'isCurlyOrWavy', 'isCoily'],
     link: 'https://www.africanpride.com/braid-and-scalp-oil',
   },
   {
@@ -403,7 +403,7 @@ export const productsSeedV2 = [
     category: 'Espumas',
     tags: ['activador rizos', 'ricino negro', 'rizos', 'coily', 'anti-frizz'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isCoily', 'isRizado'],
     link: 'https://www.africanpride.com/black-castor-miracle-curl-activator',
   },
 

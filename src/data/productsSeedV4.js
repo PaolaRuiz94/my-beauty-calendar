@@ -11,7 +11,7 @@ export const productsSeedV4 = [
     description: 'Shampoo para rizos con proteína de trigo y aceite de coco. Limpia suavemente, hidrata y reduce el frizz.',
     category: 'Shampoo',
     tags: ['rizos', 'proteína de trigo', 'coco', 'hidratante', 'anti-frizz'],
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://www.aveda.com/product/be-curly-shampoo',
   },
   {
@@ -21,7 +21,7 @@ export const productsSeedV4 = [
     description: 'Acondicionador para rizos con aceite de coco y extracto de aloe. Suaviza, desenreda y define el patrón de rizo.',
     category: 'Acondicionador',
     tags: ['rizos', 'coco', 'aloe', 'desenredo', 'definición'],
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://www.aveda.com/product/be-curly-conditioner',
   },
   {
@@ -32,7 +32,7 @@ export const productsSeedV4 = [
     category: 'Crema de Peinar',
     tags: ['rizos', 'definidora', 'proteína de trigo', 'anti-frizz', 'brillo'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isCoily'],
     link: 'https://www.aveda.com/product/be-curly-curl-enhancer',
   },
   {
@@ -43,7 +43,7 @@ export const productsSeedV4 = [
     category: 'Crema de Peinar',
     tags: ['rizos', 'spray', 'preparador', 'hidratante', 'definición'],
     weightClass: 'ligero',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isOndulado', 'isRizado'],
     link: 'https://www.aveda.com/product/be-curly-style-prep',
   },
   {
@@ -53,7 +53,7 @@ export const productsSeedV4 = [
     description: 'Co-wash para rizos que limpia y condiciona en un solo paso. Mantiene la hidratación y define sin resecar.',
     category: 'Shampoo',
     tags: ['co-wash', 'rizos', 'limpia y condiciona', 'hidratante', 'sin sulfatos'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isRizado', 'isOndulado'],
     link: 'https://www.aveda.com/product/be-curly-co-wash',
   },
   {
@@ -63,7 +63,7 @@ export const productsSeedV4 = [
     description: 'Shampoo avanzado para rizos con biotina vegana. Fortalece, hidrata y define con fórmula 100% vegana.',
     category: 'Shampoo',
     tags: ['rizos', 'biotina vegana', 'fortalecedor', 'hidratante', 'vegano'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'needsProtein'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'needsProtein', 'isRizado'],
     link: 'https://www.aveda.com/product/be-curly-advanced-shampoo',
   },
   {
@@ -73,7 +73,7 @@ export const productsSeedV4 = [
     description: 'Acondicionador avanzado para rizos con biotina vegana. Define, hidrata y fortalece el patrón de rizo.',
     category: 'Acondicionador',
     tags: ['rizos', 'biotina vegana', 'fortalecedor', 'definición', 'vegano'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'needsProtein'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'needsProtein', 'isRizado'],
     link: 'https://www.aveda.com/product/be-curly-advanced-conditioner',
   },
 
@@ -308,7 +308,7 @@ export const productsSeedV4 = [
     category: 'Espumas',
     tags: ['texturizante', 'polvo', 'volumen', 'fino', 'agarre'],
     weightClass: 'ligero',
-    profiles: ['fineDensity', 'lowPorosity', 'oilyScalp'],
+    profiles: ['fineDensity', 'lowPorosity', 'oilyScalp', 'isOndulado'],
     link: 'https://www.aveda.com/product/pure-abundance-hair-potion',
   },
 
@@ -321,7 +321,7 @@ export const productsSeedV4 = [
     description: 'Shampoo anti-frizz con aceite de maíz orgánico. Suaviza, controla el encrespamiento y facilita el peinado.',
     category: 'Shampoo',
     tags: ['anti-frizz', 'maíz orgánico', 'suavizante', 'lacio', 'peinado'],
-    profiles: ['dryScalp', 'isHeatDamaged'],
+    profiles: ['dryScalp', 'isHeatDamaged', 'isLacio', 'isOndulado'],
     link: 'https://www.aveda.com/product/smooth-infusion-shampoo',
   },
   {
@@ -331,7 +331,7 @@ export const productsSeedV4 = [
     description: 'Acondicionador anti-frizz con aceite de maíz orgánico. Suaviza y controla el encrespamiento duradero.',
     category: 'Acondicionador',
     tags: ['anti-frizz', 'maíz orgánico', 'suavizante', 'encrespamiento', 'duradero'],
-    profiles: ['dryScalp', 'isHeatDamaged'],
+    profiles: ['dryScalp', 'isHeatDamaged', 'isLacio', 'isOndulado'],
     link: 'https://www.aveda.com/product/smooth-infusion-conditioner',
   },
   {
@@ -341,7 +341,7 @@ export const productsSeedV4 = [
     description: 'Mascarilla anti-frizz para cabello seco y encrespado. Suaviza y alisa en profundidad con aceite de maíz.',
     category: 'Tratamiento',
     tags: ['anti-frizz', 'alisante', 'seco', 'encrespado', 'profunda'],
-    profiles: ['dryScalp', 'isHeatDamaged', 'highPorosity'],
+    profiles: ['dryScalp', 'isHeatDamaged', 'highPorosity', 'isLacio', 'isOndulado'],
     link: 'https://www.aveda.com/product/smooth-infusion-masque',
   },
   {
@@ -352,7 +352,7 @@ export const productsSeedV4 = [
     category: 'Crema de Peinar',
     tags: ['anti-frizz', 'protector térmico', 'alisante', '230°C', 'suavizante'],
     weightClass: 'ligero',
-    profiles: ['dryScalp', 'isHeatDamaged'],
+    profiles: ['dryScalp', 'isHeatDamaged', 'isLacio', 'isOndulado'],
     link: 'https://www.aveda.com/product/smooth-infusion-style-prep-smoother',
   },
 

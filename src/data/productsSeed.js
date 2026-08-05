@@ -111,7 +111,7 @@ export const productsSeed = [
     description: 'Shampoo para rizos con vitamina B3 y aceite de coco. Define, hidrata y controla el frizz.',
     category: 'Shampoo',
     tags: ['rizos', 'definición', 'coco', 'hidratante', 'anti-frizz'],
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://www.garnier.com.co/fructis/rizos-definidos-shampoo',
   },
   {
@@ -164,7 +164,7 @@ export const productsSeed = [
     description: 'Acondicionador para rizos con aceite de coco y jojoba. Define y suaviza sin peso.',
     category: 'Acondicionador',
     tags: ['rizos', 'coco', 'jojoba', 'definición', 'sin peso'],
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://www.ogxbeauty.com/products/quenching-coconut-curls-conditioner',
   },
   {
@@ -174,7 +174,7 @@ export const productsSeed = [
     description: 'Acondicionador para rizos con Pro-V. Hidrata, define y controla el frizz en cabello rizado y ondulado.',
     category: 'Acondicionador',
     tags: ['rizos', 'definición', 'pro-v', 'hidratante', 'anti-frizz'],
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://www.pantene.com.co/acondicionador/rizos-definidos',
   },
   {
@@ -267,7 +267,7 @@ export const productsSeed = [
     description: 'Mascarilla hidratante intensiva para rizos con aceite de coco y manteca de karité. Define y suaviza.',
     category: 'Tratamiento',
     tags: ['rizos', 'coco', 'karité', 'hidratante', 'definición'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isRizado', 'isOndulado'],
     link: 'https://novexhair.com/products/my-curls-intense-moisturizing-mask',
   },
 
@@ -292,7 +292,7 @@ export const productsSeed = [
     category: 'Crema de Peinar',
     tags: ['anti-frizz', 'spray', 'lacio', 'ondulado', 'brillo'],
     weightClass: 'ligero',
-    profiles: ['isHeatDamaged', 'dryScalp'],
+    profiles: ['isHeatDamaged', 'dryScalp', 'isLacio', 'isOndulado'],
     link: 'https://www.kerastase.com.co/discipline/fluidissime-spray',
   },
   {
@@ -303,7 +303,7 @@ export const productsSeed = [
     category: 'Crema de Peinar',
     tags: ['rizos', 'karité', 'definición', 'hidratante', 'anti-frizz'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isRizado', 'isCoily'],
     link: 'https://www.kerastase.com.co/curl-manifesto/creme-de-jour-fondamentale',
   },
   {
@@ -314,7 +314,7 @@ export const productsSeed = [
     category: 'Crema de Peinar',
     tags: ['leave-in', 'karité', 'rizos', 'muy seco', 'anti-frizz'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isChemical'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isChemical', 'isCoily', 'isRizado'],
     link: 'https://cantubeauty.com/products/shea-butter-leave-in-conditioning-repair-cream',
   },
   {
@@ -325,7 +325,7 @@ export const productsSeed = [
     category: 'Crema de Peinar',
     tags: ['aceite de ricino', 'leave-in', 'rizos', 'fortalecedor', 'dañado'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'isChemical', 'needsProtein'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isChemical', 'needsProtein', 'isCoily', 'isRizado'],
     link: 'https://www.sheamoisture.com/products/jamaican-black-castor-oil-leave-in-conditioner',
   },
   {
@@ -336,7 +336,7 @@ export const productsSeed = [
     category: 'Crema de Peinar',
     tags: ['rizos', 'leche', 'coco', 'anti-frizz', 'sin residuos'],
     weightClass: 'medio',
-    profiles: ['isCurlyOrWavy', 'fineDensity'],
+    profiles: ['isCurlyOrWavy', 'fineDensity', 'isRizado', 'isOndulado'],
     link: 'https://www.ogxbeauty.com/products/quenching-coconut-curls-styling-milk',
   },
 
@@ -350,7 +350,7 @@ export const productsSeed = [
     category: 'Gel',
     tags: ['rizos', 'aceite de oliva', 'fijación fuerte', 'sin alcohol', 'definición'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isCoily', 'isRizado'],
     link: 'https://ecostyler.com/products/olive-oil-gel',
   },
   {
@@ -361,7 +361,7 @@ export const productsSeed = [
     category: 'Gel',
     tags: ['semilla de lino', 'rizos', 'ondas', 'fijación flexible', 'anti-frizz'],
     weightClass: 'medio',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://cantubeauty.com/products/flaxseed-smoothing-gel',
   },
   {
@@ -372,7 +372,7 @@ export const productsSeed = [
     category: 'Gel',
     tags: ['sin alcohol', 'flexible', 'suave', 'sin residuos', 'fijación'],
     weightClass: 'ligero',
-    profiles: ['fineDensity', 'lowPorosity'],
+    profiles: ['fineDensity', 'lowPorosity', 'isLacio', 'isOndulado'],
     link: 'https://www.garnier.com.co/fructis/style-pure-clean-gel',
   },
 
@@ -386,7 +386,7 @@ export const productsSeed = [
     category: 'Espumas',
     tags: ['volumen', 'ligereza', 'mousse', 'duradero', 'sin peso'],
     weightClass: 'ligero',
-    profiles: ['fineDensity', 'lowPorosity'],
+    profiles: ['fineDensity', 'lowPorosity', 'isOndulado', 'isRizado'],
     link: 'https://www.kerastase.com.co/couture-styling/mousse-bouffante',
   },
   {
@@ -397,7 +397,7 @@ export const productsSeed = [
     category: 'Espumas',
     tags: ['activador rizos', 'karité', 'definición', 'hidratante', 'natural'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isCoily', 'isRizado'],
     link: 'https://cantubeauty.com/products/moisturizing-curl-activator',
   },
   {
@@ -408,7 +408,7 @@ export const productsSeed = [
     category: 'Espumas',
     tags: ['alisadora', 'karité', 'anti-frizz', 'suavidad', 'lacio'],
     weightClass: 'ligero',
-    profiles: ['dryScalp', 'isHeatDamaged'],
+    profiles: ['dryScalp', 'isHeatDamaged', 'isOndulado', 'isLacio'],
     link: 'https://www.ogxbeauty.com/products/shea-sleek-mousse',
   },
   {
@@ -419,7 +419,7 @@ export const productsSeed = [
     category: 'Espumas',
     tags: ['rizos', 'gel-mousse', 'fijación fuerte', 'anti-frizz', 'duradero'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isCoily'],
     link: 'https://www.devacurl.com/products/ultra-defining-gel',
   },
 

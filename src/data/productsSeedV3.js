@@ -32,7 +32,7 @@ export const productsSeedV3 = [
     category: 'Espumas',
     tags: ['volumen', 'mousse', 'fino', 'textura', 'fijación flexible'],
     weightClass: 'ligero',
-    profiles: ['fineDensity', 'lowPorosity'],
+    profiles: ['fineDensity', 'lowPorosity', 'isOndulado'],
     link: 'https://authenticbeautyconcept.com/products/amplify-mousse',
   },
   {
@@ -173,7 +173,7 @@ export const productsSeedV3 = [
     category: 'Espumas',
     tags: ['color', 'espuma', 'fijación ligera', 'brillo', 'protección'],
     weightClass: 'ligero',
-    profiles: ['isChemical', 'fineDensity'],
+    profiles: ['isChemical', 'fineDensity', 'isOndulado', 'isRizado'],
     link: 'https://authenticbeautyconcept.com/products/replenish-foam',
   },
 
@@ -186,7 +186,7 @@ export const productsSeedV3 = [
     description: 'Shampoo sin sulfatos para rizos y ondas. Limpia sin resecar, mantiene el patrón de rizo y la hidratación.',
     category: 'Shampoo',
     tags: ['rizos', 'sin sulfatos', 'ondas', 'hidratante', 'patrón de rizo'],
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado'],
     link: 'https://authenticbeautyconcept.com/products/curl-cleanser',
   },
   {
@@ -196,7 +196,7 @@ export const productsSeedV3 = [
     description: 'Acondicionador para rizos y ondas. Hidrata, desenreda y define el patrón de rizo sin dejar peso.',
     category: 'Acondicionador',
     tags: ['rizos', 'ondas', 'desenredo', 'definición', 'sin peso'],
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado'],
     link: 'https://authenticbeautyconcept.com/products/curl-conditioner',
   },
   {
@@ -207,7 +207,7 @@ export const productsSeedV3 = [
     category: 'Crema de Peinar',
     tags: ['rizos', 'definidora', 'ondas', 'anti-frizz', 'flexible'],
     weightClass: 'pesado',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isCoily'],
     link: 'https://authenticbeautyconcept.com/products/curl-cream',
   },
   {
@@ -218,7 +218,7 @@ export const productsSeedV3 = [
     category: 'Gel',
     tags: ['rizos', 'gel', 'fijación media', 'anti-frizz', 'sin rigidez'],
     weightClass: 'medio',
-    profiles: ['isCurlyOrWavy', 'highPorosity'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://authenticbeautyconcept.com/products/curl-gel',
   },
   {
@@ -228,7 +228,7 @@ export const productsSeedV3 = [
     description: 'Mascarilla intensiva para rizos. Hidrata en profundidad, define el patrón y reduce el frizz duradero.',
     category: 'Tratamiento',
     tags: ['rizos', 'mascarilla', 'hidratante', 'definición', 'anti-frizz'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp'],
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isRizado'],
     image: 'https://www.imagebeauty.com/cdn/shop/products/Authentic-Beauty-Concept-Hydrate-Mask-6-7-oz_grande.jpg',
     link: 'https://authenticbeautyconcept.com/products/curl-mask',
   },

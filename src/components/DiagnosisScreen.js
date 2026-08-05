@@ -553,7 +553,7 @@ export default function DiagnosisScreen({ navigation }) {
       addIf(profile.isColor, matchesAnyTag(product, ['brillo', 'protección', 'reparador', 'suavidad']) ? 2 : 0);
       addIf(profile.isAlisado, matchesAnyTag(product, ['alisado', 'desenredo', 'ligero', 'suave']) ? 2 : 0);
       addIf(profile.isHeatDamaged, matchesAnyTag(product, ['reparador', 'daño', 'protección', 'suavidad']) ? 2 : 0);
-      addIf(profile.needsClarifying, matchesAnyTag(product, ['clarificante', 'detox', 'limpieza profunda']) ? 3 : 0);
+      addIf(profile.oilyScalp || profile.lowPorosity, matchesAnyTag(product, ['clarificante', 'detox', 'limpieza profunda']) ? 3 : 0);
       addIf(profile.oilyScalp, matchesAnyTag(product, ['ligero', 'suave', 'diario', 'clarificante', 'detox']) ? 2 : 0);
       addIf(profile.dryScalp, matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 2 : 0);
       addIf(profile.highPorosity, matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 2 : 0);

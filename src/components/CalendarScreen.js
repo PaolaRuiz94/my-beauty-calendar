@@ -129,10 +129,11 @@ function ProductThumb({ index }) {
 }
 
 function RoutineItem({ item, index, isCompleted, onToggle, accentColor, onProductPress }) {
-  const raw = typeof item === 'string' ? item : item.text;
+  const raw     = typeof item === 'string' ? item : item.text;
+  const category = typeof item === 'object' ? item.category : null;
   const colonIdx = raw.indexOf(':');
-  const label = colonIdx !== -1 ? raw.slice(0, colonIdx).trim() : '';
-  const name  = colonIdx !== -1 ? raw.slice(colonIdx + 1).trim() : raw;
+  const label = category || (colonIdx !== -1 ? raw.slice(0, colonIdx).trim() : '');
+  const name  = colonIdx !== -1 && !category ? raw.slice(colonIdx + 1).trim() : raw;
   const product = typeof item === 'object' ? item.product : undefined;
 
   const scaleAnim = useRef(new Animated.Value(1)).current;

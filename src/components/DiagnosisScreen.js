@@ -442,14 +442,11 @@ export default function DiagnosisScreen({ navigation }) {
   const getRoutinePlan = (profile, products = []) => {
     const byCategory = {};
     products.forEach(p => { byCategory[p.category] = p; });
-    const tag = (text, category) => {
-      const p = byCategory[category];
-      return p ? `${text} con ${p.brand} ${p.name}` : text;
-    };
-    const tagGelOrMousse = (text) => {
-      const p = byCategory['Gel'] || byCategory['Espumas'];
-      return p ? `${text} con ${p.brand} ${p.name}` : text;
-    };
+    const tag = (text, category) => ({ text, category });
+    const tagGelOrMousse = (text) => ({
+      text,
+      category: byCategory['Gel'] ? 'Gel' : 'Espumas',
+    });
     const {
       isCurly, isWavy, isCurlyOrWavy, isCoily, isTransicion, objective,
       oilyScalp, dryScalp, highPorosity, needsProtein, isChemical, isHeatDamaged,

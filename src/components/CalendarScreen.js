@@ -76,11 +76,6 @@ function getCategoryForStep(stepText) {
   return null;
 }
 
-function getProductForStep(stepText, products) {
-  const category = getCategoryForStep(stepText);
-  if (!category) return null;
-  return products.find(p => p.category === category) ?? null;
-}
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
@@ -227,8 +222,7 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
       )}
 
       {routines.map((item, i) => {
-        const stepText = typeof item === 'string' ? item : item.text;
-        const category = getCategoryForStep(stepText);
+        const category = typeof item === 'object' ? (item.category || null) : null;
         return (
           <RoutineItem
             key={i}
@@ -384,8 +378,18 @@ export default function CalendarScreen({ route, navigation }) {
                 dateObj.setDate(today.getDate() + i);
                 const dateStr = dateObj.toISOString().split('T')[0];
                 const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
-                newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
-                newNight[dateStr] = (dayPlan.nightSteps || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
+                newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => {
+                  const text = typeof s === 'string' ? s : s.text;
+                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
+                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  return { text, editable: false, category, product };
+                });
+                newNight[dateStr] = (dayPlan.nightSteps || []).map(s => {
+                  const text = typeof s === 'string' ? s : s.text;
+                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
+                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  return { text, editable: false, category, product };
+                });
               }
               setProfileProducts(products);
               setDayByDate(newDay);
@@ -492,8 +496,18 @@ export default function CalendarScreen({ route, navigation }) {
         const dateStr = d.toISOString().split('T')[0];
         const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
 
-        newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
-        newNight[dateStr] = (dayPlan.nightSteps || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
+        newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => {
+                  const text = typeof s === 'string' ? s : s.text;
+                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
+                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  return { text, editable: false, category, product };
+                });
+        newNight[dateStr] = (dayPlan.nightSteps || []).map(s => {
+                  const text = typeof s === 'string' ? s : s.text;
+                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
+                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  return { text, editable: false, category, product };
+                });
       }
 
       setProfileProducts(products);
@@ -539,8 +553,18 @@ export default function CalendarScreen({ route, navigation }) {
         d.setDate(today.getDate() + i);
         const dateStr = d.toISOString().split('T')[0];
         const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
-        newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
-        newNight[dateStr] = (dayPlan.nightSteps || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
+        newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => {
+                  const text = typeof s === 'string' ? s : s.text;
+                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
+                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  return { text, editable: false, category, product };
+                });
+        newNight[dateStr] = (dayPlan.nightSteps || []).map(s => {
+                  const text = typeof s === 'string' ? s : s.text;
+                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
+                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  return { text, editable: false, category, product };
+                });
       }
 
       setProfileProducts(products);

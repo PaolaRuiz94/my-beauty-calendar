@@ -444,11 +444,11 @@ export default function DiagnosisScreen({ navigation }) {
     products.forEach(p => { byCategory[p.category] = p; });
     const tag = (text, category) => {
       const p = byCategory[category];
-      return p ? `${text} — ${p.brand} ${p.name}` : text;
+      return p ? `${text} con ${p.brand} ${p.name}` : text;
     };
     const tagGelOrMousse = (text) => {
       const p = byCategory['Gel'] || byCategory['Espumas'];
-      return p ? `${text} — ${p.brand} ${p.name}` : text;
+      return p ? `${text} con ${p.brand} ${p.name}` : text;
     };
     const {
       isCurly, isWavy, isCurlyOrWavy, isCoily, isTransicion, objective,
@@ -457,35 +457,35 @@ export default function DiagnosisScreen({ navigation }) {
     } = profile;
 
     const detoxShampoo = tag(
-      hasDandruff ? 'Shampoo anticaspa clarificante (zinc o ketoconazol) en cuero cabelludo'
-      : oilyScalp  ? 'Shampoo clarificante (detox) solo en raíz para resetear el cabello'
-                   : 'Shampoo clarificante (detox) para resetear el cabello',
+      hasDandruff ? 'Lavar el cuero cabelludo con masajes circulares (shampoo anticaspa clarificante)'
+      : oilyScalp  ? 'Lavar solo en raíz con masajes circulares suaves para resetear el cuero cabelludo'
+                   : 'Lavar con masajes circulares para resetear el cabello',
       'Shampoo'
     );
 
     const hydraShampoo = tag(
-      hasDandruff ? 'Shampoo anticaspa suave + masaje circular (alterna con clarificante)'
-      : oilyScalp  ? 'Shampoo equilibrante solo en la raíz'
-      : dryScalp   ? 'Shampoo nutritivo suave con masaje circular en cuero cabelludo'
-                   : 'Shampoo hidratante (sin frotar medios ni puntas)',
+      hasDandruff ? 'Lavar con masajes circulares suaves en cuero cabelludo (alternar con clarificante)'
+      : oilyScalp  ? 'Lavar solo en raíz con masajes circulares, sin llevar a las puntas'
+      : dryScalp   ? 'Lavar con masajes circulares nutritivos en cuero cabelludo'
+                   : 'Lavar con masajes circulares suaves en raíz, sin frotar puntas',
       'Shampoo'
     );
 
     const deepTreatment = tag(
       objective === 'reparación' || damageLevel === 'Alto'
-        ? 'Mascarilla reparadora profunda con bond builders (20-30 min)'
+        ? 'Aplicar de medios a puntas y dejar actuar 20-30 min (bond builders)'
         : objective === 'hidratación' || highPorosity || isCoily
-        ? 'Mascarilla hidratante profunda (15-20 min bajo gorro de vapor)'
+        ? 'Aplicar de medios a puntas y dejar actuar 15-20 min bajo gorro de vapor'
         : objective === 'volumen'
-        ? 'Mascarilla voluminizadora ligera (10 min)'
-        : 'Mascarilla nutritiva (15 min)',
+        ? 'Aplicar en medios y puntas, dejar actuar 10 min'
+        : 'Aplicar de medios a puntas, dejar actuar 15 min',
       'Tratamiento'
     );
 
     const conditioner = tag(
       highPorosity
-        ? 'Acondicionador nutritivo (todo el largo) — enjuague con agua fría'
-        : 'Acondicionador en medios y puntas — enjuague templado',
+        ? 'Aplicar en todo el largo y enjuagar con agua fría para sellar la cutícula'
+        : 'Aplicar en medios y puntas, enjuagar con agua templada',
       'Acondicionador'
     );
 
@@ -503,55 +503,55 @@ export default function DiagnosisScreen({ navigation }) {
       ? [
           tag(
             isCoily
-              ? 'Crema de peinar densa en cabello muy húmedo por secciones (praying hands o shingling)'
-              : 'Crema de peinar en cabello húmedo (medios → puntas, scrunch)',
+              ? 'Aplicar en cabello muy húmedo por secciones (praying hands o shingling)'
+              : 'Aplicar de medios a puntas en cabello húmedo (scrunch)',
             'Crema de Peinar'
           ),
           tagGelOrMousse(
             fineStrand
-              ? 'Espuma o gel ligero para rizos (scrunch suave, no presionar)'
+              ? 'Aplicar gel o espuma ligera sobre la crema (scrunch suave, sin presionar)'
               : isCoily
-              ? 'Gel fuerte o manteca de styling sobre la crema (sellar y definir)'
-              : 'Gel para definir y fijar rizos (scrunch)'
+              ? 'Aplicar sobre la crema en cabello muy húmedo para sellar y definir'
+              : 'Aplicar sobre cabello húmedo (scrunch de puntas a raíz)'
           ),
         ]
       : isWavy
-      ? [tag('Leave-in ligero o crema suave (medios y puntas)', 'Crema de Peinar'), tagGelOrMousse('Espuma o gel ligero para ondas (scrunch)')]
+      ? [tag('Aplicar en medios y puntas sobre cabello húmedo', 'Crema de Peinar'), tagGelOrMousse('Aplicar sobre cabello húmedo para definir ondas (scrunch suave)')]
       : isTransicion
-      ? [tag('Leave-in hidratante en zona de raíz natural', 'Crema de Peinar'), tag('Crema de peinar ligera en puntas para unificar textura', 'Crema de Peinar')]
-      : [tag('Leave-in ligero o sérum (medios y puntas)', 'Crema de Peinar')];
+      ? [tag('Aplicar leave-in en zona de raíz natural', 'Crema de Peinar'), tag('Aplicar en puntas tratadas para unificar textura', 'Crema de Peinar')]
+      : [tag('Aplicar en medios y puntas sobre cabello húmedo', 'Crema de Peinar')];
 
     const refreshDaySteps = (isCurly || isCoily)
-      ? ['Spray de agua + crema ligera para reactivar rizos (scrunch)', tagGelOrMousse('Gel o mousse para sellar y refrescar'), tag('Aceite ligero en puntas', 'Aceites')]
+      ? ['Humedecer con spray de agua y hacer scrunch para reactivar rizos', tagGelOrMousse('Aplicar sobre los rizos húmedos para sellar y refrescar'), tag('Aplicar 1-2 gotas solo en puntas para suavizar', 'Aceites')]
       : isWavy
-      ? ['Spray refrescante + espuma ligera en cabello húmedo', tag('Aceite ligero en puntas', 'Aceites')]
+      ? ['Humedecer con spray refrescante y hacer scrunch suave', tag('Aplicar 1-2 gotas solo en puntas', 'Aceites')]
       : isTransicion
-      ? ['Spray de agua en zona natural para rehidratar', tag('Aceite ligero en puntas tratadas', 'Aceites')]
-      : ['Shampoo en seco en raíz si es necesario', tag('Aceite ligero solo en puntas', 'Aceites')];
+      ? ['Humedecer la zona natural con spray de agua', tag('Aplicar 1-2 gotas solo en puntas tratadas', 'Aceites')]
+      : ['Usar shampoo en seco en raíz si es necesario', tag('Aplicar 1-2 gotas solo en puntas', 'Aceites')];
 
     const nightOil = tag(
       isChemical || damageLevel === 'Alto'
-        ? 'Aceite reparador (argán o queratina) solo en puntas'
+        ? 'Aplicar solo en puntas antes de dormir (reparador)'
         : highPorosity
-        ? 'Aceite nutritivo sellador (coco o argán) en medios y puntas'
+        ? 'Aplicar en medios y puntas para sellar la hidratación'
         : isHeatDamaged
-        ? 'Aceite reparador ligero en puntas'
+        ? 'Aplicar 1-2 gotas en puntas antes de dormir'
         : oilyScalp
-        ? 'Aceite ultra ligero solo en puntas (máx. 2 gotas)'
-        : 'Aceite nutritivo ligero en puntas',
+        ? 'Aplicar máx. 2 gotas solo en puntas, evitar la raíz'
+        : 'Aplicar en puntas para nutrirlas durante la noche',
       'Aceites'
     );
 
-    const nightSteps = ['Gorro de seda o pañuelo de satín (protege del roce al dormir)', tonico, nightOil];
+    const nightSteps = ['Proteger el cabello con gorro de seda o pañuelo de satín', tonico, nightOil];
 
     const plan3DaySteps = needsProtein
       ? [
-          tag('Pre-poo: aceite en medios y puntas (15 min antes)', 'Aceites'),
-          tag(`Tratamiento proteico (dejar actuar ${isChemical ? '20' : '30'} min)`, 'Tratamiento'),
-          tag('Acondicionador hidratante para equilibrar proteína', 'Acondicionador'),
+          tag('Aplicar en medios y puntas 15 min antes del lavado (pre-poo)', 'Aceites'),
+          tag(`Aplicar de medios a puntas y dejar actuar ${isChemical ? '20' : '30'} min (tratamiento proteico)`, 'Tratamiento'),
+          tag('Aplicar en medios y puntas para equilibrar la proteína', 'Acondicionador'),
           ...stylingDaySteps,
         ]
-      : [tag('Aceite ligero en puntas', 'Aceites'), isCurlyOrWavy ? tagGelOrMousse('Crema o mousse para mantener la forma') : tag('Leave-in suave si es necesario', 'Crema de Peinar')];
+      : [tag('Aplicar 1-2 gotas en puntas para nutrirlas', 'Aceites'), isCurlyOrWavy ? tagGelOrMousse('Aplicar para mantener la forma y definición') : tag('Aplicar en medios y puntas si es necesario', 'Crema de Peinar')];
 
     return [
       { day: 1, title: 'Lavado detox + reinicio', daySteps: [detoxShampoo, deepTreatment, conditioner, ...stylingDaySteps], nightSteps },

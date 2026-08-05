@@ -1091,45 +1091,42 @@ export default function DiagnosisScreen({ navigation }) {
             )}
           </View>
 
-          {/* RUTINA */}
-          <View style={styles.sectionTitleRow}>
-            <Ionicons name="calendar-outline" size={13} color="#D6A4A4" />
-            <Text style={styles.sectionTitle}>Rutina recomendada</Text>
-          </View>
-          <View style={styles.card}>
-            {result.recommendations.routine.map((step, i) => (
-              <View key={step.label}>
-                {i > 0 && <View style={styles.divider} />}
-                <TouchableOpacity
-                  style={styles.routineRow}
-                  activeOpacity={0.7}
-                  onPress={() => setVideoModal({ visible: true, label: step.label, value: step.value, videos: [], isLoadingVideos: false })}
-                >
-                  <View style={styles.routineLabelRow}>
-                    <View style={styles.routineDot} />
-                    <Text style={styles.routineLabel}>{step.label}</Text>
-                    <Ionicons name="play-circle-outline" size={14} color="#D6A4A4" style={{ marginLeft: 6 }} />
-                  </View>
-                  <Text style={styles.routineValue}>{step.value}</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
+          {/* BOTÓN CALENDARIO */}
+          <TouchableOpacity
+            style={[styles.primaryButton, { marginTop: 20, marginBottom: 4 }]}
+            onPress={() => navigation.navigate('Calendario', { screen: 'CalendarMain', params: { routinePlan, objective: result.objective } })}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#DEB4CC', '#BF789C']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryButtonGradient}
+            >
+              <Ionicons name="calendar-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.primaryButtonText}>Ver rutina en el calendario</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
-          {/* PRODUCTOS */}
+          {/* PRODUCTOS SUGERIDOS */}
           <View style={styles.sectionTitleRow}>
             <Ionicons name="bag-handle-outline" size={13} color="#D6A4A4" />
             <Text style={styles.sectionTitle}>Productos sugeridos</Text>
           </View>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Explorar')}
-            activeOpacity={0.85}
-            style={styles.productsButton}
-          >
-            <Ionicons name="sparkles-outline" size={16} color="#8A6B00" style={{ marginRight: 8 }} />
-            <Text style={styles.productsButtonText}>Ver productos recomendados para ti</Text>
-            <Ionicons name="chevron-forward" size={16} color="#8A6B00" />
-          </TouchableOpacity>
+          <View style={styles.card}>
+            {result.recommendations.products.map((product, i) => (
+              <View key={product.id}>
+                {i > 0 && <View style={styles.divider} />}
+                <View style={styles.routineRow}>
+                  <View style={styles.routineLabelRow}>
+                    <View style={styles.routineDot} />
+                    <Text style={styles.routineLabel}>{product.category}</Text>
+                  </View>
+                  <Text style={styles.routineValue}>{product.brand} — {product.name}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
 
           {/* TIPS */}
           <View style={styles.sectionTitleRow}>
@@ -1172,23 +1169,6 @@ export default function DiagnosisScreen({ navigation }) {
               </View>
             ))}
           </View>
-
-          {/* BOTONES */}
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('Calendario', { screen: 'CalendarMain', params: { routinePlan, objective: result.objective } })}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['#DEB4CC', '#BF789C']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.primaryButtonGradient}
-            >
-              <Ionicons name="calendar-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.primaryButtonText}>Ver rutina en calendario</Text>
-            </LinearGradient>
-          </TouchableOpacity>
 
           <TouchableOpacity style={styles.secondaryButton} onPress={handleReset} activeOpacity={0.85}>
             <Text style={styles.secondaryButtonText}>Nuevo diagnóstico</Text>

@@ -121,7 +121,10 @@ function YesNo({ value, onChange, color = '#BF789C' }) {
   );
 }
 
-function ProductThumb({ index }) {
+function ProductThumb({ index, product }) {
+  if (product?.image) {
+    return <Image source={{ uri: product.image }} style={styles.productThumb} resizeMode="cover" />;
+  }
   const colors = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length];
   return (
     <LinearGradient colors={colors} style={styles.productThumb} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
@@ -148,7 +151,7 @@ function RoutineItem({ item, index, isCompleted, onToggle, accentColor, onProduc
 
   return (
     <View style={styles.routineItem}>
-      <ProductThumb index={index} />
+      <ProductThumb index={index} product={product} />
       <View style={styles.routineItemContent}>
         <Text style={styles.routineItemText}>
           {label

@@ -553,7 +553,8 @@ export default function DiagnosisScreen({ navigation }) {
       addIf(profile.isColor, matchesAnyTag(product, ['brillo', 'protección', 'reparador', 'suavidad']) ? 2 : 0);
       addIf(profile.isAlisado, matchesAnyTag(product, ['alisado', 'desenredo', 'ligero', 'suave']) ? 2 : 0);
       addIf(profile.isHeatDamaged, matchesAnyTag(product, ['reparador', 'daño', 'protección', 'suavidad']) ? 2 : 0);
-      addIf(profile.oilyScalp, matchesAnyTag(product, ['ligero', 'suave', 'diario']) ? 2 : 0);
+      addIf(profile.needsClarifying, matchesAnyTag(product, ['clarificante', 'detox', 'limpieza profunda']) ? 3 : 0);
+      addIf(profile.oilyScalp, matchesAnyTag(product, ['ligero', 'suave', 'diario', 'clarificante', 'detox']) ? 2 : 0);
       addIf(profile.dryScalp, matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 2 : 0);
       addIf(profile.highPorosity, matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 2 : 0);
       addIf(profile.lowPorosity, matchesAnyTag(product, ['ligero', 'sin peso', 'suave']) ? 2 : 0);
@@ -600,9 +601,26 @@ export default function DiagnosisScreen({ navigation }) {
       return score;
     };
 
+    // Score all products
+    const allScored = allProducts.map(entry => ({ ...entry, score: scoreProduct(entry) }));
+
+    // Brand cohesion: find the brand with the best combined score across all categories
+    const brandCatBest = {};
+    allScored.forEach(({ category, product, score }) => {
+      const b = product.brand;
+      if (!brandCatBest[b]) brandCatBest[b] = {};
+      if (score > (brandCatBest[b][category] ?? -Infinity)) brandCatBest[b][category] = score;
+    });
+    const brandTotals = {};
+    Object.entries(brandCatBest).forEach(([b, cats]) => {
+      brandTotals[b] = Object.values(cats).reduce((s, v) => s + Math.max(0, v), 0);
+    });
+    const dominantBrand = Object.entries(brandTotals).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+    const BRAND_BONUS = 1.5;
     const categoryBest = {};
-    allProducts
-      .map((entry) => ({ ...entry, score: scoreProduct(entry) }))
+    allScored
+      .map(e => ({ ...e, score: e.product.brand === dominantBrand ? e.score + BRAND_BONUS : e.score }))
       .sort((a, b) => b.score - a.score)
       .forEach(({ category, product, score }) => {
         if (categoryBest[category]) return;

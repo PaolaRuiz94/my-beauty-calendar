@@ -100,7 +100,7 @@ const CATALOG = [
     brand: 'Olaplex',
     name: 'No.4C Clarifying Shampoo',
     category: 'Shampoo',
-    tags: [],
+    tags: ['clarificante', 'detox', 'limpieza profunda', 'cuero cabelludo'],
     asin: 'B0B4BG3HPM',
     sourceLink: 'https://olaplex.com/products/no-4c-bond-maintenance-clarifying-shampoo',
   },

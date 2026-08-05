@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -504,6 +505,56 @@ export default function CalendarScreen({ route, navigation }) {
 
     init();
   }, [route]);
+
+  // Repoblar calendario cuando el diagnóstico se completa (flag en AsyncStorage)
+  useFocusEffect(useCallback(() => {
+    const checkRefresh = async () => {
+      const flag = await AsyncStorage.getItem('@mybeauty-calendar:calendarNeedsRefresh');
+      if (flag !== 'true') return;
+
+      await AsyncStorage.removeItem('@mybeauty-calendar:calendarNeedsRefresh');
+
+      const [planRaw, profileRaw] = await Promise.all([
+        AsyncStorage.getItem('@mybeauty-calendar:diagnosisRoutinePlan'),
+        AsyncStorage.getItem('@mybeauty-calendar:hairProfile'),
+      ]);
+      if (!planRaw) return;
+      const plan = JSON.parse(planRaw);
+      if (!Array.isArray(plan) || plan.length === 0) return;
+
+      let products = [];
+      try {
+        if (profileRaw) {
+          const profile = JSON.parse(profileRaw);
+          const flags = Object.entries(profile).filter(([, v]) => v === true).map(([k]) => k);
+          products = await fetchProductsByProfile(flags);
+        }
+      } catch {}
+
+      const today = new Date();
+      const newDay = {};
+      const newNight = {};
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
+        newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
+        newNight[dateStr] = (dayPlan.nightSteps || []).map(s => ({ text: s, editable: false, product: getProductForStep(s, products) }));
+      }
+
+      setProfileProducts(products);
+      setDayByDate(newDay);
+      setNightByDate(newNight);
+      setDayDone({});
+      setNightDone({});
+      const first = Object.keys(newDay)[0];
+      if (first) setSelectedDate(first);
+    };
+
+    checkRefresh().catch(() => {});
+  }, []));
+
 
   const buildMarkedDates = () => {
     const out = {};

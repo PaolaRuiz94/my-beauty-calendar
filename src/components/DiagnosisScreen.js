@@ -971,6 +971,7 @@ export default function DiagnosisScreen({ navigation }) {
       AsyncStorage.multiSet([
         ['@mybeauty-calendar:diagnosisResult', JSON.stringify(resultObject)],
         ['@mybeauty-calendar:diagnosisRoutinePlan', JSON.stringify(routinePlanResult)],
+        ['@mybeauty-calendar:calendarNeedsRefresh', 'true'],
       ]).catch(() => {});
       setIsLoadingDiagnosis(false);
     }, 1800);

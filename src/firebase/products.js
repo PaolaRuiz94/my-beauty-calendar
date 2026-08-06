@@ -7,13 +7,14 @@ import { productsSeed } from '../data/productsSeed';
 import { productsSeedV2 } from '../data/productsSeedV2';
 import { productsSeedV3 } from '../data/productsSeedV3';
 import { productsSeedV4 } from '../data/productsSeedV4';
+import { productsSeedV5 } from '../data/productsSeedV5';
 import { PRODUCTS } from '../data/products';
 
 // Lookup por ID con ASINs actualizados de products.js
 const catalogById = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
 
 // Seed files tienen descriptions/profiles; products.js tiene ASINs correctos
-const ALL_PRODUCTS = [...productsSeed, ...productsSeedV2, ...productsSeedV3, ...productsSeedV4].map(p => {
+const ALL_PRODUCTS = [...productsSeed, ...productsSeedV2, ...productsSeedV3, ...productsSeedV4, ...productsSeedV5].map(p => {
   const catalog = catalogById[p.id];
   if (!catalog) return p;
   if (catalog.image) console.log('MERGE IMAGE:', p.id, catalog.image.slice(0, 50));

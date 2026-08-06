@@ -4,32 +4,29 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   ScrollView,
   Linking,
   Image,
   Animated,
   TextInput,
   ActivityIndicator,
-  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from '@react-navigation/native';
-import { categoryOptions, amazonProductCatalog, getAmazonProductById } from '../data/products';
+import { categoryOptions } from '../data/products';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProductsByProfile, fetchAllProducts, filterProducts } from "../firebase/products";
 import { getWeatherContext, getWeatherBoostTags } from "../services/weatherService";
+import { useCart } from '../context/CartContext';
+import { buildAmazonUrl } from '../utils/amazonUtils';
 
 const defaultProductImage = require("../../assets/icon.png");
 
 const getProductImage = (product) => {
-  if (product.image) {
-    console.log('HAS IMAGE FIELD:', product.name, product.image.slice(0, 60));
-    return { uri: product.image };
-  }
+  if (product.image) return { uri: product.image };
   if (product.asin) return { uri: `https://m.media-amazon.com/images/P/${product.asin}.01._SL500_.jpg` };
   return defaultProductImage;
 };
@@ -135,39 +132,6 @@ function ProductCard({ product, onBuy, onAddToCart, inCart }) {
   );
 }
 
-// ─── Amazon affiliate ─────────────────────────────────────────────────────────
-
-const AFFILIATE_TAG = 'malmabeauty-20';
-
-function normalizeText(value = "") {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "")
-    .trim();
-}
-
-function buildAmazonUrl(product) {
-  const directProduct = product?.id ? getAmazonProductById(product.id) : null;
-  const matchedByName = !directProduct && product?.brand && product?.name
-    ? amazonProductCatalog.find((entry) =>
-        normalizeText(entry?.brand) === normalizeText(product.brand) &&
-        normalizeText(entry?.name) === normalizeText(product.name)
-      ) || null
-    : null;
-
-  const catalogEntry = directProduct || matchedByName;
-
-  // ASIN directo primero (link /dp/), búsqueda solo como último recurso
-  if (catalogEntry?.asin) return `https://www.amazon.com/dp/${catalogEntry.asin}?tag=${AFFILIATE_TAG}`;
-  if (product?.asin) return `https://www.amazon.com/dp/${product.asin}?tag=${AFFILIATE_TAG}`;
-  if (catalogEntry?.amazonLink) return catalogEntry.amazonLink;
-  if (product?.amazonLink) return product.amazonLink;
-
-  return null;
-}
-
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ProductsScreen({ route, navigation, hideHeader }) {
@@ -188,39 +152,64 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
   const [userFlags, setUserFlags] = useState([]);
   const [weatherBoostTags, setWeatherBoostTags] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [cart, setCart] = useState([]);
-  const [cartVisible, setCartVisible] = useState(false);
 
-  const toggleCart = (product) => {
-    setCart(prev =>
-      prev.find(p => p.id === product.id)
-        ? prev.filter(p => p.id !== product.id)
-        : [...prev, product]
-    );
+  // Cart from context
+  const { cart, toggleCart } = useCart();
+
+  // Toast
+  const [toastProduct, setToastProduct] = useState(null);
+  const toastTranslateY = useRef(new Animated.Value(80)).current;
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimerRef = useRef(null);
+
+  const showToast = (product) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastProduct(product);
+    toastTranslateY.setValue(80);
+    toastOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(toastTranslateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 300,
+        friction: 22,
+      }),
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    toastTimerRef.current = setTimeout(() => {
+      Animated.timing(toastOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setToastProduct(null));
+    }, 2200);
   };
 
-  const finalizarEnAmazon = () => {
-    if (cart.length === 0) return;
-    const query = encodeURIComponent(cart.map(p => `${p.brand} ${p.name}`).join(' '));
-    Linking.openURL(`https://www.amazon.com/s?k=${query}&tag=${AFFILIATE_TAG}`);
+  const handleToggleCart = (product) => {
+    const isInCart = !!cart.find(p => p.id === product.id);
+    toggleCart(product);
+    if (!isInCart) showToast(product);
   };
 
   const loadProfileProducts = useCallback(async () => {
     setIsLoading(true);
     try {
       const raw = await AsyncStorage.getItem("@mybeauty-calendar:hairProfile");
-      
+
       let data = [];
       let flags = [];
-      
+
       if (raw) {
         const profile = JSON.parse(raw);
         flags = Object.entries(profile)
           .filter(([, v]) => v === true)
           .map(([k]) => k);
-        
+
         if (flags.length > 0) {
-          console.log("✅ [ProductsScreen] Loaded", flags.length, "profile flags");
           data = await fetchProductsByProfile(flags);
           if (data.length === 0) {
             data = await fetchAllProducts();
@@ -238,7 +227,6 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
           const defaultCategory = ALL_CATEGORIES.find((option) => availableCategories.includes(option.title));
           setSelectedCategory(defaultCategory ? defaultCategory.id : ALL_CATEGORIES[0]?.id || "shampoo");
         }
-        console.log("✅ [ProductsScreen] Loaded", data.length, "products");
       }
 
       setUserFlags(flags);
@@ -247,12 +235,12 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
       console.error("❌ [ProductsScreen] Error loading products:", error);
       setProfileProducts([]);
     }
-    
+
     try {
       const weatherCtx = await getWeatherContext();
       if (weatherCtx?.flags?.length) setWeatherBoostTags(getWeatherBoostTags(weatherCtx.flags));
     } catch {}
-    
+
     setIsLoading(false);
   }, []);
 
@@ -270,6 +258,8 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
     gel: "Gel",
     espumas: "Espumas",
     aceites: "Aceites",
+    tonico: "Tónico",
+    accesorios: "Accesorios",
   };
 
   function scoreProduct(product, flags, boostTags) {
@@ -369,7 +359,12 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
               ) : null}
             </View>
 
-            <TouchableOpacity style={styles.cartHeaderBtn} onPress={() => setCartVisible(true)} activeOpacity={0.8}>
+            {/* Cart icon → CartScreen */}
+            <TouchableOpacity
+              style={styles.cartHeaderBtn}
+              onPress={() => navigation.navigate('Cart')}
+              activeOpacity={0.8}
+            >
               <Ionicons name="bag-outline" size={20} color="#fff" />
               {cart.length > 0 && (
                 <View style={styles.cartBadge}>
@@ -447,9 +442,7 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
         {/* ── PRODUCTOS ── */}
         <View style={styles.sectionTitleRow}>
           <Ionicons name="bag-handle-outline" size={13} color="#D6A4A4" />
-          <Text style={styles.sectionTitle}>
-            Recomendados para ti
-          </Text>
+          <Text style={styles.sectionTitle}>Recomendados para ti</Text>
         </View>
 
         {isLoading ? (
@@ -470,7 +463,7 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
                   key={product.id}
                   product={product}
                   onBuy={() => openAmazon(product)}
-                  onAddToCart={() => toggleCart(product)}
+                  onAddToCart={() => handleToggleCart(product)}
                   inCart={!!cart.find(p => p.id === product.id)}
                 />
               ))}
@@ -479,55 +472,42 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
         )}
       </ScrollView>
 
-      {/* ── Carrito modal ── */}
-      <Modal visible={cartVisible} transparent animationType="slide" onRequestClose={() => setCartVisible(false)}>
-        <TouchableWithoutFeedback onPress={() => setCartVisible(false)}>
-          <View style={styles.cartOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.cartSheet}>
-                <View style={styles.cartHandle} />
-                <View style={styles.cartHeader}>
-                  <Text style={styles.cartTitle}>Mi carrito</Text>
-                  <TouchableOpacity onPress={() => setCartVisible(false)} activeOpacity={0.7} style={styles.cartCloseBtn}>
-                    <Ionicons name="close" size={18} color="#BF789C" />
-                  </TouchableOpacity>
-                </View>
-
-                {cart.length === 0 ? (
-                  <View style={styles.cartEmpty}>
-                    <Ionicons name="bag-outline" size={44} color="#EDD0D8" />
-                    <Text style={styles.cartEmptyText}>Tu carrito está vacío</Text>
-                  </View>
-                ) : (
-                  <>
-                    <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
-                      {cart.map(p => (
-                        <View key={p.id} style={styles.cartItem}>
-                          <Image source={getProductImage(p)} style={styles.cartItemImage} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.cartItemBrand}>{p.brand}</Text>
-                            <Text style={styles.cartItemName} numberOfLines={2}>{p.name}</Text>
-                          </View>
-                          <TouchableOpacity onPress={() => toggleCart(p)} activeOpacity={0.7}>
-                            <Ionicons name="trash-outline" size={18} color="#D6A4A4" />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </ScrollView>
-
-                    <TouchableOpacity style={styles.finalizarBtn} onPress={finalizarEnAmazon} activeOpacity={0.85}>
-                      <LinearGradient colors={["#D6A4A4", "#BF789C"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.finalizarGradient}>
-                        <Ionicons name="logo-amazon" size={18} color="#fff" style={{ marginRight: 8 }} />
-                        <Text style={styles.finalizarText}>Finalizar en Amazon ({cart.length})</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            </TouchableWithoutFeedback>
+      {/* ── TOAST "Agregado al carrito" ── */}
+      {toastProduct && (
+        <Animated.View
+          style={[
+            styles.toast,
+            {
+              bottom: insets.bottom + 20,
+              transform: [{ translateY: toastTranslateY }],
+              opacity: toastOpacity,
+            },
+          ]}
+        >
+          <Image source={getProductImage(toastProduct)} style={styles.toastImage} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toastProductName} numberOfLines={1}>
+              {toastProduct.brand ? `${toastProduct.brand} · ` : ''}{toastProduct.name}
+            </Text>
+            <View style={styles.toastRow}>
+              <Ionicons name="checkmark-circle" size={13} color="#7ADA7A" />
+              <Text style={styles.toastLabel}>Agregado al carrito</Text>
+            </View>
           </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+          <TouchableOpacity
+            onPress={() => {
+              if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+              setToastProduct(null);
+              navigation.navigate('Cart');
+            }}
+            style={styles.toastViewBtn}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.toastViewText}>Ver</Text>
+            <Ionicons name="chevron-forward" size={13} color="#BF789C" />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -743,9 +723,32 @@ const styles = StyleSheet.create({
     color: "#999",
     lineHeight: 19,
   },
+
+  // card actions
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+  },
+  cartIconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#FDF0F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#F0D8E8',
+  },
+  cartIconBtnActive: {
+    backgroundColor: '#BF789C',
+    borderColor: '#BF789C',
+  },
   buyButton: {
+    flex: 1,
     borderRadius: 14,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   buyGradient: {
     flexDirection: "row",
@@ -777,34 +780,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // card actions row
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 4,
-  },
-  cartIconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#FDF0F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#F0D8E8',
-  },
-  cartIconBtnActive: {
-    backgroundColor: '#BF789C',
-    borderColor: '#BF789C',
-  },
-  buyButton: {
-    flex: 1,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-
-  // header cart
+  // header cart icon
   cartHeaderBtn: {
     width: 36,
     height: 36,
@@ -832,98 +808,56 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  // cart modal
-  cartOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  cartSheet: {
-    backgroundColor: '#FDF5F8',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 36,
-  },
-  cartHandle: {
-    width: 40, height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E0D0D8',
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  cartHeader: {
+  // toast
+  toast: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  cartTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#2D2D2D',
-  },
-  cartCloseBtn: {
-    width: 32, height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F5E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cartEmpty: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: 12,
-  },
-  cartEmptyText: {
-    fontSize: 14,
-    color: '#BBB',
-    fontWeight: '600',
-  },
-  cartItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
+    borderRadius: 18,
+    padding: 14,
+    gap: 12,
+    shadowColor: '#BF789C',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 12,
   },
-  cartItemImage: {
-    width: 48,
-    height: 48,
+  toastImage: {
+    width: 44,
+    height: 44,
     borderRadius: 10,
     backgroundColor: '#F7ECEE',
+    flexShrink: 0,
   },
-  cartItemBrand: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#D6A4A4',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  cartItemName: {
+  toastProductName: {
     fontSize: 13,
     fontWeight: '700',
     color: '#2D2D2D',
-    lineHeight: 18,
+    marginBottom: 3,
   },
-  finalizarBtn: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginTop: 16,
-  },
-  finalizarGradient: {
+  toastRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 15,
+    gap: 4,
   },
-  finalizarText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 15,
+  toastLabel: {
+    fontSize: 12,
+    color: '#AAA',
+    fontWeight: '500',
+  },
+  toastViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+    paddingLeft: 8,
+    flexShrink: 0,
+  },
+  toastViewText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#BF789C',
   },
 });

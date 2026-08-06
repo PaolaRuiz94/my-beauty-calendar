@@ -439,14 +439,18 @@ export default function DiagnosisScreen({ navigation }) {
     return map[value] || 'Objetivo personalizado';
   };
 
-  const getRoutinePlan = (profile, products = []) => {
+  const getRoutinePlan = (profile, { products = [], treatments = {} } = {}) => {
     const byCategory = {};
     products.forEach(p => { byCategory[p.category] = p; });
-    const tag = (text, category) => ({ text, category });
-    const tagGelOrMousse = (text) => ({
+    const tag = (text, category, specificProduct = undefined) => ({
       text,
-      category: byCategory['Gel'] ? 'Gel' : 'Espumas',
+      category,
+      product: specificProduct !== undefined ? specificProduct : (byCategory[category] || null),
     });
+    const tagGelOrMousse = (text) => {
+      const category = byCategory['Gel'] ? 'Gel' : 'Espumas';
+      return { text, category, product: byCategory[category] || null };
+    };
     const {
       isCurly, isWavy, isCurlyOrWavy, isCoily, isTransicion, objective,
       oilyScalp, dryScalp, highPorosity, needsProtein, isChemical, isHeatDamaged,
@@ -468,17 +472,6 @@ export default function DiagnosisScreen({ navigation }) {
       'Shampoo'
     );
 
-    const deepTreatment = tag(
-      objective === 'reparación' || damageLevel === 'Alto'
-        ? 'Aplicar de medios a puntas y dejar actuar 20-30 min (bond builders)'
-        : objective === 'hidratación' || highPorosity || isCoily
-        ? 'Aplicar de medios a puntas y dejar actuar 15-20 min bajo gorro de vapor'
-        : objective === 'volumen'
-        ? 'Aplicar en medios y puntas, dejar actuar 10 min'
-        : 'Aplicar de medios a puntas, dejar actuar 15 min',
-      'Tratamiento'
-    );
-
     const conditioner = tag(
       highPorosity
         ? 'Aplicar en todo el largo y enjuagar con agua fría para sellar la cutícula'
@@ -486,15 +479,18 @@ export default function DiagnosisScreen({ navigation }) {
       'Acondicionador'
     );
 
-    const tonico = hasHairLoss
-      ? 'Tónico estimulante (cafeína o biotina) con masaje de 5 min en cuero cabelludo'
-      : objective === 'crecimiento'
-      ? 'Tónico capilar estimulante (cafeína o biotina) en cuero cabelludo'
-      : oilyScalp
-      ? 'Tónico equilibrante en cuero cabelludo'
-      : dryScalp
-      ? 'Tónico nutritivo en cuero cabelludo'
-      : 'Tónico capilar fortalecedor en cuero cabelludo';
+    const tonicoPreWash = tag(
+      hasHairLoss
+        ? 'Aplicar tónico estimulante en cuero cabelludo, masajear 5 min — dejar actuar 1 hora antes de lavar'
+        : objective === 'crecimiento'
+        ? 'Aplicar tónico capilar estimulante en cuero cabelludo — dejar actuar 1 hora antes de lavar'
+        : oilyScalp
+        ? 'Aplicar tónico equilibrante en cuero cabelludo — dejar actuar 1 hora antes de lavar'
+        : dryScalp
+        ? 'Aplicar tónico nutritivo en cuero cabelludo — dejar actuar 1 hora antes de lavar'
+        : 'Aplicar tónico capilar fortalecedor en cuero cabelludo — dejar actuar 1 hora antes de lavar',
+      'Tónico'
+    );
 
     const stylingDaySteps = (isCurly || isCoily)
       ? [
@@ -539,22 +535,56 @@ export default function DiagnosisScreen({ navigation }) {
       'Aceites'
     );
 
-    const nightSteps = ['Proteger el cabello con gorro de seda o pañuelo de satín', tonico, nightOil];
+    const nightSteps = [tag('Proteger el cabello con gorro de seda o pañuelo de satín', 'Accesorios'), nightOil];
 
-    const plan3DaySteps = needsProtein
-      ? [
-          tag('Aplicar en medios y puntas 15 min antes del lavado (pre-poo)', 'Aceites'),
-          tag(`Aplicar de medios a puntas y dejar actuar ${isChemical ? '20' : '30'} min (tratamiento proteico)`, 'Tratamiento'),
-          tag('Aplicar en medios y puntas para equilibrar la proteína', 'Acondicionador'),
-          ...stylingDaySteps,
-        ]
-      : [tag('Aplicar 1-2 gotas en puntas para nutrirlas', 'Aceites'), isCurlyOrWavy ? tagGelOrMousse('Aplicar para mantener la forma y definición') : tag('Aplicar en medios y puntas si es necesario', 'Crema de Peinar')];
+    // Tratamiento nutritivo — Día 1 (lavado A)
+    const treatNutritivo = tag(
+      highPorosity || isCoily
+        ? 'Aplicar de medios a puntas y dejar actuar 20 min bajo gorro de vapor (nutritivo)'
+        : 'Aplicar de medios a puntas y dejar actuar 15 min (nutritivo)',
+      'Tratamiento',
+      treatments.nutritivo ?? null
+    );
+
+    // Tratamiento reparador — Día 3 (lavado B)
+    const treatReparador = tag(
+      needsProtein
+        ? `Aplicar de medios a puntas y dejar actuar ${isChemical ? '20' : '30'} min (reparador proteico)`
+        : highPorosity
+        ? 'Aplicar de medios a puntas y dejar actuar 20 min bajo calor (reparador)'
+        : 'Aplicar de medios a puntas y dejar actuar 15-20 min (reparador)',
+      'Tratamiento',
+      treatments.reparador ?? null
+    );
+
+    // Tratamiento hidratante — Día 5 (lavado C)
+    const treatHidratante = tag(
+      highPorosity || isCoily
+        ? 'Aplicar de medios a puntas y dejar actuar 20 min bajo gorro de vapor (hidratante)'
+        : objective === 'hidratación'
+        ? 'Aplicar de medios a puntas y dejar actuar 20 min (hidratación profunda)'
+        : 'Aplicar de medios a puntas y dejar actuar 15 min (hidratante)',
+      'Tratamiento',
+      treatments.hidratante ?? null
+    );
+
+    // Pasos de lavado A (detox + nutritivo)
+    const washASteps = [tonicoPreWash, detoxShampoo, treatNutritivo, conditioner, ...stylingDaySteps];
+
+    // Pasos de lavado B (hidratante + reparador)
+    const washBSteps = [tonicoPreWash, hydraShampoo, treatReparador, conditioner, ...stylingDaySteps];
+
+    // Pasos de lavado C (hidratante + hidratante)
+    const washCSteps = [tonicoPreWash, hydraShampoo, treatHidratante, conditioner, ...stylingDaySteps];
 
     return [
-      { day: 1, title: 'Lavado detox + reinicio', daySteps: [detoxShampoo, deepTreatment, conditioner, ...stylingDaySteps], nightSteps },
-      { day: 2, title: isCurlyOrWavy ? 'Refresco y activación' : 'Mantenimiento ligero', daySteps: refreshDaySteps, nightSteps },
-      { day: 3, title: 'Lavado hidratante', daySteps: [hydraShampoo, conditioner, ...stylingDaySteps], nightSteps },
-      { day: 4, title: needsProtein ? 'Tratamiento proteico' : 'Cuidado suave', daySteps: plan3DaySteps, nightSteps },
+      { day: 1, title: 'Lavado A — Nutritivo',   daySteps: washASteps,     nightSteps },
+      { day: 2, title: isCurlyOrWavy ? 'Refresco y activación' : 'Descanso', daySteps: refreshDaySteps, nightSteps },
+      { day: 3, title: 'Lavado B — Reparador',   daySteps: washBSteps,     nightSteps },
+      { day: 4, title: isCurlyOrWavy ? 'Refresco y activación' : 'Descanso', daySteps: refreshDaySteps, nightSteps },
+      { day: 5, title: 'Lavado C — Hidratante',  daySteps: washCSteps,     nightSteps },
+      { day: 6, title: isCurlyOrWavy ? 'Refresco y activación' : 'Descanso', daySteps: refreshDaySteps, nightSteps },
+      { day: 7, title: 'Descanso profundo',       daySteps: ['Masaje suave en cuero cabelludo con yemas de los dedos por 3-5 min (sin productos)', 'Evitar calor, tintes o manipulación excesiva hoy'], nightSteps },
     ];
   };
 
@@ -660,9 +690,38 @@ export default function DiagnosisScreen({ navigation }) {
       const best = categoryBest[category];
       if (best && best.score > 0) return best.product;
       return productDB[category][0];
-    });
+    }).filter(Boolean);
 
-    return recommended;
+    // Seleccionar 3 tratamientos distintos: nutritivo, reparador, hidratante
+    const tratamientoScored = allScored
+      .filter(({ category }) => category === 'tratamiento')
+      .sort((a, b) => b.score - a.score);
+
+    const brandTratamientos = tratamientoScored.filter(({ product }) => product.brand === routineBrand);
+    const pool = brandTratamientos.length >= 3 ? brandTratamientos : tratamientoScored;
+
+    const pickTreat = (keywords, exclude = []) => {
+      const match = pool.find(({ product }) =>
+        !exclude.includes(product.id) &&
+        keywords.some(kw => (product.tags || []).some(t => t.toLowerCase().includes(kw)))
+      ) || pool.find(({ product }) => !exclude.includes(product.id));
+      return match?.product || null;
+    };
+
+    const treatNutritivo = pickTreat(['nutritivo', 'nutrición', 'regenerante', 'suavizante']);
+    const usedAfterN = treatNutritivo ? [treatNutritivo.id] : [];
+    const treatReparador = pickTreat(['reparador', 'daño', 'bond', 'fortalecimiento', 'proteína'], usedAfterN);
+    const usedAfterR = [...usedAfterN, ...(treatReparador ? [treatReparador.id] : [])];
+    const treatHidratante = pickTreat(['hidratante', 'humectante', 'hidratación', 'brillo', 'suavidad'], usedAfterR);
+
+    return {
+      products: recommended,
+      treatments: {
+        nutritivo:  treatNutritivo  || recommended.find(p => p?.category === 'Tratamiento') || null,
+        reparador:  treatReparador  || recommended.find(p => p?.category === 'Tratamiento') || null,
+        hidratante: treatHidratante || recommended.find(p => p?.category === 'Tratamiento') || null,
+      },
+    };
   };
 
   const getCategorizedProducts = (products) => {
@@ -869,43 +928,46 @@ export default function DiagnosisScreen({ navigation }) {
 
   const getFrequencyRecommendations = (profile) => {
     const {
-      oilyScalp, dryScalp, highPorosity, lowPorosity, needsProtein,
-      proteinFrequencyWeeks, damageLevel, isCoily, hasDandruff,
+      oilyScalp, dryScalp, isCoily, hasDandruff,
+      highPorosity, lowPorosity, needsProtein, isChemical,
+      isCurlyOrWavy, hasHairLoss,
     } = profile;
 
-    const washFreq = hasDandruff
-      ? '2-3 veces/semana (shampoo anticaspa alterno con suave)'
+    const washNote = hasDandruff
+      ? 'Día 1: shampoo clarificante anticaspa. Días 3 y 5: shampoo suave hidratante.'
       : oilyScalp
-      ? '2-3 veces/semana en raíz. Puntas: shampoo 1 vez/semana.'
+      ? 'Los 3 días aplica solo en raíz con masajes circulares, sin llevar a puntas.'
       : dryScalp || isCoily
-      ? '1-2 veces por semana máximo'
-      : '2 veces por semana';
+      ? '3 veces/semana. Si el cuero cabelludo lo tolera, puedes reducir a 2 lavados ajustando los días de descanso.'
+      : '3 veces/semana (días alternos). Mínimo día de por medio — no dejar pasar más de 2 días sin lavar.';
 
-    const treatmentFreq = damageLevel === 'Alto'
-      ? 'Mascarilla reparadora 1 vez por semana'
-      : damageLevel === 'Moderado-Alto'
-      ? 'Mascarilla 1 vez/semana, profunda cada 2 semanas'
-      : damageLevel === 'Moderado'
-      ? 'Mascarilla hidratante cada 10-14 días'
-      : 'Mascarilla hidratante 2 veces al mes';
+    const treatNote = needsProtein
+      ? 'Nutritivo (Lav. A) → Reparador proteico (Lav. B, 20-30 min) → Hidratante (Lav. C). El reparador actúa como tratamiento proteico.'
+      : isChemical
+      ? 'Nutritivo (Lav. A) → Reparador bond-builder (Lav. B, 20 min) → Hidratante (Lav. C). Rotar en cada lavado.'
+      : 'Nutritivo (Lav. A) → Reparador (Lav. B) → Hidratante (Lav. C). Rotar en cada lavado, siempre que te laves.';
 
-    const hydrationFreq = highPorosity
-      ? '2 veces por semana (retiene poca hidratación)'
+    const tonicoNote = hasHairLoss
+      ? '3 veces/semana, 1 hora antes de cada lavado. Masajear 5 min para activar circulación.'
+      : '3 veces/semana, 1 hora antes de cada lavado. Masajear con yemas de los dedos.';
+
+    const nightNote = highPorosity
+      ? 'Cada noche: gorro de seda + aceite en medios y puntas para sellar la hidratación.'
+      : 'Cada noche: gorro de seda + aceite solo en puntas.';
+
+    const refreshNote = isCurlyOrWavy
+      ? 'Días 2, 4 y 6 (sin lavado): humedecer con spray y aplicar gel o espuma para reactivar la forma.'
       : lowPorosity
-      ? '1 vez por semana (absorción lenta, más tiempo de acción)'
-      : isCoily
-      ? '2 veces por semana (necesita hidratación constante)'
-      : '1-2 veces por semana según el cabello';
+      ? 'Días de descanso: evitar agua y productos — el cabello necesita tiempo sin saturar.'
+      : 'Días de descanso: hidratación mínima con aceite en puntas si es necesario.';
 
-    const result = [
-      { label: 'Lavado', value: washFreq },
-      { label: 'Tratamiento / Mascarilla', value: treatmentFreq },
-      { label: 'Hidratación profunda', value: hydrationFreq },
+    return [
+      { label: 'Lavado',              value: washNote },
+      { label: 'Tratamiento',         value: treatNote },
+      { label: 'Tónico capilar',      value: tonicoNote },
+      { label: 'Rutina nocturna',     value: nightNote },
+      { label: 'Días de descanso',    value: refreshNote },
     ];
-    if (needsProtein) {
-      result.push({ label: 'Tratamiento proteico', value: `Cada ${proteinFrequencyWeeks} semanas. Siempre seguir con mascarilla hidratante.` });
-    }
-    return result;
   };
 
   const generateResult = (answersObject) => {
@@ -966,8 +1028,8 @@ export default function DiagnosisScreen({ navigation }) {
 
       
       const { damageLevel, stylingMethod } = profile;
-      const recommendedProducts = getRecommendedProducts(profile);
-      const routinePlanResult = getRoutinePlan(profile, recommendedProducts);
+      const { products: recommendedProducts, treatments } = getRecommendedProducts(profile);
+      const routinePlanResult = getRoutinePlan(profile, { products: recommendedProducts, treatments });
       const resultObject = {
         hairType: getHairType(answersObject),
         objective: getObjectiveLabel(answersObject.objective),

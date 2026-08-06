@@ -185,15 +185,20 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
   const done      = completed.length;
   const isAllDone = total > 0 && done === total;
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const colorAnim    = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.spring(progressAnim, {
+    Animated.timing(progressAnim, {
       toValue: total > 0 ? done / total : 0,
+      duration: 250,
       useNativeDriver: false,
-      friction: 7,
-      tension: 60,
     }).start();
-  }, [done, total]);
+    Animated.timing(colorAnim, {
+      toValue: isAllDone ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [done, total, isAllDone]);
 
   return (
     <View style={styles.routineCard}>
@@ -218,8 +223,8 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
         <View style={styles.progressTrack}>
           <Animated.View
             style={[styles.progressFill, {
-              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
-              backgroundColor: isAllDone ? '#7ADA7A' : accentColor,
+              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'], extrapolate: 'clamp' }),
+              backgroundColor: colorAnim.interpolate({ inputRange: [0, 1], outputRange: [accentColor, '#7ADA7A'] }),
             }]}
           />
         </View>
@@ -385,13 +390,17 @@ export default function CalendarScreen({ route, navigation }) {
                 newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => {
                   const text = typeof s === 'string' ? s : s.text;
                   const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  const product = (typeof s === 'object' && s.product)
+                    ? s.product
+                    : (category ? (products.find(p => p.category === category) ?? null) : null);
                   return { text, editable: false, category, product };
                 });
                 newNight[dateStr] = (dayPlan.nightSteps || []).map(s => {
                   const text = typeof s === 'string' ? s : s.text;
                   const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  const product = (typeof s === 'object' && s.product)
+                    ? s.product
+                    : (category ? (products.find(p => p.category === category) ?? null) : null);
                   return { text, editable: false, category, product };
                 });
               }
@@ -503,13 +512,17 @@ export default function CalendarScreen({ route, navigation }) {
         newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => {
                   const text = typeof s === 'string' ? s : s.text;
                   const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  const product = (typeof s === 'object' && s.product)
+                    ? s.product
+                    : (category ? (products.find(p => p.category === category) ?? null) : null);
                   return { text, editable: false, category, product };
                 });
         newNight[dateStr] = (dayPlan.nightSteps || []).map(s => {
                   const text = typeof s === 'string' ? s : s.text;
                   const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  const product = (typeof s === 'object' && s.product)
+                    ? s.product
+                    : (category ? (products.find(p => p.category === category) ?? null) : null);
                   return { text, editable: false, category, product };
                 });
       }
@@ -560,13 +573,17 @@ export default function CalendarScreen({ route, navigation }) {
         newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => {
                   const text = typeof s === 'string' ? s : s.text;
                   const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  const product = (typeof s === 'object' && s.product)
+                    ? s.product
+                    : (category ? (products.find(p => p.category === category) ?? null) : null);
                   return { text, editable: false, category, product };
                 });
         newNight[dateStr] = (dayPlan.nightSteps || []).map(s => {
                   const text = typeof s === 'string' ? s : s.text;
                   const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = category ? (products.find(p => p.category === category) ?? null) : null;
+                  const product = (typeof s === 'object' && s.product)
+                    ? s.product
+                    : (category ? (products.find(p => p.category === category) ?? null) : null);
                   return { text, editable: false, category, product };
                 });
       }
@@ -586,8 +603,9 @@ export default function CalendarScreen({ route, navigation }) {
 
   const buildMarkedDates = () => {
     const out = {};
-    Object.keys(dayByDate).forEach(d => {
-      if (dayByDate[d]?.length) out[d] = true;
+    const allDates = new Set([...Object.keys(dayByDate), ...Object.keys(nightByDate)]);
+    allDates.forEach(d => {
+      if (dayByDate[d]?.length || nightByDate[d]?.length) out[d] = true;
     });
     return out;
   };

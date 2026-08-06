@@ -19,6 +19,8 @@ import RegisterScreen from './src/components/RegisterScreen';
 import ProfileScreen from './src/components/ProfileScreen';
 import DiagnosisScreen from './src/components/DiagnosisScreen';
 import CategoryDetailScreen from './src/components/CategoryDetailScreen';
+import CartScreen from './src/components/CartScreen';
+import { CartProvider } from './src/context/CartContext';
 import { ThemeProvider } from './src/hooks/useTheme';
 import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
@@ -148,6 +150,7 @@ function AppRouter() {
             <RootStack.Screen name="Main" component={MainTabNavigator} />
             <RootStack.Screen name="TipDetail" component={DetailScreen} />
             <RootStack.Screen name="CategoryDetail" component={CategoryDetailScreen} options={{ headerShown: false }} />
+            <RootStack.Screen name="Cart" component={CartScreen} options={{ headerShown: false }} />
           </>
         ) : (
           <>
@@ -172,9 +175,11 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <AuthProvider>
-          <AppRouter />
-        </AuthProvider>
+        <CartProvider>
+          <AuthProvider>
+            <AppRouter />
+          </AuthProvider>
+        </CartProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

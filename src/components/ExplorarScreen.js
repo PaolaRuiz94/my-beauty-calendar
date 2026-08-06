@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, ActivityIndicator,
-  Platform, TouchableWithoutFeedback, Linking,
+  Platform, TouchableWithoutFeedback, Linking, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,9 @@ import { db } from '../firebase/config';
 import { useAuth } from '../auth/AuthContext';
 import ProductsScreen from './ProductsScreen';
 import { searchNearbySalons, mapsUrl } from '../services/googlePlaces';
+import { useCart } from '../context/CartContext';
+import { fetchAllProducts } from '../firebase/products';
+import { buildAmazonUrl } from '../utils/amazonUtils';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -179,8 +182,27 @@ function PeluqueriaCard({ peluqueria, distancia, onVerPerfil }) {
 export default function ExplorarScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { cart } = useCart();
 
   const [activeTab, setActiveTab] = useState('productos');
+
+  // ── Catálogo completo ──
+  const [catalogProducts, setCatalogProducts] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'catalogo' && catalogProducts.length === 0) {
+      setCatalogLoading(true);
+      fetchAllProducts()
+        .then(data => {
+          const sorted = [...data].sort((a, b) =>
+            (a.brand || '').localeCompare(b.brand || '') || (a.name || '').localeCompare(b.name || '')
+          );
+          setCatalogProducts(sorted);
+        })
+        .finally(() => setCatalogLoading(false));
+    }
+  }, [activeTab]);
 
   // peluquerías
   const [peluquerias, setPeluquerias]       = useState([]);
@@ -340,7 +362,21 @@ export default function ExplorarScreen({ navigation, route }) {
         end={{ x: 1, y: 0.5 }}
         style={[styles.header, { paddingTop: insets.top + 14 }]}
       >
-        <Text style={styles.headerTitle}>Explorar</Text>
+        <View style={styles.headerTopRow}>
+          <Text style={styles.headerTitle}>Explorar</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Cart')}
+            style={styles.cartHeaderBtn}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="bag-outline" size={20} color="#fff" />
+            {cart.length > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cart.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* tabs */}
         <View style={styles.tabRow}>
@@ -362,6 +398,16 @@ export default function ExplorarScreen({ navigation, route }) {
             <Ionicons name="cut-outline" size={14} color={activeTab === 'peluquerias' ? '#BF789C' : 'rgba(255,255,255,0.75)'} />
             <Text style={[styles.tabBtnText, activeTab === 'peluquerias' && styles.tabBtnTextActive]}>
               Peluquerías
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === 'catalogo' && styles.tabBtnActive]}
+            onPress={() => setActiveTab('catalogo')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="list-outline" size={14} color={activeTab === 'catalogo' ? '#BF789C' : 'rgba(255,255,255,0.75)'} />
+            <Text style={[styles.tabBtnText, activeTab === 'catalogo' && styles.tabBtnTextActive]}>
+              Catálogo
             </Text>
           </TouchableOpacity>
         </View>
@@ -625,7 +671,77 @@ export default function ExplorarScreen({ navigation, route }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* ── tab: catálogo ── */}
+      {activeTab === 'catalogo' && (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.catalogScroll}>
+          <Text style={styles.catalogCount}>
+            {catalogLoading ? 'Cargando...' : `${catalogProducts.length} productos en total`}
+          </Text>
+          {catalogLoading ? (
+            <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 40 }} />
+          ) : (
+            catalogProducts.map(product => {
+              const hasImage = !!product.image;
+              const hasAsin = !!product.asin;
+              const hasLink = !!(product.amazonLink || product.asin || product.sourceLink);
+              const amazonUrl = buildAmazonUrl(product);
+
+              const statusColor = hasImage ? '#7ADA7A' : hasAsin ? '#FFB347' : '#FF6B6B';
+              const statusLabel = hasImage ? 'imagen' : hasAsin ? 'solo ASIN' : 'sin imagen';
+
+              return (
+                <View key={product.id} style={styles.catalogItem}>
+                  <CatalogImage product={product} />
+                  <View style={styles.catalogInfo}>
+                    <Text style={styles.catalogBrand} numberOfLines={1}>{product.brand}</Text>
+                    <Text style={styles.catalogName} numberOfLines={2}>{product.name}</Text>
+                    <View style={styles.catalogStatusRow}>
+                      <View style={[styles.catalogDot, { backgroundColor: statusColor }]} />
+                      <Text style={[styles.catalogStatus, { color: statusColor }]}>{statusLabel}</Text>
+                      {product.amazonLink && (
+                        <>
+                          <View style={styles.catalogDot2} />
+                          <Text style={styles.catalogLinkTag}>link propio</Text>
+                        </>
+                      )}
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => amazonUrl ? Linking.openURL(amazonUrl) : alert('Sin link de Amazon')}
+                    style={[styles.catalogOpenBtn, !hasLink && styles.catalogOpenBtnDisabled]}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="open-outline" size={15} color={hasLink ? '#BF789C' : '#CCC'} />
+                  </TouchableOpacity>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
     </View>
+  );
+}
+
+function CatalogImage({ product }) {
+  const [fallback, setFallback] = React.useState(0);
+  const defaultImg = require('../../assets/icon.png');
+
+  const src = React.useMemo(() => {
+    if (product.image && fallback === 0) return { uri: product.image };
+    if (!product.asin || fallback >= 2) return defaultImg;
+    if (fallback <= 1) return { uri: `https://m.media-amazon.com/images/P/${product.asin}.01._SL500_.jpg` };
+    return { uri: `https://images-na.ssl-images-amazon.com/images/P/${product.asin}.01.LZZZZZZZ.jpg` };
+  }, [product.image, product.asin, fallback]);
+
+  return (
+    <Image
+      source={src}
+      style={styles.catalogImg}
+      resizeMode="cover"
+      onError={() => setFallback(f => f + 1)}
+    />
   );
 }
 
@@ -646,12 +762,43 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 10,
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
   headerTitle: {
     color: '#fff',
     fontSize: 20,
     fontWeight: '800',
     letterSpacing: 0.3,
-    marginBottom: 14,
+  },
+  cartHeaderBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    backgroundColor: '#FF6B6B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#BF789C',
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
   },
   tabRow: {
     flexDirection: 'row',
@@ -1426,5 +1573,101 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#BF789C',
+  },
+
+  // catálogo
+  catalogScroll: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 48,
+  },
+  catalogCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D6A4A4',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 14,
+  },
+  catalogItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+    gap: 12,
+    shadowColor: '#BF789C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  catalogImg: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#F7ECEE',
+    flexShrink: 0,
+  },
+  catalogInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  catalogBrand: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#D6A4A4',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  catalogName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D2D',
+    lineHeight: 18,
+  },
+  catalogStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  catalogDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  catalogDot2: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#DDD',
+    marginHorizontal: 2,
+  },
+  catalogStatus: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  catalogLinkTag: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#BF789C',
+    backgroundColor: '#F5E8F0',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  catalogOpenBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F5E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  catalogOpenBtnDisabled: {
+    backgroundColor: '#F5F5F5',
   },
 });

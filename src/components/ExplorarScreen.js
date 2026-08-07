@@ -191,7 +191,7 @@ export default function ExplorarScreen({ navigation, route }) {
   const [catalogLoading, setCatalogLoading] = useState(false);
 
   useEffect(() => {
-    if (activeTab === 'catalogo' && catalogProducts.length === 0) {
+    if (activeTab === 'catalogo') {
       setCatalogLoading(true);
       fetchAllProducts()
         .then(data => {
@@ -684,8 +684,9 @@ export default function ExplorarScreen({ navigation, route }) {
             catalogProducts.map(product => {
               const hasImage = !!product.image;
               const hasAsin = !!product.asin;
-              const hasLink = !!(product.amazonLink || product.asin || product.sourceLink);
-              const amazonUrl = buildAmazonUrl(product);
+              const fallbackUrl = product.sourceLink || product.link || null;
+              const hasLink = !!(product.amazonLink || product.asin || fallbackUrl);
+              const amazonUrl = buildAmazonUrl(product) || fallbackUrl;
 
               const statusColor = hasImage ? '#7ADA7A' : hasAsin ? '#FFB347' : '#FF6B6B';
               const statusLabel = hasImage ? 'imagen' : hasAsin ? 'solo ASIN' : 'sin imagen';

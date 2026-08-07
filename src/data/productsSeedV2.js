@@ -42,7 +42,7 @@ export const productsSeedV2 = [
     category: 'Shampoo',
     tags: ['cuero cabelludo sensible', 'calmante', 'suave', 'reactivo', 'sin irritación'],
     profiles: ['dryScalp'],
-    link: 'https://www.kerastase.com.co/specifique/bain-riche-dermo-calm',
+    link: 'https://www.amazon.com/dp/B002H1F064',
   },
   {
     id: 'kerastase-genesis-masque',
@@ -103,7 +103,7 @@ export const productsSeedV2 = [
     tags: ['protector térmico', 'anti-caída', 'calor', '230°C', 'sin enjuague'],
     weightClass: 'ligero',
     profiles: ['isHeatDamaged', 'needsProtein'],
-    link: 'https://www.kerastase.com.co/genesis/defense-thermique',
+    link: 'https://www.amazon.com/dp/B083JLYQCY',
   },
   {
     id: 'kerastase-curl-manifesto-gelee',
@@ -136,17 +136,6 @@ export const productsSeedV2 = [
     profiles: ['isChemical', 'highPorosity', 'needsProtein'],
     link: 'https://www.kerastase.com.co/chronologiste/revitalisant-regenerant',
   },
-  {
-    id: 'kerastase-aura-botanica-concentre',
-    brand: 'Kérastase',
-    name: 'Aura Botanica Concentré Essentiel',
-    description: 'Aceite botánico con argán, coco y jojoba. Nutre, aporta brillo y suavidad sin dejar residuo.',
-    category: 'Aceites',
-    tags: ['botánico', 'argán', 'coco', 'jojoba', 'brillo natural'],
-    profiles: ['dryScalp', 'highPorosity', 'isCurlyOrWavy'],
-    link: 'https://www.kerastase.com.co/aura-botanica/concentre-essentiel',
-  },
-
   // ─── NOVEX ────────────────────────────────────────────────────────────────────
 
   {
@@ -158,16 +147,6 @@ export const productsSeedV2 = [
     tags: ['rizos', 'sin sulfatos', 'ondas', 'hidratante', 'definición'],
     profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
     link: 'https://novexhair.com/products/my-curls-shampoo',
-  },
-  {
-    id: 'novex-my-curls-conditioner',
-    brand: 'Novex',
-    name: 'My Curls Conditioner',
-    description: 'Acondicionador para rizos con aceite de coco y manteca de karité. Hidrata, desenreda y define el rizo.',
-    category: 'Acondicionador',
-    tags: ['rizos', 'coco', 'karité', 'desenredo', 'definición'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
-    link: 'https://novexhair.com/products/my-curls-conditioner',
   },
   {
     id: 'novex-my-curls-leave-in',
@@ -219,6 +198,16 @@ export const productsSeedV2 = [
     tags: ['bambú', 'volumen', 'fino', 'ligero', 'movimiento'],
     profiles: ['fineDensity', 'lowPorosity'],
     link: 'https://novexhair.com/products/bamboo-shoots-conditioner',
+  },
+  {
+    id: 'novex-bamboo-shoots-mask',
+    brand: 'Novex',
+    name: 'Bamboo Sprout Deep Conditioning Mask',
+    description: 'Mascarilla intensiva con bambú para cabello fino y debilitado. Reconstruye, repara y estimula el crecimiento. Enriquecida con aminoácidos, minerales y vitaminas del bambú.',
+    category: 'Tratamiento',
+    tags: ['bambú', 'volumen', 'fino', 'reparadora', 'crecimiento', 'fortalecedor'],
+    profiles: ['fineDensity', 'lowPorosity', 'needsProtein', 'hasHairLoss'],
+    link: 'https://www.amazon.com/dp/B01N7V9RRX',
   },
   {
     id: 'novex-argan-oil-shampoo',
@@ -290,17 +279,6 @@ export const productsSeedV2 = [
     profiles: ['fineDensity', 'needsProtein', 'highPorosity'],
     link: 'https://novexhair.com/products/collagen-infusion-mask',
   },
-  {
-    id: 'novex-gold-black-castor-oil',
-    brand: 'Novex',
-    name: 'Gold Black Castor Oil',
-    description: 'Aceite de ricino negro para estimular el crecimiento, sellar la hidratación y fortalecer las puntas.',
-    category: 'Aceites',
-    tags: ['ricino negro', 'crecimiento', 'sellador', 'fortalecedor', 'puntas'],
-    profiles: ['highPorosity', 'isCurlyOrWavy', 'needsProtein', 'isCoily', 'isRizado'],
-    link: 'https://novexhair.com/products/gold-black-castor-oil',
-  },
-
   // ─── AFRICAN PRIDE ────────────────────────────────────────────────────────────
 
   {

@@ -2,59 +2,32 @@
 
 export const productsSeedV4 = [
 
-  // ─── BE CURLY (rizos y ondas) ─────────────────────────────────────────────────
+  // ─── BE CURLY ADVANCED (rizos y ondas) ───────────────────────────────────────
 
   {
-    id: 'aveda-be-curly-shampoo',
+    id: 'aveda-be-curly-advanced-mask',
     brand: 'Aveda',
-    name: 'Be Curly Shampoo',
-    description: 'Shampoo para rizos con proteína de trigo y aceite de coco. Limpia suavemente, hidrata y reduce el frizz.',
-    category: 'Shampoo',
-    tags: ['rizos', 'proteína de trigo', 'coco', 'hidratante', 'anti-frizz'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
-    link: 'https://www.aveda.com/product/be-curly-shampoo',
-  },
-  {
-    id: 'aveda-be-curly-conditioner',
-    brand: 'Aveda',
-    name: 'Be Curly Conditioner',
-    description: 'Acondicionador para rizos con aceite de coco y extracto de aloe. Suaviza, desenreda y define el patrón de rizo.',
-    category: 'Acondicionador',
-    tags: ['rizos', 'coco', 'aloe', 'desenredo', 'definición'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isOndulado'],
-    link: 'https://www.aveda.com/product/be-curly-conditioner',
-  },
-  {
-    id: 'aveda-be-curly-curl-enhancer',
-    brand: 'Aveda',
-    name: 'Be Curly Curl Enhancer',
-    description: 'Crema definidora de rizos con proteína de trigo. Activa el rizo, controla el frizz y aporta brillo natural.',
-    category: 'Crema de Peinar',
-    tags: ['rizos', 'definidora', 'proteína de trigo', 'anti-frizz', 'brillo'],
-    weightClass: 'pesado',
+    name: 'Be Curly Advanced Intensive Curl Perfecting Masque',
+    description: 'Mascarilla acondicionadora profunda para rizos, coils y ondas. Suaviza, define y combate el frizz con péptidos vegetales.',
+    category: 'Tratamiento',
+    tags: ['rizos', 'mascarilla', 'hidratante', 'definición', 'anti-frizz'],
     profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isCoily'],
-    link: 'https://www.aveda.com/product/be-curly-curl-enhancer',
+    asin: 'B0D33V5C3S',
+    image: 'https://n.nordstrommedia.com/it/551733a7-2ef6-4a1f-858e-436a99299ddb.jpeg?w=780&h=1170&crop=pad',
+    link: 'https://www.amazon.com/dp/B0D33V5C3S',
   },
   {
-    id: 'aveda-be-curly-style-prep',
+    id: 'aveda-be-curly-advanced-enhancer',
     brand: 'Aveda',
-    name: 'Be Curly Style Prep',
-    description: 'Spray preparador para rizos. Hidrata, facilita el peinado y potencia la definición antes de estilizar.',
+    name: 'Be Curly Advanced Curl Enhancer Cream',
+    description: 'Crema estilizadora para rizos y ondas. Hidrata, define, reduce el frizz y aporta brillo sin silicona.',
     category: 'Crema de Peinar',
-    tags: ['rizos', 'spray', 'preparador', 'hidratante', 'definición'],
-    weightClass: 'ligero',
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'isOndulado', 'isRizado'],
-    link: 'https://www.aveda.com/product/be-curly-style-prep',
-  },
-  {
-    id: 'aveda-be-curly-co-wash',
-    brand: 'Aveda',
-    name: 'Be Curly Co-Wash',
-    description: 'Co-wash para rizos que limpia y condiciona en un solo paso. Mantiene la hidratación y define sin resecar.',
-    category: 'Shampoo',
-    tags: ['co-wash', 'rizos', 'limpia y condiciona', 'hidratante', 'sin sulfatos'],
-    profiles: ['isCurlyOrWavy', 'highPorosity', 'dryScalp', 'isRizado', 'isOndulado'],
-    link: 'https://www.aveda.com/product/be-curly-co-wash',
+    tags: ['rizos', 'definidora', 'ondas', 'anti-frizz', 'brillo'],
+    weightClass: 'pesado',
+    profiles: ['isCurlyOrWavy', 'highPorosity', 'isRizado', 'isCoily', 'isOndulado'],
+    asin: 'B0D22L7NPD',
+    image: 'https://n.nordstrommedia.com/it/8db1f94e-3334-4708-aee0-70fe14e83446.jpeg?w=780&h=1170&crop=pad',
+    link: 'https://www.amazon.com/dp/B0D22L7NPD',
   },
   {
     id: 'aveda-be-curly-advanced-shampoo',
@@ -161,58 +134,6 @@ export const productsSeedV4 = [
     link: 'https://www.aveda.com/product/nutriplenish-multi-use-hair-oil',
   },
 
-  // ─── INVATI ADVANCED (anti-caída) ────────────────────────────────────────────
-
-  {
-    id: 'aveda-invati-shampoo-light',
-    brand: 'Aveda',
-    name: 'Invati Advanced Exfoliating Shampoo Light',
-    description: 'Shampoo exfoliante ligero anti-caída con cúrcuma ayurvédica. Limpia el cuero cabelludo y reduce la caída.',
-    category: 'Shampoo',
-    tags: ['anti-caída', 'exfoliante', 'cúrcuma', 'cuero cabelludo', 'ligero'],
-    profiles: ['oilyScalp', 'fineDensity'],
-    link: 'https://www.aveda.com/product/invati-advanced-exfoliating-shampoo-light',
-  },
-  {
-    id: 'aveda-invati-shampoo-rich',
-    brand: 'Aveda',
-    name: 'Invati Advanced Exfoliating Shampoo Rich',
-    description: 'Shampoo exfoliante rico anti-caída con cúrcuma y amla. Para cuero cabelludo seco con caída.',
-    category: 'Shampoo',
-    tags: ['anti-caída', 'exfoliante', 'cúrcuma', 'amla', 'cuero cabelludo seco'],
-    profiles: ['dryScalp', 'highPorosity'],
-    link: 'https://www.aveda.com/product/invati-advanced-exfoliating-shampoo-rich',
-  },
-  {
-    id: 'aveda-invati-conditioner',
-    brand: 'Aveda',
-    name: 'Invati Advanced Thickening Conditioner',
-    description: 'Acondicionador engrosador anti-caída. Fortalece la fibra, reduce el quiebre y da cuerpo al cabello débil.',
-    category: 'Acondicionador',
-    tags: ['anti-caída', 'engrosador', 'fortalecedor', 'quiebre', 'cuerpo'],
-    profiles: ['fineDensity', 'needsProtein'],
-    link: 'https://www.aveda.com/product/invati-advanced-thickening-conditioner',
-  },
-  {
-    id: 'aveda-invati-scalp-revitalizer',
-    brand: 'Aveda',
-    name: 'Invati Advanced Scalp Revitalizer',
-    description: 'Tratamiento revitalizador de cuero cabelludo anti-caída. Estimula la microcirculación y fortalece la raíz.',
-    category: 'Tratamiento',
-    tags: ['anti-caída', 'cuero cabelludo', 'estimulante', 'microcirculación', 'raíz'],
-    profiles: ['oilyScalp', 'dryScalp', 'fineDensity'],
-    link: 'https://www.aveda.com/product/invati-advanced-scalp-revitalizer',
-  },
-  {
-    id: 'aveda-invati-serum',
-    brand: 'Aveda',
-    name: 'Invati Advanced Scalp & Hair Treatment',
-    description: 'Sérum anti-caída para cuero cabelludo. Reduce la caída en un 53% con uso continuado.',
-    category: 'Aceites',
-    tags: ['anti-caída', 'sérum', 'cuero cabelludo', 'tratamiento', 'fortalecedor'],
-    profiles: ['fineDensity', 'dryScalp', 'oilyScalp'],
-    link: 'https://www.aveda.com/product/invati-advanced-scalp-hair-treatment',
-  },
 
   // ─── BOTANICAL REPAIR (reparación) ───────────────────────────────────────────
 
@@ -278,39 +199,6 @@ export const productsSeedV4 = [
     link: 'https://www.aveda.com/product/botanical-repair-overnight-serum',
   },
 
-  // ─── PURE ABUNDANCE (volumen, cabello fino) ───────────────────────────────────
-
-  {
-    id: 'aveda-pure-abundance-shampoo',
-    brand: 'Aveda',
-    name: 'Pure Abundance Volumizing Shampoo',
-    description: 'Shampoo voluminizador con arcilla y extracto de polvo de arroz para cabello fino. Volumen y cuerpo duradero.',
-    category: 'Shampoo',
-    tags: ['volumen', 'arcilla', 'arroz', 'fino', 'cuerpo'],
-    profiles: ['fineDensity', 'oilyScalp', 'lowPorosity'],
-    link: 'https://www.aveda.com/product/pure-abundance-volumizing-shampoo',
-  },
-  {
-    id: 'aveda-pure-abundance-conditioner',
-    brand: 'Aveda',
-    name: 'Pure Abundance Volumizing Conditioner',
-    description: 'Acondicionador voluminizador ligero para cabello fino. Condiciona sin añadir peso y potencia el volumen.',
-    category: 'Acondicionador',
-    tags: ['volumen', 'ligero', 'fino', 'sin peso', 'cuerpo'],
-    profiles: ['fineDensity', 'lowPorosity'],
-    link: 'https://www.aveda.com/product/pure-abundance-volumizing-conditioner',
-  },
-  {
-    id: 'aveda-pure-abundance-hair-potion',
-    brand: 'Aveda',
-    name: 'Pure Abundance Hair Potion',
-    description: 'Polvo texturizante para cabello fino. Añade volumen, textura y agarre instantáneo en seco.',
-    category: 'Espumas',
-    tags: ['texturizante', 'polvo', 'volumen', 'fino', 'agarre'],
-    weightClass: 'ligero',
-    profiles: ['fineDensity', 'lowPorosity', 'oilyScalp', 'isOndulado'],
-    link: 'https://www.aveda.com/product/pure-abundance-hair-potion',
-  },
 
   // ─── SMOOTH INFUSION (anti-frizz, cabello lacio) ─────────────────────────────
 
@@ -356,48 +244,6 @@ export const productsSeedV4 = [
     link: 'https://www.aveda.com/product/smooth-infusion-style-prep-smoother',
   },
 
-  // ─── COLOR CONSERVE (cabello teñido) ──────────────────────────────────────────
-
-  {
-    id: 'aveda-color-conserve-shampoo',
-    brand: 'Aveda',
-    name: 'Color Conserve Shampoo',
-    description: 'Shampoo para cabello teñido con antioxidantes naturales. Protege el color y reduce el desvanecimiento.',
-    category: 'Shampoo',
-    tags: ['color', 'antioxidantes', 'protección', 'desvanecimiento', 'teñido'],
-    profiles: ['isChemical'],
-    link: 'https://www.aveda.com/product/color-conserve-shampoo',
-  },
-  {
-    id: 'aveda-color-conserve-conditioner',
-    brand: 'Aveda',
-    name: 'Color Conserve Conditioner',
-    description: 'Acondicionador para cabello teñido. Suaviza, sella el color y prolonga la vivacidad del tinte.',
-    category: 'Acondicionador',
-    tags: ['color', 'suavizante', 'sellador', 'vivacidad', 'tinte'],
-    profiles: ['isChemical'],
-    link: 'https://www.aveda.com/product/color-conserve-conditioner',
-  },
-  {
-    id: 'aveda-color-conserve-masque',
-    brand: 'Aveda',
-    name: 'Color Conserve Strengthening Treatment',
-    description: 'Tratamiento fortalecedor para cabello teñido. Repara el daño del color, hidrata y protege el tinte.',
-    category: 'Tratamiento',
-    tags: ['color', 'fortalecedor', 'reparador', 'hidratante', 'tinte'],
-    profiles: ['isChemical', 'highPorosity'],
-    link: 'https://www.aveda.com/product/color-conserve-treatment',
-  },
-  {
-    id: 'aveda-color-conserve-daily-color-protect',
-    brand: 'Aveda',
-    name: 'Color Conserve Daily Color Protect',
-    description: 'Spray protector diario para cabello teñido. Protege del desvanecimiento, el calor y los rayos UV.',
-    category: 'Crema de Peinar',
-    tags: ['color', 'spray protector', 'UV', 'calor', 'diario'],
-    profiles: ['isChemical'],
-    link: 'https://www.aveda.com/product/color-conserve-daily-color-protect',
-  },
 
   // ─── DAMAGE REMEDY (reparación intensiva) ────────────────────────────────────
 
@@ -443,6 +289,19 @@ export const productsSeedV4 = [
   },
 
   // ─── SCALP SOLUTIONS (cuero cabelludo) ───────────────────────────────────────
+
+  {
+    id: 'aveda-scalp-solutions-mask',
+    brand: 'Aveda',
+    name: 'Scalp Solutions Hydrating Scalp & Hair Masque',
+    description: 'Mascarilla hidratante para cuero cabelludo seco. Repone la barrera de hidratación en un 77% con squalane vegano.',
+    category: 'Tratamiento',
+    tags: ['cuero cabelludo', 'hidratante', 'seco', 'mascarilla', 'squalane'],
+    profiles: ['dryScalp', 'highPorosity'],
+    asin: 'B0DW45JN45',
+    image: 'https://cdn.shopify.com/s/files/1/1588/9573/files/AvedaScalpSolutionsHydratingHair_ScalpMasque150ml_1.jpg?v=1738024713',
+    link: 'https://www.amazon.com/dp/B0DW45JN45',
+  },
 
   {
     id: 'aveda-scalp-solutions-shampoo',
@@ -516,5 +375,82 @@ export const productsSeedV4 = [
     tags: ['cereza', 'almendra', 'suavizante', 'sedoso', 'manejable'],
     profiles: ['dryScalp', 'highPorosity'],
     link: 'https://www.aveda.com/product/cherry-almond-softening-conditioner',
+  },
+
+  // ─── DEVA CURL (método curly girl, rizos definidos) ──────────────────────────
+
+  {
+    id: 'devacurl-no-poo',
+    brand: 'DevaCurl',
+    name: 'No-Poo Original Zero Lather Cleanser',
+    description: 'Limpiador sin espuma ni sulfatos para rizos y ondas. Limpia delicadamente sin resecar, mantiene la hidratación natural y define el patrón de rizo desde el lavado.',
+    category: 'Shampoo',
+    tags: ['rizos', 'sin sulfatos', 'sin espuma', 'curly girl', 'ondas', 'hidratante', 'limpieza suave'],
+    profiles: ['isCurlyOrWavy', 'isRizado', 'isCoily', 'isOndulado', 'highPorosity', 'dryScalp'],
+    link: 'https://www.amazon.com/dp/B097FCPX51',
+  },
+  {
+    id: 'devacurl-one-condition',
+    brand: 'DevaCurl',
+    name: 'One Condition Original Rich Cream Conditioner',
+    description: 'Acondicionador cremoso rico en humedad para rizos y ondas. Condiciona, desenreda y suaviza los rizos dejándolos hidratados, definidos y con movimiento natural.',
+    category: 'Acondicionador',
+    tags: ['rizos', 'hidratante', 'curly girl', 'desenredo', 'ondas', 'suavizante', 'definición'],
+    profiles: ['isCurlyOrWavy', 'isRizado', 'isCoily', 'isOndulado', 'highPorosity', 'dryScalp'],
+    link: 'https://www.amazon.com/dp/B097FC231C',
+  },
+  {
+    id: 'devacurl-heaven-in-hair',
+    brand: 'DevaCurl',
+    name: 'Heaven in Hair Moisturizing Deep Conditioner',
+    description: 'Mascarilla de acondicionamiento profundo para rizos secos y medios a gruesos. Nutre, suaviza y facilita el desenredo, aportando hidratación, definición y brillo duradero.',
+    category: 'Tratamiento',
+    tags: ['rizos', 'hidratante', 'curly girl', 'acondicionamiento profundo', 'ondas', 'coily', 'desenredo', 'brillo'],
+    profiles: ['isCurlyOrWavy', 'isRizado', 'isCoily', 'isOndulado', 'highPorosity', 'dryScalp', 'needsProtein'],
+    link: 'https://www.amazon.com/dp/B098VH74QZ',
+  },
+  {
+    id: 'devacurl-leave-in-decadence',
+    brand: 'DevaCurl',
+    name: 'Leave-In Decadence Moisturizing Leave-In Conditioner',
+    description: 'Leave-in hidratante de absorción rápida para rizos gruesos y secos. Nutre sin enjuague, controla el frizz y deja los rizos suaves, brillantes y definidos todo el día.',
+    category: 'Crema de Peinar',
+    tags: ['rizos', 'leave-in', 'curly girl', 'hidratante', 'ondas', 'coily', 'anti-frizz', 'sin enjuague'],
+    weightClass: 'medio',
+    profiles: ['isCurlyOrWavy', 'isRizado', 'isCoily', 'isOndulado', 'highPorosity', 'dryScalp'],
+    link: 'https://www.amazon.com/dp/B097F9FD43',
+  },
+
+  // ─── CANTU (rizos naturales, cabello rizado/ondulado/coily) ──────────────────
+
+  {
+    id: 'cantu-shea-butter-shampoo',
+    brand: 'Cantu',
+    name: 'Sulfate-Free Cleansing Cream Shampoo',
+    description: 'Shampoo cremoso sin sulfatos con manteca de karité pura. Limpia delicadamente el cuero cabelludo, hidrata y deja los rizos definidos y suaves sin resecar.',
+    category: 'Shampoo',
+    tags: ['rizos', 'sin sulfatos', 'hidratante', 'karité', 'ondas', 'coily', 'limpieza suave'],
+    profiles: ['isCurlyOrWavy', 'isRizado', 'isCoily', 'isOndulado', 'highPorosity', 'dryScalp'],
+    link: 'https://www.amazon.com/dp/B01LTIAU9W',
+  },
+  {
+    id: 'cantu-shea-butter-conditioner',
+    brand: 'Cantu',
+    name: 'Shea Butter Hydrating Cream Conditioner',
+    description: 'Acondicionador hidratante con manteca de karité y aceites esenciales. Nutre, desenreda y suaviza los rizos en profundidad, aportando humedad duradera y definición.',
+    category: 'Acondicionador',
+    tags: ['rizos', 'hidratante', 'karité', 'desenredo', 'ondas', 'coily', 'nutrición'],
+    profiles: ['isCurlyOrWavy', 'isRizado', 'isCoily', 'isOndulado', 'highPorosity', 'dryScalp'],
+    link: 'https://www.amazon.com/dp/B00NMM8JYM',
+  },
+  {
+    id: 'cantu-shea-butter-masque',
+    brand: 'Cantu',
+    name: 'Shea Butter Deep Treatment Masque',
+    description: 'Mascarilla de tratamiento profundo con manteca de karité y nueve aceites esenciales. Repara el cabello seco y dañado, restaura la elasticidad y deja los rizos suaves, brillantes y definidos.',
+    category: 'Tratamiento',
+    tags: ['rizos', 'tratamiento profundo', 'karité', 'reparadora', 'ondas', 'coily', 'elasticidad'],
+    profiles: ['isCurlyOrWavy', 'isRizado', 'isCoily', 'isOndulado', 'highPorosity', 'dryScalp', 'needsProtein'],
+    link: 'https://www.amazon.com/dp/B008L5EDKY',
   },
 ];

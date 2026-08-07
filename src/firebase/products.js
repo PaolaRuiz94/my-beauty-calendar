@@ -18,7 +18,7 @@ const ALL_PRODUCTS = [...productsSeed, ...productsSeedV2, ...productsSeedV3, ...
   const catalog = catalogById[p.id];
   if (!catalog) return p;
   if (catalog.image) console.log('MERGE IMAGE:', p.id, catalog.image.slice(0, 50));
-  return { ...p, asin: catalog.asin, amazonLink: catalog.amazonLink, ...(catalog.image ? { image: catalog.image } : {}) };
+  return { ...p, asin: catalog.asin, amazonLink: catalog.amazonLink, name: catalog.name, ...(catalog.image ? { image: catalog.image } : {}) };
 });
 
 const COL = 'products';

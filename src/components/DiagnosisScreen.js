@@ -217,6 +217,8 @@ export default function DiagnosisScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDiagnosis, setIsLoadingDiagnosis] = useState(false);
   const [routinePlan, setRoutinePlan] = useState([]);
+  const [routinePlanByTier, setRoutinePlanByTier] = useState(null);
+  const [defaultBudgetTier, setDefaultBudgetTier] = useState('mid');
   const [image, setImage] = useState(null);
   const [videoModal, setVideoModal] = useState({ visible: false, label: '', value: '', videos: [], isLoadingVideos: false });
   const [routineVideos, setRoutineVideos] = useState({});
@@ -656,71 +658,96 @@ export default function DiagnosisScreen({ navigation }) {
     // Score all products
     const allScored = allProducts.map(entry => ({ ...entry, score: scoreProduct(entry) }));
 
-    // Brand cohesion: find the brand with the best combined routine score across all categories
-    const brandCatBest = {};
-    allScored.forEach(({ category, product, score }) => {
-      const b = product.brand;
-      if (!brandCatBest[b]) brandCatBest[b] = {};
-      if (!brandCatBest[b][category] || score > brandCatBest[b][category].score) {
-        brandCatBest[b][category] = { product, score };
-      }
-    });
-    const brandTotals = {};
-    Object.entries(brandCatBest).forEach(([b, cats]) => {
-      brandTotals[b] = Object.values(cats).reduce((s, { score }) => s + Math.max(0, score), 0);
-    });
-    const routineBrand = Object.entries(brandTotals).sort((a, b) => b[1] - a[1])[0]?.[0];
+    // Arma una recomendación completa (cohesión de marca + tratamientos) a partir de un pool de productos ya scoreado
+    const buildRecommendationFromPool = (pool) => {
+      // Brand cohesion: find the brand with the best combined routine score across all categories
+      const brandCatBest = {};
+      pool.forEach(({ category, product, score }) => {
+        const b = product.brand;
+        if (!brandCatBest[b]) brandCatBest[b] = {};
+        if (!brandCatBest[b][category] || score > brandCatBest[b][category].score) {
+          brandCatBest[b][category] = { product, score };
+        }
+      });
+      const brandTotals = {};
+      Object.entries(brandCatBest).forEach(([b, cats]) => {
+        brandTotals[b] = Object.values(cats).reduce((s, { score }) => s + Math.max(0, score), 0);
+      });
+      const routineBrand = Object.entries(brandTotals).sort((a, b) => b[1] - a[1])[0]?.[0];
 
-    // Pick the best product per category from the routine brand; fall back to global best
-    const globalCatBest = {};
-    allScored.sort((a, b) => b.score - a.score).forEach(({ category, product, score }) => {
-      if (!globalCatBest[category]) globalCatBest[category] = { product, score };
-    });
-    const categoryBest = {};
-    Object.keys(productDB).forEach(category => {
-      const brandEntry = brandCatBest[routineBrand]?.[category];
-      if (brandEntry && brandEntry.score > 0) {
-        categoryBest[category] = brandEntry;
-      } else {
-        categoryBest[category] = globalCatBest[category];
-      }
-    });
+      // Pick the best product per category from the routine brand; fall back to global best (dentro del mismo pool)
+      const globalCatBest = {};
+      [...pool].sort((a, b) => b.score - a.score).forEach(({ category, product, score }) => {
+        if (!globalCatBest[category]) globalCatBest[category] = { product, score };
+      });
+      const categoryBest = {};
+      Object.keys(productDB).forEach(category => {
+        const brandEntry = brandCatBest[routineBrand]?.[category];
+        categoryBest[category] = (brandEntry && brandEntry.score > 0) ? brandEntry : globalCatBest[category];
+      });
 
-    const recommended = Object.keys(productDB).map((category) => {
-      const best = categoryBest[category];
-      if (best && best.score > 0) return best.product;
-      return productDB[category][0];
-    }).filter(Boolean);
+      const recommended = Object.keys(productDB).map((category) => {
+        const best = categoryBest[category];
+        if (best && best.score > 0) return best.product;
+        // Fallback: primer producto del pool en esa categoría; si no hay, primero del catálogo global
+        const poolFallback = pool.find(e => e.category === category)?.product;
+        return poolFallback || productDB[category][0];
+      }).filter(Boolean);
 
-    // Seleccionar 3 tratamientos distintos: nutritivo, reparador, hidratante
-    const tratamientoScored = allScored
-      .filter(({ category }) => category === 'tratamiento')
-      .sort((a, b) => b.score - a.score);
+      const totalScore = Object.values(categoryBest).reduce((s, entry) => s + Math.max(0, entry?.score || 0), 0);
 
-    const brandTratamientos = tratamientoScored.filter(({ product }) => product.brand === routineBrand);
-    const pool = brandTratamientos.length >= 3 ? brandTratamientos : tratamientoScored;
+      // Seleccionar 3 tratamientos distintos: nutritivo, reparador, hidratante
+      const tratamientoScored = pool
+        .filter(({ category }) => category === 'tratamiento')
+        .sort((a, b) => b.score - a.score);
 
-    const pickTreat = (keywords, exclude = []) => {
-      const match = pool.find(({ product }) =>
-        !exclude.includes(product.id) &&
-        keywords.some(kw => (product.tags || []).some(t => t.toLowerCase().includes(kw)))
-      ) || pool.find(({ product }) => !exclude.includes(product.id));
-      return match?.product || null;
+      const brandTratamientos = tratamientoScored.filter(({ product }) => product.brand === routineBrand);
+      const treatPool = brandTratamientos.length >= 3 ? brandTratamientos : tratamientoScored;
+
+      const pickTreat = (keywords, exclude = []) => {
+        const match = treatPool.find(({ product }) =>
+          !exclude.includes(product.id) &&
+          keywords.some(kw => (product.tags || []).some(t => t.toLowerCase().includes(kw)))
+        ) || treatPool.find(({ product }) => !exclude.includes(product.id));
+        return match?.product || null;
+      };
+
+      const treatNutritivo = pickTreat(['nutritivo', 'nutrición', 'regenerante', 'suavizante']);
+      const usedAfterN = treatNutritivo ? [treatNutritivo.id] : [];
+      const treatReparador = pickTreat(['reparador', 'daño', 'bond', 'fortalecimiento', 'proteína'], usedAfterN);
+      const usedAfterR = [...usedAfterN, ...(treatReparador ? [treatReparador.id] : [])];
+      const treatHidratante = pickTreat(['hidratante', 'humectante', 'hidratación', 'brillo', 'suavidad'], usedAfterR);
+
+      return {
+        products: recommended,
+        treatments: {
+          nutritivo:  treatNutritivo  || recommended.find(p => p?.category === 'Tratamiento') || null,
+          reparador:  treatReparador  || recommended.find(p => p?.category === 'Tratamiento') || null,
+          hidratante: treatHidratante || recommended.find(p => p?.category === 'Tratamiento') || null,
+        },
+        totalScore,
+      };
     };
 
-    const treatNutritivo = pickTreat(['nutritivo', 'nutrición', 'regenerante', 'suavizante']);
-    const usedAfterN = treatNutritivo ? [treatNutritivo.id] : [];
-    const treatReparador = pickTreat(['reparador', 'daño', 'bond', 'fortalecimiento', 'proteína'], usedAfterN);
-    const usedAfterR = [...usedAfterN, ...(treatReparador ? [treatReparador.id] : [])];
-    const treatHidratante = pickTreat(['hidratante', 'humectante', 'hidratación', 'brillo', 'suavidad'], usedAfterR);
+    // 3 recomendaciones alternativas por presupuesto (heurística de precio por marca)
+    const tiers = ['low', 'mid', 'high'];
+    const byTier = {};
+    tiers.forEach((tier) => {
+      const tierPool = allScored.filter(({ product }) => (product.priceTier || 'mid') === tier);
+      byTier[tier] = buildRecommendationFromPool(tierPool.length > 0 ? tierPool : allScored);
+    });
+
+    // La "más acertada" es la de mayor score total; esa es la que se muestra por defecto
+    const defaultTier = tiers.reduce(
+      (best, t) => (byTier[t].totalScore > byTier[best].totalScore ? t : best),
+      'mid'
+    );
 
     return {
-      products: recommended,
-      treatments: {
-        nutritivo:  treatNutritivo  || recommended.find(p => p?.category === 'Tratamiento') || null,
-        reparador:  treatReparador  || recommended.find(p => p?.category === 'Tratamiento') || null,
-        hidratante: treatHidratante || recommended.find(p => p?.category === 'Tratamiento') || null,
-      },
+      products: byTier[defaultTier].products,
+      treatments: byTier[defaultTier].treatments,
+      byTier,
+      defaultTier,
     };
   };
 
@@ -1028,8 +1055,13 @@ export default function DiagnosisScreen({ navigation }) {
 
       
       const { damageLevel, stylingMethod } = profile;
-      const { products: recommendedProducts, treatments } = getRecommendedProducts(profile);
+      const { products: recommendedProducts, treatments, byTier, defaultTier } = getRecommendedProducts(profile);
       const routinePlanResult = getRoutinePlan(profile, { products: recommendedProducts, treatments });
+      const routinePlanByTier = {
+        low:  getRoutinePlan(profile, byTier.low),
+        mid:  getRoutinePlan(profile, byTier.mid),
+        high: getRoutinePlan(profile, byTier.high),
+      };
       const resultObject = {
         hairType: getHairType(answersObject),
         objective: getObjectiveLabel(answersObject.objective),
@@ -1051,10 +1083,14 @@ export default function DiagnosisScreen({ navigation }) {
         },
       };
       setRoutinePlan(routinePlanResult);
+      setRoutinePlanByTier(routinePlanByTier);
+      setDefaultBudgetTier(defaultTier);
       setResult(resultObject);
       AsyncStorage.multiSet([
         ['@mybeauty-calendar:diagnosisResult', JSON.stringify(resultObject)],
         ['@mybeauty-calendar:diagnosisRoutinePlan', JSON.stringify(routinePlanResult)],
+        ['@mybeauty-calendar:diagnosisRoutinePlanByTier', JSON.stringify(routinePlanByTier)],
+        ['@mybeauty-calendar:budgetTier', defaultTier],
         ['@mybeauty-calendar:calendarNeedsRefresh', 'true'],
       ]).catch(() => {});
       setIsLoadingDiagnosis(false);
@@ -1178,7 +1214,7 @@ export default function DiagnosisScreen({ navigation }) {
           {/* BOTÓN CALENDARIO */}
           <TouchableOpacity
             style={[styles.primaryButton, { marginTop: 20, marginBottom: 4 }]}
-            onPress={() => navigation.navigate('Calendario', { screen: 'CalendarMain', params: { routinePlan, objective: result.objective } })}
+            onPress={() => navigation.navigate('Calendario', { screen: 'CalendarMain', params: { routinePlan, routinePlanByTier, defaultTier: defaultBudgetTier, objective: result.objective } })}
             activeOpacity={0.85}
           >
             <LinearGradient

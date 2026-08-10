@@ -12,6 +12,37 @@ function amzLink(asin, brand, name) {
   return `https://www.amazon.com/s?k=${encodeURIComponent(`${brand} ${name}`)}&tag=${TAG}`;
 }
 
+// ── Nivel de precio por marca (heurística — no hay precios reales de Amazon) ──
+// Se usa para armar 3 rutinas alternativas (económica / balanceada / premium).
+export const PRICE_TIER_BY_BRAND = {
+  'Kérastase': 'high',
+  'Olaplex': 'high',
+  'Aveda': 'high',
+  'Moroccanoil': 'high',
+  'Authentic Beauty Concept': 'high',
+  'DevaCurl': 'mid',
+  'The Ordinary': 'mid',
+  'SheaMoisture': 'mid',
+  'Gisou': 'mid',
+  'Cantu': 'mid',
+  'Novex': 'low',
+  'African Pride': 'low',
+  'OGX': 'low',
+  'Garnier': 'low',
+  'Pantene': 'low',
+  'Eco Styler': 'low',
+};
+
+export const PRICE_TIER_LABELS = {
+  low:  { label: 'Económico',  emoji: '💚' },
+  mid:  { label: 'Balanceado', emoji: '💛' },
+  high: { label: 'Premium',    emoji: '💜' },
+};
+
+function priceTierFor(brand) {
+  return PRICE_TIER_BY_BRAND[brand] || 'mid';
+}
+
 // ── Catálogo completo ──────────────────────────────────────────────────────────
 // Secciones: primero los productos con tags (recomendaciones), luego el resto.
 
@@ -1270,6 +1301,7 @@ export const PRODUCTS = CATALOG.map(p => ({
   tags: [],
   asin: null,
   sourceLink: null,
+  priceTier: priceTierFor(p.brand),
   ...p,
   amazonLink: amzLink(p.asin, p.brand, p.name),
 }));

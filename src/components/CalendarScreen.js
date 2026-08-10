@@ -24,6 +24,7 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BeautyCalendarHeader from './BeautyCalendarHeader';
 import { fetchProductsByProfile } from '../firebase/products';
+import { PRICE_TIER_LABELS } from '../data/products';
 import { getWeatherContext, getWeatherBoostTags, getWeatherHairTip } from '../services/weatherService';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../auth/AuthContext';
@@ -74,6 +75,29 @@ function getCategoryForStep(stepText) {
   if (t.includes('gel'))                                                                  return 'Gel';
   if (t.includes('mousse') || t.includes('espuma'))                                      return 'Espumas';
   return null;
+}
+
+function expandPlanTo30Days(plan, products) {
+  const today = new Date();
+  const newDay = {};
+  const newNight = {};
+  const buildStep = (s) => {
+    const text = typeof s === 'string' ? s : s.text;
+    const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
+    const product = (typeof s === 'object' && s.product)
+      ? s.product
+      : (category ? (products.find(p => p.category === category) ?? null) : null);
+    return { text, editable: false, category, product };
+  };
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
+    newDay[dateStr] = (dayPlan.daySteps || []).map(buildStep);
+    newNight[dateStr] = (dayPlan.nightSteps || []).map(buildStep);
+  }
+  return { newDay, newNight };
 }
 
 
@@ -300,6 +324,9 @@ export default function CalendarScreen({ route, navigation }) {
   const [scheduledNotifs, setScheduledNotifs] = useState([]);
   const [streakModal, setStreakModal] = useState(false);
   const [tipLiked, setTipLiked] = useState(false);
+  const [budgetTier, setBudgetTier] = useState('mid');
+  const [routinePlanByTier, setRoutinePlanByTier] = useState(null);
+  const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const isLoaded = useRef(false);
 
   // ── Agregar paso ────────────────────────────────────────────────────────────
@@ -362,6 +389,15 @@ export default function CalendarScreen({ route, navigation }) {
         if (nd)  setNightDone(JSON.parse(nd));
         if (pts) setPoints(JSON.parse(pts));
 
+        const [planByTierRaw, tierRaw] = await Promise.all([
+          AsyncStorage.getItem('@mybeauty-calendar:diagnosisRoutinePlanByTier'),
+          AsyncStorage.getItem('@mybeauty-calendar:budgetTier'),
+        ]);
+        if (planByTierRaw) {
+          try { setRoutinePlanByTier(JSON.parse(planByTierRaw)); } catch {}
+        }
+        if (tierRaw) setBudgetTier(tierRaw);
+
         // Si el calendario está vacío, auto-poblar desde el diagnóstico guardado
         if (!savedDay) {
           const [planRaw, profileRaw] = await Promise.all([
@@ -379,31 +415,7 @@ export default function CalendarScreen({ route, navigation }) {
                   products = await fetchProductsByProfile(flags);
                 } catch {}
               }
-              const today = new Date();
-              const newDay = {};
-              const newNight = {};
-              for (let i = 0; i < 30; i++) {
-                const dateObj = new Date(today);
-                dateObj.setDate(today.getDate() + i);
-                const dateStr = dateObj.toISOString().split('T')[0];
-                const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
-                newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => {
-                  const text = typeof s === 'string' ? s : s.text;
-                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = (typeof s === 'object' && s.product)
-                    ? s.product
-                    : (category ? (products.find(p => p.category === category) ?? null) : null);
-                  return { text, editable: false, category, product };
-                });
-                newNight[dateStr] = (dayPlan.nightSteps || []).map(s => {
-                  const text = typeof s === 'string' ? s : s.text;
-                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = (typeof s === 'object' && s.product)
-                    ? s.product
-                    : (category ? (products.find(p => p.category === category) ?? null) : null);
-                  return { text, editable: false, category, product };
-                });
-              }
+              const { newDay, newNight } = expandPlanTo30Days(plan, products);
               setProfileProducts(products);
               setDayByDate(newDay);
               setNightByDate(newNight);
@@ -455,6 +467,30 @@ export default function CalendarScreen({ route, navigation }) {
     setSelectedDate(dateStr);
   };
 
+  const switchBudgetTier = async (tier) => {
+    if (tier === budgetTier) { setBudgetModalVisible(false); return; }
+    const plan = routinePlanByTier?.[tier];
+    if (!Array.isArray(plan) || plan.length === 0) { setBudgetModalVisible(false); return; }
+
+    let products = profileProducts;
+    try {
+      const raw = await AsyncStorage.getItem('@mybeauty-calendar:hairProfile');
+      if (raw) {
+        const profile = JSON.parse(raw);
+        const flags = Object.entries(profile).filter(([, v]) => v === true).map(([k]) => k);
+        products = await fetchProductsByProfile(flags);
+      }
+    } catch {}
+
+    const { newDay, newNight } = expandPlanTo30Days(plan, products);
+    setProfileProducts(products);
+    setDayByDate(newDay);
+    setNightByDate(newNight);
+    setBudgetTier(tier);
+    setBudgetModalVisible(false);
+    AsyncStorage.setItem('@mybeauty-calendar:budgetTier', tier).catch(() => {});
+  };
+
   const dayRoutines   = dayByDate[selectedDate]   || [];
   const nightRoutines = nightByDate[selectedDate]  || [];
   const dayCompleted  = dayDone[selectedDate]      || [];
@@ -499,39 +535,22 @@ export default function CalendarScreen({ route, navigation }) {
         });
       }
 
-      const today = new Date();
-      const newDay   = {};
-      const newNight = {};
-
-      for (let i = 0; i < 30; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
-        const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
-
-        newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => {
-                  const text = typeof s === 'string' ? s : s.text;
-                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = (typeof s === 'object' && s.product)
-                    ? s.product
-                    : (category ? (products.find(p => p.category === category) ?? null) : null);
-                  return { text, editable: false, category, product };
-                });
-        newNight[dateStr] = (dayPlan.nightSteps || []).map(s => {
-                  const text = typeof s === 'string' ? s : s.text;
-                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = (typeof s === 'object' && s.product)
-                    ? s.product
-                    : (category ? (products.find(p => p.category === category) ?? null) : null);
-                  return { text, editable: false, category, product };
-                });
-      }
+      const { newDay, newNight } = expandPlanTo30Days(plan, products);
 
       setProfileProducts(products);
       setDayByDate(newDay);
       setNightByDate(newNight);
       const first = Object.keys(newDay)[0];
       if (first) setSelectedDate(first);
+
+      if (route.params.routinePlanByTier) {
+        setRoutinePlanByTier(route.params.routinePlanByTier);
+        AsyncStorage.setItem('@mybeauty-calendar:diagnosisRoutinePlanByTier', JSON.stringify(route.params.routinePlanByTier)).catch(() => {});
+      }
+      if (route.params.defaultTier) {
+        setBudgetTier(route.params.defaultTier);
+        AsyncStorage.setItem('@mybeauty-calendar:budgetTier', route.params.defaultTier).catch(() => {});
+      }
     };
 
     init();
@@ -545,9 +564,11 @@ export default function CalendarScreen({ route, navigation }) {
 
       await AsyncStorage.removeItem('@mybeauty-calendar:calendarNeedsRefresh');
 
-      const [planRaw, profileRaw] = await Promise.all([
+      const [planRaw, profileRaw, planByTierRaw, tierRaw] = await Promise.all([
         AsyncStorage.getItem('@mybeauty-calendar:diagnosisRoutinePlan'),
         AsyncStorage.getItem('@mybeauty-calendar:hairProfile'),
+        AsyncStorage.getItem('@mybeauty-calendar:diagnosisRoutinePlanByTier'),
+        AsyncStorage.getItem('@mybeauty-calendar:budgetTier'),
       ]);
       if (!planRaw) return;
       const plan = JSON.parse(planRaw);
@@ -562,37 +583,17 @@ export default function CalendarScreen({ route, navigation }) {
         }
       } catch {}
 
-      const today = new Date();
-      const newDay = {};
-      const newNight = {};
-      for (let i = 0; i < 30; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
-        const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
-        newDay[dateStr]   = (dayPlan.daySteps   || []).map(s => {
-                  const text = typeof s === 'string' ? s : s.text;
-                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = (typeof s === 'object' && s.product)
-                    ? s.product
-                    : (category ? (products.find(p => p.category === category) ?? null) : null);
-                  return { text, editable: false, category, product };
-                });
-        newNight[dateStr] = (dayPlan.nightSteps || []).map(s => {
-                  const text = typeof s === 'string' ? s : s.text;
-                  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-                  const product = (typeof s === 'object' && s.product)
-                    ? s.product
-                    : (category ? (products.find(p => p.category === category) ?? null) : null);
-                  return { text, editable: false, category, product };
-                });
-      }
+      const { newDay, newNight } = expandPlanTo30Days(plan, products);
 
       setProfileProducts(products);
       setDayByDate(newDay);
       setNightByDate(newNight);
       setDayDone({});
       setNightDone({});
+      if (planByTierRaw) {
+        try { setRoutinePlanByTier(JSON.parse(planByTierRaw)); } catch {}
+      }
+      if (tierRaw) setBudgetTier(tierRaw);
       const first = Object.keys(newDay)[0];
       if (first) setSelectedDate(first);
     };
@@ -768,6 +769,19 @@ export default function CalendarScreen({ route, navigation }) {
             onStreakPress={() => setStreakModal(true)}
           />
         </View>
+
+        {/* ── selector de presupuesto ── */}
+        {routinePlanByTier && (
+          <TouchableOpacity
+            style={styles.budgetPill}
+            activeOpacity={0.8}
+            onPress={() => setBudgetModalVisible(true)}
+          >
+            <Text style={styles.budgetPillEmoji}>{PRICE_TIER_LABELS[budgetTier]?.emoji}</Text>
+            <Text style={styles.budgetPillText}>Presupuesto: {PRICE_TIER_LABELS[budgetTier]?.label}</Text>
+            <Ionicons name="chevron-down" size={14} color="#BF789C" />
+          </TouchableOpacity>
+        )}
 
         {/* ── motivational banner ── */}
         <View style={[styles.motivRow, { marginTop: 20, marginBottom: 24 }]}>
@@ -953,6 +967,35 @@ export default function CalendarScreen({ route, navigation }) {
                   </View>
                 ))}
               </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── Modal selector de presupuesto ── */}
+        <Modal visible={budgetModalVisible} transparent animationType="slide" onRequestClose={() => setBudgetModalVisible(false)}>
+          <View style={[styles.modalOverlay, { justifyContent: 'flex-end' }]}>
+            <View style={styles.budgetModalBox}>
+              <View style={styles.streakModalHeader}>
+                <Text style={styles.budgetModalTitle}>Elige tu presupuesto</Text>
+                <TouchableOpacity onPress={() => setBudgetModalVisible(false)} activeOpacity={0.7}>
+                  <Ionicons name="close" size={22} color="#999" />
+                </TouchableOpacity>
+              </View>
+              {['low', 'mid', 'high'].map((tier) => (
+                <TouchableOpacity
+                  key={tier}
+                  style={[styles.budgetOption, budgetTier === tier && styles.budgetOptionActive]}
+                  activeOpacity={0.8}
+                  onPress={() => switchBudgetTier(tier)}
+                >
+                  <Text style={styles.budgetOptionEmoji}>{PRICE_TIER_LABELS[tier].emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.budgetOptionLabel}>{PRICE_TIER_LABELS[tier].label}</Text>
+                    {budgetTier === tier && <Text style={styles.budgetOptionHint}>Rutina actual</Text>}
+                  </View>
+                  {budgetTier === tier && <Ionicons name="checkmark-circle" size={20} color="#BF789C" />}
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </Modal>
@@ -1749,6 +1792,55 @@ const styles = StyleSheet.create({
   },
 
   // streak modal
+  budgetPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: '#FDF0F5',
+    borderWidth: 1,
+    borderColor: '#F0D5E2',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginTop: 16,
+    marginHorizontal: 20,
+  },
+  budgetPillEmoji: { fontSize: 14 },
+  budgetPillText: { fontSize: 13, fontWeight: '600', color: '#BF789C' },
+  budgetModalBox: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    width: '100%',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+    shadowColor: '#BF789C',
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 10,
+  },
+  budgetModalTitle: { fontSize: 17, fontWeight: '700', color: '#3A2E35' },
+  budgetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#F0E0E8',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  budgetOptionActive: {
+    borderColor: '#BF789C',
+    backgroundColor: '#FDF0F5',
+  },
+  budgetOptionEmoji: { fontSize: 22 },
+  budgetOptionLabel: { fontSize: 15, fontWeight: '600', color: '#3A2E35' },
+  budgetOptionHint: { fontSize: 12, color: '#BF789C', marginTop: 2 },
   streakModalBox: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 28,

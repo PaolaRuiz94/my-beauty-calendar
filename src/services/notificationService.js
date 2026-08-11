@@ -1,7 +1,4 @@
 import * as Notifications from 'expo-notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const STORAGE_KEY = '@mybeauty-calendar:notificationsScheduled';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,76 +15,79 @@ export async function requestNotificationPermissions() {
   return status === 'granted';
 }
 
-export async function scheduleAllNotifications() {
+function truncate(text, max = 80) {
+  if (!text) return '';
+  return text.length > max ? text.slice(0, max - 1) + '…' : text;
+}
+
+// El efecto que llama a syncRoutineNotifications puede dispararse varias veces
+// seguidas (varios useState que cambian casi al mismo tiempo al cargar la pantalla).
+// Como cada llamada cancela todo y reprograma, dos llamadas en paralelo pueden
+// pisarse y dejar notificaciones duplicadas. Esta cola serializa las llamadas
+// para que nunca corran dos al mismo tiempo.
+let syncChain = Promise.resolve();
+
+export function syncRoutineNotifications(args) {
+  syncChain = syncChain.then(() => doSyncRoutineNotifications(args)).catch(() => {});
+  return syncChain;
+}
+
+// Reprograma las notificaciones de rutina según el estado actual del calendario.
+// Se debe llamar cada vez que cambian dayByDate/nightByDate/skippedDates/dayDone/nightDone,
+// para que el contenido y el recordatorio de racha reflejen la rutina real del día.
+async function doSyncRoutineNotifications({
+  dayByDate = {},
+  nightByDate = {},
+  skippedDates = {},
+  dayDone = {},
+  nightDone = {},
+  cycleTitleByDate = {},
+} = {}) {
   const granted = await requestNotificationPermissions();
   if (!granted) return;
 
-  const already = await AsyncStorage.getItem(STORAGE_KEY);
-  if (already) return;
-
   await Notifications.cancelAllScheduledNotificationsAsync();
 
-  // Rutina de mañana — 7:30 AM diario
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '🌸 Hora de tu rutina de mañana',
-      body: 'Empieza el día cuidando tu cabello. ¡Tienes productos esperándote!',
-      sound: true,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 7,
-      minute: 30,
-    },
-  });
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
 
-  // Rutina de noche — 9:00 PM diario
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '🌙 Rutina de noche',
-      body: 'Antes de dormir, dale amor a tu cabello. ¡Tu rutina de noche te espera!',
-      sound: true,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 21,
-      minute: 0,
-    },
-  });
+  const scheduleFor = async (dateStr, hour, minute, title, body) => {
+    const target = new Date(dateStr + 'T00:00:00');
+    target.setHours(hour, minute, 0, 0);
+    if (target.getTime() <= Date.now()) return; // ya pasó esa hora, no tiene sentido programarla
+    await Notifications.scheduleNotificationAsync({
+      content: { title, body, sound: true },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: target },
+    });
+  };
 
-  // Recordatorio de racha — 8:00 PM diario
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '🔥 ¡No pierdas tu racha!',
-      body: '¿Ya completaste tu rutina hoy? Mantén tu racha activa.',
-      sound: true,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 20,
-      minute: 0,
-    },
-  });
+  if (!skippedDates[today]) {
+    const daySteps = dayByDate[today] || [];
+    if (daySteps.length > 0) {
+      const label = cycleTitleByDate[today];
+      const body = label ? `Hoy toca: ${label}` : (truncate(daySteps[0]?.text) || 'Tu rutina de día te espera');
+      await scheduleFor(today, 7, 30, '🌸 Hora de tu rutina de mañana', body);
+    }
 
-  // Recordatorio de clima — 8:00 AM diario
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '🌤️ Revisa el clima de hoy',
-      body: 'Abre Tu Diario Capilar y adapta tu rutina según el clima de hoy.',
-      sound: true,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 8,
-      minute: 0,
-    },
-  });
+    const nightSteps = nightByDate[today] || [];
+    if (nightSteps.length > 0) {
+      const body = truncate(nightSteps[0]?.text) || 'Tu rutina de noche te espera';
+      await scheduleFor(today, 21, 0, '🌙 Rutina de noche', body);
+    }
+  }
 
-  await AsyncStorage.setItem(STORAGE_KEY, 'true');
-}
+  // Recordatorio de racha — solo si de verdad falta completar algo
+  const todayDaySteps = dayByDate[today] || [];
+  const todayNightSteps = nightByDate[today] || [];
+  const hasStepsToday = todayDaySteps.length > 0 || todayNightSteps.length > 0;
+  const dayDoneToday = todayDaySteps.length > 0 && (dayDone[today] || []).length >= todayDaySteps.length;
+  const nightDoneToday = todayNightSteps.length > 0 && (nightDone[today] || []).length >= todayNightSteps.length;
+  const allDoneToday = (todayDaySteps.length === 0 || dayDoneToday) && (todayNightSteps.length === 0 || nightDoneToday);
 
-export async function cancelStreakNotificationToday() {
-  // Marca el día como completado para que no moleste el recordatorio de racha
-  const today = new Date().toISOString().split('T')[0];
-  await AsyncStorage.setItem('@mybeauty-calendar:streakDoneToday', today);
+  if (hasStepsToday && !allDoneToday && !skippedDates[today]) {
+    await scheduleFor(today, 20, 0, '🔥 ¡No pierdas tu racha!', '¿Ya completaste tu rutina hoy? Mantén tu racha activa.');
+  }
+
+  // Clima — recordatorio genérico
+  await scheduleFor(today, 8, 0, '🌤️ Revisa el clima de hoy', 'Abre Tu Diario Capilar y adapta tu rutina según el clima de hoy.');
 }

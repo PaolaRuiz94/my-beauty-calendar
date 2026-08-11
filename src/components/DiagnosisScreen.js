@@ -20,7 +20,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { productDB, recommendationDB } from '../data/products';
+import { productDB, recommendationDB, PRODUCTS } from '../data/products';
+
+// Único producto de la categoría "Accesorios" — no participa en el algoritmo de
+// recomendación (productDB no incluye esa categoría), así que se asigna directo
+// para que el paso de "gorro de seda" siempre tenga la misma foto.
+const GORRO_SEDA_PRODUCT = PRODUCTS.find(p => p.id === 'malma-gorro-seda') || null;
+import { scoreProductForProfile } from '../utils/productScoring';
 import { fetchRoutineVideos } from '../firebase/videos';
 import { searchYouTubeVideos } from '../services/youtube';
 import YouTubeCarousel from './YouTubeCarousel';
@@ -537,7 +543,7 @@ export default function DiagnosisScreen({ navigation }) {
       'Aceites'
     );
 
-    const nightSteps = [tag('Proteger el cabello con gorro de seda o pañuelo de satín', 'Accesorios'), nightOil];
+    const nightSteps = [tag('Proteger el cabello con gorro de seda o pañuelo de satín', 'Accesorios', GORRO_SEDA_PRODUCT), nightOil];
 
     // Tratamiento nutritivo — Día 1 (lavado A)
     const treatNutritivo = tag(
@@ -594,69 +600,11 @@ export default function DiagnosisScreen({ navigation }) {
     const categoryEntries = Object.entries(productDB);
     const allProducts = categoryEntries.flatMap(([category, products]) => products.map((product) => ({ category, product })));
 
-    const normalize = (value) => String(value || '').toLowerCase();
-    const hasTag = (product, tag) => (product.tags || []).some((t) => normalize(t).includes(tag));
-    const matchesAnyTag = (product, tags) => tags.some((tag) => hasTag(product, tag));
-
-    const scoreProduct = ({ product, category }) => {
-      let score = 0;
-      const tags = (product.tags || []).map(normalize);
-      const addIf = (condition, value) => { if (condition) score += value; };
-
-      addIf(profile.isChemical, matchesAnyTag(product, ['reparador', 'daño', 'protección', 'protectora']) ? 2 : 0);
-      addIf(profile.isColor, matchesAnyTag(product, ['brillo', 'protección', 'reparador', 'suavidad']) ? 2 : 0);
-      addIf(profile.isAlisado, matchesAnyTag(product, ['alisado', 'desenredo', 'ligero', 'suave']) ? 2 : 0);
-      addIf(profile.isHeatDamaged, matchesAnyTag(product, ['reparador', 'daño', 'protección', 'suavidad']) ? 2 : 0);
-      addIf(profile.oilyScalp || profile.lowPorosity, matchesAnyTag(product, ['clarificante', 'detox', 'limpieza profunda']) ? 3 : 0);
-      addIf(profile.oilyScalp, matchesAnyTag(product, ['ligero', 'suave', 'diario', 'clarificante', 'detox']) ? 2 : 0);
-      addIf(profile.dryScalp, matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 2 : 0);
-      addIf(profile.highPorosity, matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 2 : 0);
-      addIf(profile.lowPorosity, matchesAnyTag(product, ['ligero', 'sin peso', 'suave']) ? 2 : 0);
-      addIf(profile.needsProtein, matchesAnyTag(product, ['reparador', 'fortalecimiento', 'daño']) ? 2 : 0);
-      addIf(profile.lowElasticity, matchesAnyTag(product, ['reparador', 'fortalecimiento', 'daño']) ? 2 : 0);
-      addIf(profile.hasDandruff, matchesAnyTag(product, ['suave', 'limpia', 'equilibrio']) ? 1 : 0);
-      addIf(profile.hasSensitivity, matchesAnyTag(product, ['suave', 'ligero']) ? 1 : 0);
-      addIf(profile.isCurlyOrWavy, matchesAnyTag(product, ['rizos', 'definición', 'anti-frizz', 'fijación', 'control']) ? 2 : 0);
-      addIf(profile.fineStrand, matchesAnyTag(product, ['ligero', 'definición', 'suavidad']) ? 1 : 0);
-      addIf(profile.coarseStrand, matchesAnyTag(product, ['nutritivo', 'suavidad', 'reparador']) ? 1 : 0);
-      addIf(profile.fineDensity, matchesAnyTag(product, ['ligero', 'volumen', 'definición']) ? 1 : 0);
-      addIf(profile.highDensity, matchesAnyTag(product, ['ligero', 'volumen', 'nutritivo']) ? 1 : 0);
-      addIf(profile.objective === 'hidratación', matchesAnyTag(product, ['hidratante', 'nutritivo', 'suavidad']) ? 3 : 0);
-      addIf(profile.objective === 'reparación', matchesAnyTag(product, ['reparador', 'daño', 'fortalecimiento']) ? 3 : 0);
-      addIf(profile.objective === 'definición', matchesAnyTag(product, ['definición', 'rizos', 'fijación', 'control']) ? 3 : 0);
-      addIf(profile.objective === 'volumen', matchesAnyTag(product, ['volumen', 'ligera', 'textura']) ? 3 : 0);
-      addIf(profile.objective === 'crecimiento', matchesAnyTag(product, ['suavidad', 'equilibrio', 'ligero']) ? 1 : 0);
-      addIf(profile.length === 'Largo', matchesAnyTag(product, ['brillo', 'nutritivo', 'suavidad']) ? 1 : 0);
-      addIf(profile.length === 'Corto', matchesAnyTag(product, ['volumen', 'ligero', 'definición']) ? 1 : 0);
-
-      if (category === 'shampoo' && profile.scalp === 'Grasa' && tags.includes('reparador')) score -= 1;
-      if ((category === 'cremaDePeinar' || category === 'espumas' || category === 'gel') && profile.texture === 'Lacio') score -= 1;
-
-      const STYLING_CATS = ['cremaDePeinar', 'espumas', 'gel'];
-      if (product.weightClass && STYLING_CATS.includes(category)) {
-        const needsHeavy = profile.isCoily || profile.isRizado;
-        const needsMedium = profile.isOndulado;
-        const needsLight = profile.isLacio;
-        if (needsHeavy) {
-          if (product.weightClass === 'pesado') score += 3;
-          else if (product.weightClass === 'medio') score += 1;
-          else score -= 3;
-        } else if (needsMedium) {
-          if (product.weightClass === 'pesado') score += 1;
-          else if (product.weightClass === 'medio') score += 2;
-          else score -= 1;
-        } else if (needsLight) {
-          if (product.weightClass === 'ligero') score += 2;
-          else if (product.weightClass === 'medio') score += 0;
-          else score -= 2;
-        }
-      }
-
-      return score;
-    };
-
     // Score all products
-    const allScored = allProducts.map(entry => ({ ...entry, score: scoreProduct(entry) }));
+    const allScored = allProducts.map(entry => ({
+      ...entry,
+      score: scoreProductForProfile(entry.product, entry.category, profile),
+    }));
 
     // Arma una recomendación completa (cohesión de marca + tratamientos) a partir de un pool de productos ya scoreado
     const buildRecommendationFromPool = (pool) => {
@@ -1006,6 +954,11 @@ export default function DiagnosisScreen({ navigation }) {
       
       // Crear una versión limpia del perfil solo con flags booleanos
       const profileFlags = {
+        // Campos usados por el scoring de reemplazo de productos (no son flags booleanos)
+        objective: profile.objective,
+        length: profile.length,
+        scalp: profile.scalp,
+        texture: profile.texture,
         // Textura
         isLacio: profile.isLacio,
         isOndulado: profile.isOndulado,

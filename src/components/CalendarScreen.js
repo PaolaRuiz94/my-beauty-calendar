@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,9 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BeautyCalendarHeader from './BeautyCalendarHeader';
 import { fetchProductsByProfile } from '../firebase/products';
-import { PRICE_TIER_LABELS } from '../data/products';
+import { PRICE_TIER_LABELS, PRODUCTS } from '../data/products';
+import { syncRoutineNotifications } from '../services/notificationService';
+import { getMatchingProducts } from '../utils/productScoring';
 import { getWeatherContext, getWeatherBoostTags, getWeatherHairTip } from '../services/weatherService';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../auth/AuthContext';
@@ -77,27 +79,48 @@ function getCategoryForStep(stepText) {
   return null;
 }
 
+function buildRoutineStep(s, products) {
+  const text = typeof s === 'string' ? s : s.text;
+  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
+  const product = (typeof s === 'object' && s.product)
+    ? s.product
+    : (category ? (products.find(p => p.category === category) ?? null) : null);
+  return { text, editable: false, category, product };
+}
+
+// El ciclo se reinicia en el día 0 de cada bloque de 14 días para mantener el
+// "Lavado A" alineado, incluso si el usuario nunca abre la app justo ese día.
+function cycleIndexFor(i, planLength) {
+  return i % 14 === 0 ? 0 : i % planLength;
+}
+
+// Arma los pasos de UNA fecha a partir de un índice específico del ciclo de 7 días.
+// Usado por "cambiar de lavado" y "restablecer rutina".
+function buildDayFromCycleIndex(plan, cycleIdx, products) {
+  const dayPlan = plan[cycleIdx] || plan[0];
+  return {
+    day: (dayPlan.daySteps || []).map(s => buildRoutineStep(s, products)),
+    night: (dayPlan.nightSteps || []).map(s => buildRoutineStep(s, products)),
+  };
+}
+
 function expandPlanTo30Days(plan, products) {
   const today = new Date();
   const newDay = {};
   const newNight = {};
-  const buildStep = (s) => {
-    const text = typeof s === 'string' ? s : s.text;
-    const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-    const product = (typeof s === 'object' && s.product)
-      ? s.product
-      : (category ? (products.find(p => p.category === category) ?? null) : null);
-    return { text, editable: false, category, product };
-  };
+  const newCycleIndex = {};
+  const buildStep = (s) => buildRoutineStep(s, products);
   for (let i = 0; i < 30; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     const dateStr = d.toISOString().split('T')[0];
-    const dayPlan = i % 14 === 0 ? plan[0] : plan[i % plan.length];
+    const cycleIdx = cycleIndexFor(i, plan.length);
+    const dayPlan = plan[cycleIdx];
+    newCycleIndex[dateStr] = cycleIdx;
     newDay[dateStr] = (dayPlan.daySteps || []).map(buildStep);
     newNight[dateStr] = (dayPlan.nightSteps || []).map(buildStep);
   }
-  return { newDay, newNight };
+  return { newDay, newNight, newCycleIndex };
 }
 
 
@@ -146,12 +169,26 @@ function YesNo({ value, onChange, color = '#BF789C' }) {
 }
 
 function ProductThumb({ index, product }) {
-  if (product?.image) {
-    return <Image source={{ uri: product.image }} style={styles.productThumb} resizeMode="cover" />;
+  const [fallback, setFallback] = useState(0);
+
+  const src = useMemo(() => {
+    if (product?.image && fallback === 0) return { uri: product.image };
+    if (!product?.asin || fallback >= 2) return null;
+    if (fallback <= 1) return { uri: `https://m.media-amazon.com/images/P/${product.asin}.01._SL500_.jpg` };
+    return { uri: `https://images-na.ssl-images-amazon.com/images/P/${product.asin}.01.LZZZZZZZ.jpg` };
+  }, [product?.image, product?.asin, fallback]);
+
+  if (!src) {
+    const colors = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length];
+    return <LinearGradient colors={colors} style={styles.productThumb} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />;
   }
-  const colors = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length];
   return (
-    <LinearGradient colors={colors} style={styles.productThumb} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+    <Image
+      source={src}
+      style={styles.productThumb}
+      resizeMode="cover"
+      onError={() => setFallback(f => f + 1)}
+    />
   );
 }
 
@@ -204,7 +241,7 @@ function RoutineItem({ item, index, isCompleted, onToggle, accentColor, onProduc
   );
 }
 
-function RoutineCard({ title, iconName, accentColor, routines, completed, onToggle, onNavigate, onProductPress, onPlusPress }) {
+function RoutineCard({ title, iconName, accentColor, routines, completed, onToggle, onNavigate, onProductPress, onPlusPress, onMenuPress, isSkipped }) {
   const total     = routines.length;
   const done      = completed.length;
   const isAllDone = total > 0 && done === total;
@@ -230,66 +267,76 @@ function RoutineCard({ title, iconName, accentColor, routines, completed, onTogg
         <Ionicons name={iconName} size={15} color={accentColor} style={{ marginRight: 6 }} />
         <Text style={[styles.routineCardTitle, { color: accentColor }]}>{title}</Text>
         <View style={{ flex: 1 }} />
-        <TouchableOpacity onPress={onNavigate} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+        <TouchableOpacity onPress={onMenuPress} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
           <Ionicons name="ellipsis-horizontal" size={18} color="#CCC" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.myRoutineRow}>
-        <Ionicons name="sparkles" size={13} color={accentColor} />
-        <Text style={[styles.myRoutineText, { color: accentColor }]}>MI RUTINA</Text>
-        {total > 0 && (
-          <Text style={[styles.progressCount, { color: accentColor }]}>{done}/{total}</Text>
-        )}
-      </View>
-
-      {total > 0 && (
-        <View style={styles.progressTrack}>
-          <Animated.View
-            style={[styles.progressFill, {
-              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'], extrapolate: 'clamp' }),
-              backgroundColor: colorAnim.interpolate({ inputRange: [0, 1], outputRange: [accentColor, '#7ADA7A'] }),
-            }]}
-          />
+      {isSkipped ? (
+        <View style={styles.restDayBox}>
+          <Text style={styles.restDayEmoji}>🌙</Text>
+          <Text style={styles.restDayText}>Día de descanso</Text>
+          <Text style={styles.restDaySubtext}>Saltaste esta rutina a propósito.</Text>
         </View>
-      )}
-
-      {routines.map((item, i) => {
-        const category = typeof item === 'object' ? (item.category || null) : null;
-        return (
-          <RoutineItem
-            key={i}
-            item={item}
-            index={i}
-            isCompleted={completed.includes(i)}
-            onToggle={() => onToggle(i)}
-            accentColor={accentColor}
-            onProductPress={category ? () => onProductPress(i, category) : null}
-          />
-        );
-      })}
-
-      {isAllDone && (
-        <View style={[styles.completionBanner, { borderColor: accentColor + '55' }]}>
-          <Text style={styles.completionEmoji}>🎉</Text>
-          <Text style={[styles.completionText, { color: accentColor }]}>¡Rutina completa! Sigue así</Text>
-        </View>
-      )}
-
-      <View style={[styles.addRow, { borderTopColor: accentColor + '22' }]}>
-        <TouchableOpacity style={styles.addRowLeft} onPress={onPlusPress} activeOpacity={0.75}>
-          <View style={[styles.plusBtn, { backgroundColor: accentColor + '18', borderColor: accentColor + '44' }]}>
-            <Ionicons name="add" size={18} color={accentColor} />
+      ) : (
+        <>
+          <View style={styles.myRoutineRow}>
+            <Ionicons name="sparkles" size={13} color={accentColor} />
+            <Text style={[styles.myRoutineText, { color: accentColor }]}>MI RUTINA</Text>
+            {total > 0 && (
+              <Text style={[styles.progressCount, { color: accentColor }]}>{done}/{total}</Text>
+            )}
           </View>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }} />
-        <TouchableOpacity
-          style={[styles.squareBtn, { borderColor: accentColor + '88' }]}
-          onPress={onNavigate}
-        >
-          <Ionicons name="bag-handle-outline" size={16} color={accentColor} />
-        </TouchableOpacity>
-      </View>
+
+          {total > 0 && (
+            <View style={styles.progressTrack}>
+              <Animated.View
+                style={[styles.progressFill, {
+                  width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'], extrapolate: 'clamp' }),
+                  backgroundColor: colorAnim.interpolate({ inputRange: [0, 1], outputRange: [accentColor, '#7ADA7A'] }),
+                }]}
+              />
+            </View>
+          )}
+
+          {routines.map((item, i) => {
+            const category = typeof item === 'object' ? (item.category || null) : null;
+            return (
+              <RoutineItem
+                key={i}
+                item={item}
+                index={i}
+                isCompleted={completed.includes(i)}
+                onToggle={() => onToggle(i)}
+                accentColor={accentColor}
+                onProductPress={category ? () => onProductPress(i, category) : null}
+              />
+            );
+          })}
+
+          {isAllDone && (
+            <View style={[styles.completionBanner, { borderColor: accentColor + '55' }]}>
+              <Text style={styles.completionEmoji}>🎉</Text>
+              <Text style={[styles.completionText, { color: accentColor }]}>¡Rutina completa! Sigue así</Text>
+            </View>
+          )}
+
+          <View style={[styles.addRow, { borderTopColor: accentColor + '22' }]}>
+            <TouchableOpacity style={styles.addRowLeft} onPress={onPlusPress} activeOpacity={0.75}>
+              <View style={[styles.plusBtn, { backgroundColor: accentColor + '18', borderColor: accentColor + '44' }]}>
+                <Ionicons name="add" size={18} color={accentColor} />
+              </View>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity
+              style={[styles.squareBtn, { borderColor: accentColor + '88' }]}
+              onPress={onNavigate}
+            >
+              <Ionicons name="bag-handle-outline" size={16} color={accentColor} />
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -327,6 +374,13 @@ export default function CalendarScreen({ route, navigation }) {
   const [budgetTier, setBudgetTier] = useState('mid');
   const [routinePlanByTier, setRoutinePlanByTier] = useState(null);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
+  const [hairProfile, setHairProfile] = useState(null);
+  const [skippedDates, setSkippedDates] = useState({});
+  const [cycleIndexByDate, setCycleIndexByDate] = useState({});
+  const [defaultCycleIndexByDate, setDefaultCycleIndexByDate] = useState({});
+  const [routineMenu, setRoutineMenu] = useState({ visible: false, isNight: false });
+  const [washPickerVisible, setWashPickerVisible] = useState(false);
+  const [stepRemoveModal, setStepRemoveModal] = useState({ visible: false, isNight: false });
   const isLoaded = useRef(false);
 
   // ── Agregar paso ────────────────────────────────────────────────────────────
@@ -372,6 +426,18 @@ export default function CalendarScreen({ route, navigation }) {
     setNotifModal(true);
   };
 
+  // Reprograma las notificaciones cada vez que cambia la rutina real, el progreso
+  // del día o los días saltados, para que el contenido nunca quede desactualizado.
+  useEffect(() => {
+    if (!isLoaded.current) return;
+    const plan = routinePlanByTier?.[budgetTier] || [];
+    const cycleTitleByDate = {};
+    Object.entries(cycleIndexByDate).forEach(([date, idx]) => {
+      cycleTitleByDate[date] = plan[idx]?.title;
+    });
+    syncRoutineNotifications({ dayByDate, nightByDate, skippedDates, dayDone, nightDone, cycleTitleByDate }).catch(() => {});
+  }, [dayByDate, nightByDate, skippedDates, dayDone, nightDone, cycleIndexByDate, budgetTier, routinePlanByTier]);
+
   // ── Carga desde AsyncStorage al montar ──────────────────────────────────────
   useEffect(() => {
     const load = async () => {
@@ -389,14 +455,27 @@ export default function CalendarScreen({ route, navigation }) {
         if (nd)  setNightDone(JSON.parse(nd));
         if (pts) setPoints(JSON.parse(pts));
 
-        const [planByTierRaw, tierRaw] = await Promise.all([
+        const [planByTierRaw, tierRaw, profileForScoringRaw] = await Promise.all([
           AsyncStorage.getItem('@mybeauty-calendar:diagnosisRoutinePlanByTier'),
           AsyncStorage.getItem('@mybeauty-calendar:budgetTier'),
+          AsyncStorage.getItem('@mybeauty-calendar:hairProfile'),
         ]);
         if (planByTierRaw) {
           try { setRoutinePlanByTier(JSON.parse(planByTierRaw)); } catch {}
         }
         if (tierRaw) setBudgetTier(tierRaw);
+        if (profileForScoringRaw) {
+          try { setHairProfile(JSON.parse(profileForScoringRaw)); } catch {}
+        }
+
+        const [skippedRaw, cycleIdxRaw, defaultCycleIdxRaw] = await Promise.all([
+          AsyncStorage.getItem('@mybeauty-calendar:skippedDates'),
+          AsyncStorage.getItem('@mybeauty-calendar:cycleIndexByDate'),
+          AsyncStorage.getItem('@mybeauty-calendar:defaultCycleIndexByDate'),
+        ]);
+        if (skippedRaw) { try { setSkippedDates(JSON.parse(skippedRaw)); } catch {} }
+        if (cycleIdxRaw) { try { setCycleIndexByDate(JSON.parse(cycleIdxRaw)); } catch {} }
+        if (defaultCycleIdxRaw) { try { setDefaultCycleIndexByDate(JSON.parse(defaultCycleIdxRaw)); } catch {} }
 
         // Si el calendario está vacío, auto-poblar desde el diagnóstico guardado
         if (!savedDay) {
@@ -415,10 +494,13 @@ export default function CalendarScreen({ route, navigation }) {
                   products = await fetchProductsByProfile(flags);
                 } catch {}
               }
-              const { newDay, newNight } = expandPlanTo30Days(plan, products);
+              const { newDay, newNight, newCycleIndex } = expandPlanTo30Days(plan, products);
               setProfileProducts(products);
               setDayByDate(newDay);
               setNightByDate(newNight);
+              setCycleIndexByDate(newCycleIndex);
+              setDefaultCycleIndexByDate(newCycleIndex);
+              setSkippedDates({});
               const first = Object.keys(newDay)[0];
               if (first) setSelectedDate(first);
             }
@@ -460,6 +542,21 @@ export default function CalendarScreen({ route, navigation }) {
 
   useEffect(() => {
     if (!isLoaded.current) return;
+    AsyncStorage.setItem('@mybeauty-calendar:skippedDates', JSON.stringify(skippedDates)).catch(() => {});
+  }, [skippedDates]);
+
+  useEffect(() => {
+    if (!isLoaded.current) return;
+    AsyncStorage.setItem('@mybeauty-calendar:cycleIndexByDate', JSON.stringify(cycleIndexByDate)).catch(() => {});
+  }, [cycleIndexByDate]);
+
+  useEffect(() => {
+    if (!isLoaded.current) return;
+    AsyncStorage.setItem('@mybeauty-calendar:defaultCycleIndexByDate', JSON.stringify(defaultCycleIndexByDate)).catch(() => {});
+  }, [defaultCycleIndexByDate]);
+
+  useEffect(() => {
+    if (!isLoaded.current) return;
     AsyncStorage.setItem('@mybeauty-calendar:points', JSON.stringify(points)).catch(() => {});
   }, [points]);
 
@@ -482,13 +579,65 @@ export default function CalendarScreen({ route, navigation }) {
       }
     } catch {}
 
-    const { newDay, newNight } = expandPlanTo30Days(plan, products);
+    const { newDay, newNight, newCycleIndex } = expandPlanTo30Days(plan, products);
     setProfileProducts(products);
     setDayByDate(newDay);
     setNightByDate(newNight);
+    setCycleIndexByDate(newCycleIndex);
+    setDefaultCycleIndexByDate(newCycleIndex);
+    setSkippedDates({});
     setBudgetTier(tier);
     setBudgetModalVisible(false);
     AsyncStorage.setItem('@mybeauty-calendar:budgetTier', tier).catch(() => {});
+  };
+
+  // ── Menú "..." de la rutina: saltar día, eliminar paso, cambiar lavado, restablecer ──
+  const openRoutineMenu = (isNight) => setRoutineMenu({ visible: true, isNight });
+
+  const toggleSkipToday = () => {
+    setRoutineMenu(m => ({ ...m, visible: false }));
+    setSkippedDates(prev => {
+      const next = { ...prev };
+      if (next[selectedDate]) delete next[selectedDate];
+      else next[selectedDate] = true;
+      return next;
+    });
+  };
+
+  const applyCycleIndexToDate = (cycleIdx) => {
+    const plan = routinePlanByTier?.[budgetTier];
+    if (!plan) return;
+    const { day, night } = buildDayFromCycleIndex(plan, cycleIdx, profileProducts);
+    setDayByDate(prev => ({ ...prev, [selectedDate]: day }));
+    setNightByDate(prev => ({ ...prev, [selectedDate]: night }));
+    setCycleIndexByDate(prev => ({ ...prev, [selectedDate]: cycleIdx }));
+    setSkippedDates(prev => {
+      if (!prev[selectedDate]) return prev;
+      const next = { ...prev };
+      delete next[selectedDate];
+      return next;
+    });
+  };
+
+  const handleChangeWash = (cycleIdx) => {
+    setWashPickerVisible(false);
+    applyCycleIndexToDate(cycleIdx);
+  };
+
+  const handleResetRoutine = () => {
+    setRoutineMenu(m => ({ ...m, visible: false }));
+    const defaultIdx = defaultCycleIndexByDate[selectedDate];
+    if (defaultIdx == null) return;
+    applyCycleIndexToDate(defaultIdx);
+  };
+
+  const removeRoutineStep = (isNight, stepIndex) => {
+    const setter = isNight ? setNightByDate : setDayByDate;
+    setter(prev => {
+      const steps = [...(prev[selectedDate] || [])];
+      steps.splice(stepIndex, 1);
+      return { ...prev, [selectedDate]: steps };
+    });
   };
 
   const dayRoutines   = dayByDate[selectedDate]   || [];
@@ -535,11 +684,14 @@ export default function CalendarScreen({ route, navigation }) {
         });
       }
 
-      const { newDay, newNight } = expandPlanTo30Days(plan, products);
+      const { newDay, newNight, newCycleIndex } = expandPlanTo30Days(plan, products);
 
       setProfileProducts(products);
       setDayByDate(newDay);
       setNightByDate(newNight);
+      setCycleIndexByDate(newCycleIndex);
+      setDefaultCycleIndexByDate(newCycleIndex);
+      setSkippedDates({});
       const first = Object.keys(newDay)[0];
       if (first) setSelectedDate(first);
 
@@ -578,16 +730,20 @@ export default function CalendarScreen({ route, navigation }) {
       try {
         if (profileRaw) {
           const profile = JSON.parse(profileRaw);
+          setHairProfile(profile);
           const flags = Object.entries(profile).filter(([, v]) => v === true).map(([k]) => k);
           products = await fetchProductsByProfile(flags);
         }
       } catch {}
 
-      const { newDay, newNight } = expandPlanTo30Days(plan, products);
+      const { newDay, newNight, newCycleIndex } = expandPlanTo30Days(plan, products);
 
       setProfileProducts(products);
       setDayByDate(newDay);
       setNightByDate(newNight);
+      setCycleIndexByDate(newCycleIndex);
+      setDefaultCycleIndexByDate(newCycleIndex);
+      setSkippedDates({});
       setDayDone({});
       setNightDone({});
       if (planByTierRaw) {
@@ -623,14 +779,14 @@ export default function CalendarScreen({ route, navigation }) {
   const calcStreak = () => {
     const today = new Date().toISOString().split('T')[0];
     let streak = 0;
-    const todayActive = (dayDone[today]?.length > 0) || (nightDone[today]?.length > 0);
+    const todayActive = (dayDone[today]?.length > 0) || (nightDone[today]?.length > 0) || skippedDates[today];
     if (todayActive) streak++;
     const base = new Date();
     for (let i = 1; i < 365; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const active = (dayDone[dateStr]?.length > 0) || (nightDone[dateStr]?.length > 0);
+      const active = (dayDone[dateStr]?.length > 0) || (nightDone[dateStr]?.length > 0) || skippedDates[dateStr];
       if (active) streak++;
       else break;
     }
@@ -842,6 +998,8 @@ export default function CalendarScreen({ route, navigation }) {
             navigation.navigate('ProductsModal', { routines: dayRoutines, date: selectedDate })
           }
           onProductPress={(i, cat) => openProductModal(i, cat, false)}
+          onMenuPress={() => openRoutineMenu(false)}
+          isSkipped={!!skippedDates[selectedDate]}
         />
 
         <View style={{ height: 16 }} />
@@ -859,6 +1017,8 @@ export default function CalendarScreen({ route, navigation }) {
             navigation.navigate('ProductsModal', { routines: nightRoutines, date: selectedDate })
           }
           onProductPress={(i, cat) => openProductModal(i, cat, true)}
+          onMenuPress={() => openRoutineMenu(true)}
+          isSkipped={!!skippedDates[selectedDate]}
         />
 
         {/* ── MODAL SELECTOR DE PRODUCTO ── */}
@@ -873,23 +1033,32 @@ export default function CalendarScreen({ route, navigation }) {
               <View style={styles.modalHandle} />
               <Text style={styles.modalTitle}>Elige un producto</Text>
               <Text style={styles.modalCategory}>{productModal.category}</Text>
+              {hairProfile && (
+                <Text style={styles.modalHint}>Alternativas que también funcionan para tu diagnóstico</Text>
+              )}
               <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
-                {profileProducts
-                  .filter(p => p.category === productModal.category)
-                  .map(product => (
-                    <TouchableOpacity
-                      key={product.id}
-                      style={styles.modalProductRow}
-                      onPress={() => selectProduct(product)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.modalProductBrand}>{product.brand}</Text>
-                        <Text style={styles.modalProductName}>{product.name}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color="#CCC" />
-                    </TouchableOpacity>
-                  ))}
+                {getMatchingProducts(PRODUCTS, productModal.category, hairProfile)
+                  .map(product => {
+                    const current = (dayByDate[productModal.dateStr] || nightByDate[productModal.dateStr] || [])[productModal.stepIndex]?.product;
+                    const isCurrent = current?.id === product.id;
+                    return (
+                      <TouchableOpacity
+                        key={product.id}
+                        style={[styles.modalProductRow, isCurrent && styles.modalProductRowActive]}
+                        onPress={() => selectProduct(product)}
+                        activeOpacity={0.75}
+                      >
+                        <ProductThumb index={0} product={product} />
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={styles.modalProductBrand}>{product.brand}</Text>
+                          <Text style={styles.modalProductName}>{product.name}</Text>
+                        </View>
+                        {isCurrent
+                          ? <Ionicons name="checkmark-circle" size={18} color="#BF789C" />
+                          : <Ionicons name="chevron-forward" size={16} color="#CCC" />}
+                      </TouchableOpacity>
+                    );
+                  })}
               </ScrollView>
               <TouchableOpacity
                 style={styles.modalCancel}
@@ -996,6 +1165,115 @@ export default function CalendarScreen({ route, navigation }) {
                   {budgetTier === tier && <Ionicons name="checkmark-circle" size={20} color="#BF789C" />}
                 </TouchableOpacity>
               ))}
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── Menú "..." de la rutina ── */}
+        <Modal visible={routineMenu.visible} transparent animationType="fade" onRequestClose={() => setRoutineMenu(m => ({ ...m, visible: false }))}>
+          <TouchableWithoutFeedback onPress={() => setRoutineMenu(m => ({ ...m, visible: false }))}>
+            <View style={[styles.modalOverlay, { justifyContent: 'center' }]}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.actionSheetBox}>
+                  <TouchableOpacity style={styles.actionSheetItem} activeOpacity={0.75} onPress={toggleSkipToday}>
+                    <Ionicons name="moon-outline" size={18} color="#7B61FF" />
+                    <Text style={styles.actionSheetText}>
+                      {skippedDates[selectedDate] ? 'Deshacer descanso' : 'Saltar hoy'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionSheetItem}
+                    activeOpacity={0.75}
+                    onPress={() => {
+                      const isNight = routineMenu.isNight;
+                      setRoutineMenu(m => ({ ...m, visible: false }));
+                      setStepRemoveModal({ visible: true, isNight });
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#E8789A" />
+                    <Text style={styles.actionSheetText}>Eliminar un paso</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionSheetItem}
+                    activeOpacity={0.75}
+                    onPress={() => {
+                      setRoutineMenu(m => ({ ...m, visible: false }));
+                      setWashPickerVisible(true);
+                    }}
+                  >
+                    <Ionicons name="swap-horizontal-outline" size={18} color="#BF789C" />
+                    <Text style={styles.actionSheetText}>Cambiar a otro lavado del ciclo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionSheetItem} activeOpacity={0.75} onPress={handleResetRoutine}>
+                    <Ionicons name="refresh-outline" size={18} color="#7ADA7A" />
+                    <Text style={styles.actionSheetText}>Restablecer rutina sugerida</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        {/* ── Modal selector de lavado del ciclo ── */}
+        <Modal visible={washPickerVisible} transparent animationType="slide" onRequestClose={() => setWashPickerVisible(false)}>
+          <View style={[styles.modalOverlay, { justifyContent: 'flex-end' }]}>
+            <View style={styles.budgetModalBox}>
+              <View style={styles.streakModalHeader}>
+                <Text style={styles.budgetModalTitle}>Cambiar a otro lavado</Text>
+                <TouchableOpacity onPress={() => setWashPickerVisible(false)} activeOpacity={0.7}>
+                  <Ionicons name="close" size={22} color="#999" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                {(routinePlanByTier?.[budgetTier] || []).map((dayPlan, idx) => {
+                  const active = cycleIndexByDate[selectedDate] === idx;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[styles.budgetOption, active && styles.budgetOptionActive]}
+                      activeOpacity={0.8}
+                      onPress={() => handleChangeWash(idx)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.budgetOptionLabel}>{dayPlan.title || `Día ${idx + 1}`}</Text>
+                        {active && <Text style={styles.budgetOptionHint}>Rutina actual</Text>}
+                      </View>
+                      {active && <Ionicons name="checkmark-circle" size={20} color="#BF789C" />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── Modal eliminar un paso ── */}
+        <Modal visible={stepRemoveModal.visible} transparent animationType="slide" onRequestClose={() => setStepRemoveModal(m => ({ ...m, visible: false }))}>
+          <View style={[styles.modalOverlay, { justifyContent: 'flex-end' }]}>
+            <View style={styles.budgetModalBox}>
+              <View style={styles.streakModalHeader}>
+                <Text style={styles.budgetModalTitle}>
+                  Eliminar un paso · {stepRemoveModal.isNight ? 'Noche' : 'Día'}
+                </Text>
+                <TouchableOpacity onPress={() => setStepRemoveModal(m => ({ ...m, visible: false }))} activeOpacity={0.7}>
+                  <Ionicons name="close" size={22} color="#999" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                {(stepRemoveModal.isNight ? nightRoutines : dayRoutines).map((item, i) => (
+                  <View key={i} style={styles.modalProductRow}>
+                    <Text style={{ flex: 1, fontSize: 14, color: '#333' }} numberOfLines={2}>
+                      {typeof item === 'string' ? item : item.text}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => removeRoutineStep(stepRemoveModal.isNight, i)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="trash-outline" size={18} color="#E8789A" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -1364,6 +1642,48 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
+  restDayBox: {
+    alignItems: 'center',
+    paddingVertical: 28,
+  },
+  restDayEmoji: {
+    fontSize: 30,
+    marginBottom: 8,
+  },
+  restDayText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#3A2E35',
+    marginBottom: 4,
+  },
+  restDaySubtext: {
+    fontSize: 13,
+    color: '#999',
+    textAlign: 'center',
+  },
+  actionSheetBox: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    marginHorizontal: 32,
+    paddingVertical: 8,
+    shadowColor: '#BF789C',
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+  },
+  actionSheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+  },
+  actionSheetText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3A2E35',
+  },
   routineCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1502,20 +1822,30 @@ const styles = StyleSheet.create({
     color: '#2D2D2D',
     marginBottom: 4,
   },
+  modalHint: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 12,
+  },
   modalCategory: {
     fontSize: 12,
     fontWeight: '700',
     color: '#D6A4A4',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginBottom: 16,
+    marginBottom: 6,
   },
   modalProductRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F0F3',
+  },
+  modalProductRowActive: {
+    backgroundColor: '#FDF0F5',
+    borderRadius: 12,
   },
   modalProductBrand: {
     fontSize: 11,

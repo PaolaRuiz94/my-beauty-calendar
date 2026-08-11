@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initProducts } from './src/firebase/products';
-import { scheduleAllNotifications } from './src/services/notificationService';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -169,7 +168,7 @@ export default function App() {
     // initProducts se omite: usamos datos locales como source of truth
     // Si en futuro configuras Firestore con permisos de escritura, descomenta:
     // initProducts().catch(() => {});
-    scheduleAllNotifications().catch(() => {});
+    // Las notificaciones se sincronizan desde CalendarScreen (necesitan la rutina real).
   }, []);
 
   return (

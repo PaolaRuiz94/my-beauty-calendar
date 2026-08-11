@@ -19,6 +19,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { categoryOptions } from '../data/products';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProductsByProfile, fetchAllProducts, filterProducts } from "../firebase/products";
+import { scoreProductForProfile, CATEGORY_KEY } from "../utils/productScoring";
 import { getWeatherContext, getWeatherBoostTags } from "../services/weatherService";
 import { useCart } from '../context/CartContext';
 import { buildAmazonUrl } from '../utils/amazonUtils';
@@ -149,7 +150,7 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
   const [selectedCategory, setSelectedCategory] = useState(categoryOptions[0]?.id || "shampoo");
   const [searchQuery, setSearchQuery] = useState("");
   const [profileProducts, setProfileProducts] = useState([]);
-  const [userFlags, setUserFlags] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
   const [weatherBoostTags, setWeatherBoostTags] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -201,11 +202,11 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
       const raw = await AsyncStorage.getItem("@mybeauty-calendar:hairProfile");
 
       let data = [];
-      let flags = [];
+      let profile = null;
 
       if (raw) {
-        const profile = JSON.parse(raw);
-        flags = Object.entries(profile)
+        profile = JSON.parse(raw);
+        const flags = Object.entries(profile)
           .filter(([, v]) => v === true)
           .map(([k]) => k);
 
@@ -229,7 +230,7 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
         }
       }
 
-      setUserFlags(flags);
+      setUserProfile(profile);
       setProfileProducts(data);
     } catch (error) {
       console.error("❌ [ProductsScreen] Error loading products:", error);
@@ -262,41 +263,20 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
     accesorios: "Accesorios",
   };
 
-  function scoreProduct(product, flags, boostTags) {
-    let score = 0;
-    if (product.profiles && flags.length > 0)
-      score += product.profiles.filter(f => flags.includes(f)).length;
+  function scoreProduct(product, profile, boostTags) {
+    let score = profile
+      ? scoreProductForProfile(product, CATEGORY_KEY[product.category] || product.category, profile)
+      : 0;
     if (product.tags && boostTags.length > 0)
       score += product.tags.filter(t => boostTags.some(bt => t.toLowerCase().includes(bt))).length * 0.5;
-
-    const STYLING_CATS = ['Crema de Peinar', 'Espumas', 'Gel'];
-    if (product.weightClass && STYLING_CATS.includes(product.category)) {
-      const needsHeavy = flags.includes('isCoily') || flags.includes('isRizado');
-      const needsMedium = flags.includes('isOndulado');
-      const needsLight = flags.includes('isLacio');
-      if (needsHeavy) {
-        if (product.weightClass === 'pesado') score += 3;
-        else if (product.weightClass === 'medio') score += 1;
-        else score -= 3;
-      } else if (needsMedium) {
-        if (product.weightClass === 'pesado') score += 1;
-        else if (product.weightClass === 'medio') score += 2;
-        else score -= 1;
-      } else if (needsLight) {
-        if (product.weightClass === 'ligero') score += 2;
-        else if (product.weightClass === 'medio') score += 0;
-        else score -= 2;
-      }
-    }
-
     return score;
   }
 
-  function getGroupedByBrand(products, flags, boostTags) {
+  function getGroupedByBrand(products, profile, boostTags) {
     const byBrand = {};
     products.forEach(p => {
       if (!byBrand[p.brand]) byBrand[p.brand] = [];
-      byBrand[p.brand].push({ ...p, _score: scoreProduct(p, flags, boostTags) });
+      byBrand[p.brand].push({ ...p, _score: scoreProduct(p, profile, boostTags) });
     });
     return Object.entries(byBrand)
       .map(([brand, prods]) => ({
@@ -311,7 +291,7 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
     : profileProducts;
 
   const searched = filterProducts(categoryFiltered, searchQuery);
-  const brandGroups = getGroupedByBrand(searched, userFlags, weatherBoostTags);
+  const brandGroups = getGroupedByBrand(searched, userProfile, weatherBoostTags);
 
   const openLink = async (url) => {
     try {
@@ -327,7 +307,18 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
 
   const openAmazon = (product) => openLink(buildAmazonUrl(product));
 
-  const getProductsForRoutine = () => routines;
+  const getProductsForRoutine = () => {
+    const seen = new Set();
+    const products = [];
+    routines.forEach((item) => {
+      const p = item?.product;
+      if (p && !seen.has(p.id)) {
+        seen.add(p.id);
+        products.push(p);
+      }
+    });
+    return products;
+  };
 
   return (
     <View style={styles.screen}>
@@ -407,14 +398,15 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
               <Ionicons name="sparkles" size={13} color="#D6A4A4" />
               <Text style={styles.sectionTitle}>Tu rutina de hoy</Text>
             </View>
-            <View style={styles.routineCard}>
-              {getProductsForRoutine().map((item, index) => (
-                <View key={index} style={styles.routineItem}>
-                  <View style={styles.routineDot} />
-                  <Text style={styles.routineText}>{item?.text || ""}</Text>
-                </View>
-              ))}
-            </View>
+            {getProductsForRoutine().map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onBuy={() => openAmazon(product)}
+                onAddToCart={() => handleToggleCart(product)}
+                inCart={!!cart.find(p => p.id === product.id)}
+              />
+            ))}
           </View>
         )}
 
@@ -601,38 +593,6 @@ const styles = StyleSheet.create({
     color: "#D6A4A4",
     letterSpacing: 0.8,
     textTransform: "uppercase",
-  },
-
-  // rutina del día
-  routineCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 16,
-    shadowColor: "#C47898",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  routineItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 10,
-    gap: 10,
-  },
-  routineDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#D6A4A4",
-    marginTop: 6,
-    flexShrink: 0,
-  },
-  routineText: {
-    flex: 1,
-    fontSize: 14,
-    color: "#555",
-    lineHeight: 21,
   },
 
   // chips

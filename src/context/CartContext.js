@@ -5,6 +5,7 @@ const CartContext = createContext({
   toggleCart: () => {},
   removeFromCart: () => {},
   clearCart: () => {},
+  setQuantity: () => {},
 });
 
 export function CartProvider({ children }) {
@@ -14,16 +15,19 @@ export function CartProvider({ children }) {
     setCart(prev =>
       prev.find(p => p.id === product.id)
         ? prev.filter(p => p.id !== product.id)
-        : [...prev, product]
+        : [...prev, { ...product, quantity: 1 }]
     );
 
   const removeFromCart = (productId) =>
     setCart(prev => prev.filter(p => p.id !== productId));
 
+  const setQuantity = (productId, quantity) =>
+    setCart(prev => prev.map(p => (p.id === productId ? { ...p, quantity: Math.max(1, quantity) } : p)));
+
   const clearCart = () => setCart([]);
 
   return (
-    <CartContext.Provider value={{ cart, toggleCart, removeFromCart, clearCart }}>
+    <CartContext.Provider value={{ cart, toggleCart, removeFromCart, clearCart, setQuantity }}>
       {children}
     </CartContext.Provider>
   );

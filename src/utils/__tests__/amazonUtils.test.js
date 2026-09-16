@@ -72,6 +72,12 @@ describe('buildCartUrl', () => {
     expect(url).toContain('ASIN.2=B002BBBBBB');
   });
 
+  it('respeta la cantidad de cada producto, y usa 1 si no tiene', () => {
+    const url = buildCartUrl([{ id: 'p1', quantity: 3 }, { id: 'p2' }]);
+    expect(url).toContain('ASIN.1=B001AAAAAA&Quantity.1=3');
+    expect(url).toContain('ASIN.2=B002BBBBBB&Quantity.2=1');
+  });
+
   it('devuelve null si ningún producto tiene asin', () => {
     expect(buildCartUrl([{ id: 'noexiste' }])).toBeNull();
   });

@@ -1,6 +1,20 @@
-import { collection, getDocs, query, limit } from 'firebase/firestore';
+import { collection, getDocs, query, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from './config';
 import { CATEGORY_KEY } from '../utils/productScoring';
+
+// Datos de contacto/tienda online (nombre, teléfono para WhatsApp, sitio web
+// para el flujo de "agregar al carrito" cuando la tienda tiene e-commerce
+// propio — hoy solo probado contra WooCommerce).
+export async function fetchStoreInfo(storeId) {
+  const snap = await getDoc(doc(db, 'peluquerias', storeId));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return {
+    nombre: data.nombre || data.name || 'la tienda',
+    telefono: data.telefono || null,
+    website: data.website || null,
+  };
+}
 
 // Peluquerías/tiendas que ya tienen al menos un producto cargado en su catálogo
 // propio (panel de empresas — "Mis productos"). Solo esas se ofrecen en el
@@ -50,6 +64,7 @@ export async function fetchStoreProductDB(storeId) {
       // low/mid/high para productos de tienda (hoy solo Amazon los tiene).
       priceTier: 'mid',
       storeId,
+      externalProductId: data.externalProductId || null,
     });
   });
 

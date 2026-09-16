@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   Linking,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useCart } from '../context/CartContext';
 import { buildCartUrl, getProductAsin } from '../utils/amazonUtils';
+import { fetchStoreInfo } from '../firebase/stores';
+import { buildWhatsAppUrl, buildOrderMessage } from '../utils/storeContact';
+import { buildAddToCartUrl, buildCartPageUrl } from '../utils/wooCommerceCart';
 
 const defaultProductImage = require('../../assets/icon.png');
 
@@ -38,10 +42,44 @@ function CartItemImage({ product }) {
 
 export default function CartScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { cart, removeFromCart, clearCart } = useCart();
+  const { cart, removeFromCart, clearCart, setQuantity } = useCart();
 
   const amazonItems = cart.filter(p => !!getProductAsin(p));
   const webItems = cart.filter(p => !getProductAsin(p) && (p.link || p.amazonLink));
+  const storeItemsByStoreId = useMemo(() => {
+    const groups = {};
+    cart.forEach((p) => {
+      if (getProductAsin(p) || p.link || p.amazonLink || !p.storeId) return;
+      (groups[p.storeId] = groups[p.storeId] || []).push(p);
+    });
+    return groups;
+  }, [cart]);
+  const storeIds = Object.keys(storeItemsByStoreId);
+
+  const [storeInfoById, setStoreInfoById] = useState({});
+  useEffect(() => {
+    const missing = storeIds.filter((id) => !storeInfoById[id]);
+    if (missing.length === 0) return;
+    Promise.all(missing.map((id) => fetchStoreInfo(id).then((info) => [id, info]).catch(() => [id, null])))
+      .then((pairs) => {
+        setStoreInfoById((prev) => {
+          const next = { ...prev };
+          pairs.forEach(([id, info]) => { next[id] = info; });
+          return next;
+        });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeIds.join(',')]);
+
+  // Por tienda: qué productos van al carrito real (WooCommerce, necesita
+  // sitio web + externalProductId) y cuáles van por WhatsApp (el resto).
+  const splitStoreItems = (storeId) => {
+    const items = storeItemsByStoreId[storeId] || [];
+    const info = storeInfoById[storeId];
+    const withId = info?.website ? items.filter(p => p.externalProductId) : [];
+    const withoutId = items.filter(p => !withId.includes(p));
+    return { withId, withoutId, info };
+  };
 
   const handleComprar = () => {
     const cartUrl = buildCartUrl(amazonItems);
@@ -50,14 +88,57 @@ export default function CartScreen({ navigation }) {
       const url = p.link || p.amazonLink;
       if (url) Linking.openURL(url);
     });
+    storeIds.forEach((storeId) => {
+      const { withId, withoutId, info } = splitStoreItems(storeId);
+
+      if (withId.length > 0) {
+        const urls = withId.map(p => buildAddToCartUrl(info.website, p.externalProductId, p.quantity || 1)).filter(Boolean);
+        navigation.navigate('StoreCheckout', {
+          addToCartUrls: urls,
+          cartUrl: buildCartPageUrl(info.website),
+          storeName: info.nombre,
+        });
+      }
+
+      if (withoutId.length > 0) {
+        const waUrl = info?.telefono ? buildWhatsAppUrl(info.telefono, buildOrderMessage(info?.nombre || 'la tienda', withoutId)) : null;
+        if (waUrl) {
+          Linking.openURL(waUrl);
+        } else {
+          Alert.alert(
+            info?.nombre || 'Tienda',
+            'Esta tienda todavía no tiene un teléfono cargado. Contactala directamente para comprar estos productos.'
+          );
+        }
+      }
+    });
   };
 
   const comprarLabel = () => {
     const parts = [];
     if (amazonItems.length > 0) parts.push(`${amazonItems.length} en Amazon`);
     if (webItems.length > 0) parts.push(`${webItems.length} en web`);
+    let cartCount = 0;
+    let waCount = 0;
+    storeIds.forEach((id) => {
+      const { withId, withoutId } = splitStoreItems(id);
+      cartCount += withId.length;
+      waCount += withoutId.length;
+    });
+    if (cartCount > 0) parts.push(`${cartCount} en tienda`);
+    if (waCount > 0) parts.push(`${waCount} por WhatsApp`);
     return `Comprar ${parts.join(' + ')}`;
   };
+
+  const totalUnits = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
+
+  let storeCartCount = 0;
+  let storeWaCount = 0;
+  storeIds.forEach((id) => {
+    const { withId, withoutId } = splitStoreItems(id);
+    storeCartCount += withId.length;
+    storeWaCount += withoutId.length;
+  });
 
   return (
     <View style={styles.screen}>
@@ -85,7 +166,8 @@ export default function CartScreen({ navigation }) {
             <Text style={styles.headerTitle}>Mi Carrito</Text>
             {cart.length > 0 && (
               <Text style={styles.headerSub}>
-                {cart.length} {cart.length === 1 ? 'producto' : 'productos'}
+                {totalUnits} {totalUnits === 1 ? 'unidad' : 'unidades'}
+                {totalUnits !== cart.length ? ` · ${cart.length} ${cart.length === 1 ? 'producto' : 'productos'}` : ''}
               </Text>
             )}
           </View>
@@ -129,6 +211,10 @@ export default function CartScreen({ navigation }) {
           >
             {cart.map(product => {
               const isAmazon = !!getProductAsin(product);
+              const isStore = !isAmazon && !!product.storeId;
+              const storeInfo = isStore ? storeInfoById[product.storeId] : null;
+              const storeName = storeInfo?.nombre || 'Tienda';
+              const hasStoreCart = isStore && !!storeInfo?.website && !!product.externalProductId;
               return (
                 <View key={product.id} style={styles.cartItem}>
                   <CartItemImage product={product} />
@@ -146,12 +232,44 @@ export default function CartScreen({ navigation }) {
                           <Ionicons name="logo-amazon" size={11} color="#FF9900" />
                           <Text style={[styles.sourceText, { color: '#FF9900' }]}>Amazon</Text>
                         </>
+                      ) : isStore ? (
+                        <>
+                          <Ionicons
+                            name={hasStoreCart ? 'bag-handle-outline' : 'logo-whatsapp'}
+                            size={11}
+                            color={hasStoreCart ? '#BF789C' : '#25D366'}
+                          />
+                          <Text style={[styles.sourceText, { color: hasStoreCart ? '#BF789C' : '#25D366' }]} numberOfLines={1}>{storeName}</Text>
+                        </>
                       ) : (
                         <>
                           <Ionicons name="globe-outline" size={11} color="#BF789C" />
                           <Text style={[styles.sourceText, { color: '#BF789C' }]}>Sitio web</Text>
                         </>
                       )}
+                    </View>
+
+                    <View style={styles.qtyRow}>
+                      <TouchableOpacity
+                        onPress={() => setQuantity(product.id, (product.quantity || 1) - 1)}
+                        style={styles.qtyBtn}
+                        activeOpacity={0.7}
+                        disabled={(product.quantity || 1) <= 1}
+                        accessibilityRole="button"
+                        accessibilityLabel="Restar una unidad"
+                      >
+                        <Ionicons name="remove" size={14} color={(product.quantity || 1) <= 1 ? '#DDD' : '#BF789C'} />
+                      </TouchableOpacity>
+                      <Text style={styles.qtyText}>{product.quantity || 1}</Text>
+                      <TouchableOpacity
+                        onPress={() => setQuantity(product.id, (product.quantity || 1) + 1)}
+                        style={styles.qtyBtn}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel="Sumar una unidad"
+                      >
+                        <Ionicons name="add" size={14} color="#BF789C" />
+                      </TouchableOpacity>
                     </View>
                   </View>
 
@@ -184,7 +302,7 @@ export default function CartScreen({ navigation }) {
                 style={styles.comprarGradient}
               >
                 <Ionicons
-                  name="logo-amazon"
+                  name={amazonItems.length > 0 ? 'logo-amazon' : storeCartCount > 0 ? 'bag-handle-outline' : storeWaCount > 0 ? 'logo-whatsapp' : 'bag-check-outline'}
                   size={20}
                   color="#fff"
                   style={{ marginRight: 10 }}
@@ -192,9 +310,14 @@ export default function CartScreen({ navigation }) {
                 <Text style={styles.comprarText}>{comprarLabel()}</Text>
               </LinearGradient>
             </TouchableOpacity>
-            {amazonItems.length > 0 && (
+            {(amazonItems.length > 0 || storeCartCount > 0 || storeWaCount > 0) && (
               <Text style={styles.footerNote}>
-                Se abrirá Amazon con todos los productos listos para pagar
+                {[
+                  amazonItems.length > 0 && 'Amazon',
+                  storeCartCount > 0 && 'el carrito de la tienda',
+                  storeWaCount > 0 && 'WhatsApp',
+                ].filter(Boolean).join(' y ')}
+                {' '}se abrirá para completar tu compra
               </Text>
             )}
           </View>
@@ -350,6 +473,27 @@ const styles = StyleSheet.create({
   sourceText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  qtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 8,
+  },
+  qtyBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: '#FBF0F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D2D',
+    minWidth: 18,
+    textAlign: 'center',
   },
   removeBtn: {
     padding: 4,

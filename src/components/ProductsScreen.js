@@ -10,6 +10,7 @@ import {
   Animated,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,10 +20,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { categoryOptions } from '../data/products';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchProductsByProfile, fetchAllProducts, filterProducts } from "../firebase/products";
-import { scoreProductForProfile, CATEGORY_KEY } from "../utils/productScoring";
+import { scoreProductForProfile, CATEGORY_KEY, mergeWithStoreCatalog } from "../utils/productScoring";
 import { getWeatherContext, getWeatherBoostTags } from "../services/weatherService";
 import { useCart } from '../context/CartContext';
 import { buildAmazonUrl } from '../utils/amazonUtils';
+import { fetchStoreInfo, fetchStoreProductDB } from '../firebase/stores';
+import { buildAddToCartUrl, buildCartPageUrl } from '../utils/wooCommerceCart';
+import { buildWhatsAppUrl, buildOrderMessage } from '../utils/storeContact';
 
 const defaultProductImage = require("../../assets/icon.png");
 
@@ -127,7 +131,12 @@ function ProductCard({ product, onBuy, onAddToCart, inCart }) {
             end={{ x: 1, y: 0 }}
             style={styles.buyGradient}
           >
-            <Ionicons name="logo-amazon" size={15} color="#fff" style={{ marginRight: 6 }} />
+            <Ionicons
+              name={product.storeId ? 'bag-handle-outline' : 'logo-amazon'}
+              size={15}
+              color="#fff"
+              style={{ marginRight: 6 }}
+            />
             <Text style={styles.buyText}>Comprar</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -225,6 +234,15 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
         data = await fetchAllProducts();
       }
 
+      try {
+        const storeIdRaw = await AsyncStorage.getItem("@mybeauty-calendar:selectedStoreId");
+        const storeId = storeIdRaw ? JSON.parse(storeIdRaw) : null;
+        if (storeId) {
+          const storeDB = await fetchStoreProductDB(storeId);
+          data = mergeWithStoreCatalog(data, storeDB);
+        }
+      } catch {}
+
       if (data.length > 0) {
         const availableCategories = Array.from(new Set(data.map((p) => p.category))).filter(Boolean);
         if (availableCategories.length > 0) {
@@ -309,6 +327,31 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
   };
 
   const openAmazon = (product) => openLink(buildAmazonUrl(product));
+
+  const openBuy = async (product) => {
+    if (!product.storeId) { openAmazon(product); return; }
+    const info = await fetchStoreInfo(product.storeId).catch(() => null);
+
+    if (info?.website && product.externalProductId) {
+      const url = buildAddToCartUrl(info.website, product.externalProductId);
+      navigation.navigate('StoreCheckout', {
+        addToCartUrls: [url],
+        cartUrl: buildCartPageUrl(info.website),
+        storeName: info.nombre,
+      });
+      return;
+    }
+
+    const waUrl = info?.telefono ? buildWhatsAppUrl(info.telefono, buildOrderMessage(info?.nombre || 'la tienda', [product])) : null;
+    if (waUrl) {
+      Linking.openURL(waUrl);
+    } else {
+      Alert.alert(
+        info?.nombre || 'Tienda',
+        'Esta tienda todavía no tiene un teléfono cargado. Contactala directamente para comprar este producto.'
+      );
+    }
+  };
 
   const getProductsForRoutine = () => {
     const seen = new Set();
@@ -414,7 +457,7 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
               <ProductCard
                 key={product.id}
                 product={product}
-                onBuy={() => openAmazon(product)}
+                onBuy={() => openBuy(product)}
                 onAddToCart={() => handleToggleCart(product)}
                 inCart={!!cart.find(p => p.id === product.id)}
               />
@@ -466,7 +509,7 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onBuy={() => openAmazon(product)}
+                  onBuy={() => openBuy(product)}
                   onAddToCart={() => handleToggleCart(product)}
                   inCart={!!cart.find(p => p.id === product.id)}
                 />

@@ -47,10 +47,12 @@ export function buildAmazonUrl(product) {
 }
 
 export function buildCartUrl(products) {
-  const asins = products.map(getProductAsin).filter(Boolean);
-  if (asins.length === 0) return null;
-  const params = asins
-    .map((asin, i) => `ASIN.${i + 1}=${asin}&Quantity.${i + 1}=1`)
+  const items = products
+    .map((p) => ({ asin: getProductAsin(p), quantity: p?.quantity || 1 }))
+    .filter((item) => item.asin);
+  if (items.length === 0) return null;
+  const params = items
+    .map(({ asin, quantity }, i) => `ASIN.${i + 1}=${asin}&Quantity.${i + 1}=${quantity}`)
     .join('&');
   return `https://www.amazon.com/gp/aws/cart/add.html?AssociateTag=${AFFILIATE_TAG}&${params}`;
 }

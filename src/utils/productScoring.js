@@ -108,3 +108,24 @@ export function getMatchingProductsByFlags(products, profileFlags = []) {
 
   return scored.filter(({ score }) => score > 0).map(({ product }) => product);
 }
+
+// Combina un catálogo plano (ej. Amazon) con el catálogo de una tienda,
+// categoría por categoría: si la tienda tiene productos tageados en una
+// categoría, esos reemplazan a los del catálogo plano solo en esa categoría
+// puntual — el resto de categorías del catálogo plano quedan intactas. Mismo
+// criterio de fallback que usa el motor de recomendación del diagnóstico.
+export function mergeWithStoreCatalog(flatProducts, storeProductDB) {
+  if (!storeProductDB) return flatProducts;
+  const coveredCategories = new Set(
+    Object.entries(storeProductDB)
+      .filter(([, items]) => items && items.length > 0)
+      .map(([key]) => key)
+  );
+  if (coveredCategories.size === 0) return flatProducts;
+
+  const kept = flatProducts.filter(
+    (p) => !coveredCategories.has(CATEGORY_KEY[p.category] || p.category)
+  );
+  const storeItems = Object.values(storeProductDB).flat();
+  return [...kept, ...storeItems];
+}

@@ -19,6 +19,7 @@ import ProfileScreen from './src/components/ProfileScreen';
 import DiagnosisScreen from './src/components/DiagnosisScreen';
 import CategoryDetailScreen from './src/components/CategoryDetailScreen';
 import CartScreen from './src/components/CartScreen';
+import StoreCheckoutScreen from './src/components/StoreCheckoutScreen';
 import { CartProvider } from './src/context/CartContext';
 import { ThemeProvider } from './src/hooks/useTheme';
 import { theme } from './src/theme';
@@ -39,6 +40,7 @@ const SafeProfileScreen = withErrorBoundary(ProfileScreen, { title: 'No pudimos 
 const SafeDiagnosisScreen = withErrorBoundary(DiagnosisScreen, { title: 'No pudimos cargar el diagnóstico' });
 const SafeCategoryDetailScreen = withErrorBoundary(CategoryDetailScreen);
 const SafeCartScreen = withErrorBoundary(CartScreen, { title: 'No pudimos cargar el carrito' });
+const SafeStoreCheckoutScreen = withErrorBoundary(StoreCheckoutScreen, { title: 'No pudimos cargar el carrito de la tienda' });
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -165,6 +167,7 @@ function AppRouter() {
             <RootStack.Screen name="TipDetail" component={SafeDetailScreen} />
             <RootStack.Screen name="CategoryDetail" component={SafeCategoryDetailScreen} options={{ headerShown: false }} />
             <RootStack.Screen name="Cart" component={SafeCartScreen} options={{ headerShown: false }} />
+            <RootStack.Screen name="StoreCheckout" component={SafeStoreCheckoutScreen} options={{ headerShown: false, presentation: 'modal' }} />
           </>
         ) : (
           <>

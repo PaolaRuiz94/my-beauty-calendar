@@ -8,9 +8,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect } from '@react-navigation/native';
-import { collection, getDocs, updateDoc, doc, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../auth/AuthContext';
+import { cancelReservation } from '../firebase/reservations';
 
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -44,7 +45,7 @@ function CitaCard({ cita, onCancelar }) {
           {!esPasada && !esCancelada && onCancelar && (
             <TouchableOpacity
               style={styles.cancelBtn}
-              onPress={() => onCancelar(cita.id)}
+              onPress={() => onCancelar(cita)}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Cancelar cita"
@@ -53,6 +54,10 @@ function CitaCard({ cita, onCancelar }) {
             </TouchableOpacity>
           )}
         </View>
+
+        {cita.servicioNombre && (
+          <Text style={styles.cardServicio} numberOfLines={1}>{cita.servicioNombre}</Text>
+        )}
 
         <View style={styles.cardDateRow}>
           <Ionicons name="calendar-outline" size={13} color="#BF789C" />
@@ -109,10 +114,12 @@ export default function CitasScreen() {
 
   const onRefresh = () => { setRefreshing(true); fetchCitas(); };
 
-  const cancelarCita = async (citaId) => {
+  const cancelarCita = async (cita) => {
     try {
-      await updateDoc(doc(db, 'reservas', citaId), { estado: 'cancelada' });
-      setCitas(prev => prev.map(c => c.id === citaId ? { ...c, estado: 'cancelada' } : c));
+      // Reservas viejas (antes del esquema de servicios) no tienen storeId ni
+      // slotIds — cancelReservation ya maneja ese caso, solo cambia el estado.
+      await cancelReservation(cita.id, cita.storeId, cita.slotIds);
+      setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, estado: 'cancelada' } : c));
     } catch {}
   };
 
@@ -256,6 +263,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#2D2D2D',
     flex: 1,
+  },
+  cardServicio: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#BF789C',
+    marginBottom: 8,
   },
   cancelBtn: {
     width: 24,

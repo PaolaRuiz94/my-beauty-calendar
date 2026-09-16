@@ -20,6 +20,8 @@ import DiagnosisScreen from './src/components/DiagnosisScreen';
 import CategoryDetailScreen from './src/components/CategoryDetailScreen';
 import CartScreen from './src/components/CartScreen';
 import StoreCheckoutScreen from './src/components/StoreCheckoutScreen';
+import ReservarCitaScreen from './src/components/ReservarCitaScreen';
+import CitasScreen from './src/components/CitasScreen';
 import { CartProvider } from './src/context/CartContext';
 import { ThemeProvider } from './src/hooks/useTheme';
 import { theme } from './src/theme';
@@ -41,6 +43,8 @@ const SafeDiagnosisScreen = withErrorBoundary(DiagnosisScreen, { title: 'No pudi
 const SafeCategoryDetailScreen = withErrorBoundary(CategoryDetailScreen);
 const SafeCartScreen = withErrorBoundary(CartScreen, { title: 'No pudimos cargar el carrito' });
 const SafeStoreCheckoutScreen = withErrorBoundary(StoreCheckoutScreen, { title: 'No pudimos cargar el carrito de la tienda' });
+const SafeReservarCitaScreen = withErrorBoundary(ReservarCitaScreen, { title: 'No pudimos cargar la reserva' });
+const SafeCitasScreen = withErrorBoundary(CitasScreen, { title: 'No pudimos cargar tus citas' });
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -168,6 +172,8 @@ function AppRouter() {
             <RootStack.Screen name="CategoryDetail" component={SafeCategoryDetailScreen} options={{ headerShown: false }} />
             <RootStack.Screen name="Cart" component={SafeCartScreen} options={{ headerShown: false }} />
             <RootStack.Screen name="StoreCheckout" component={SafeStoreCheckoutScreen} options={{ headerShown: false, presentation: 'modal' }} />
+            <RootStack.Screen name="ReservarCita" component={SafeReservarCitaScreen} options={{ headerShown: false }} />
+            <RootStack.Screen name="MisCitas" component={SafeCitasScreen} options={{ headerShown: false }} />
           </>
         ) : (
           <>

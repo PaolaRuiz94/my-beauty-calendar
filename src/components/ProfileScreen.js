@@ -290,7 +290,7 @@ function AuthView() {
 
 // ── Profile View (hay sesión) ─────────────────────────────────────────────────
 
-function ProfileView() {
+function ProfileView({ navigation }) {
   const { user, logout, updateUser, updatePhoto } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -630,6 +630,24 @@ function ProfileView() {
               )}
 
               <View style={[styles.sectionTitleRow, { marginTop: 28 }]}>
+                <Ionicons name="calendar-outline" size={13} color="#D6A4A4" />
+                <Text style={styles.sectionTitle}>Mi actividad</Text>
+              </View>
+              <View style={styles.card}>
+                <TouchableOpacity
+                  style={styles.aboutRow}
+                  onPress={() => navigation?.navigate('MisCitas')}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver mis citas"
+                >
+                  <Ionicons name="calendar-outline" size={17} color="#D6A4A4" />
+                  <Text style={styles.aboutText}>Mis citas</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#CCC" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.sectionTitleRow, { marginTop: 28 }]}>
                 <Ionicons name="information-circle-outline" size={13} color="#D6A4A4" />
                 <Text style={styles.sectionTitle}>Acerca de</Text>
               </View>
@@ -702,9 +720,9 @@ function ProfileView() {
 
 // ── Unified export ─────────────────────────────────────────────────────────────
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
   const { user } = useAuth();
-  return user ? <ProfileView /> : <AuthView />;
+  return user ? <ProfileView navigation={navigation} /> : <AuthView />;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────

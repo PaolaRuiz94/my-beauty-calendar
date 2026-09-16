@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, ActivityIndicator,
@@ -18,6 +18,7 @@ import { searchNearbySalons, mapsUrl } from '../services/googlePlaces';
 import { useCart } from '../context/CartContext';
 import { fetchAllProducts } from '../firebase/products';
 import { buildAmazonUrl } from '../utils/amazonUtils';
+import { normalizeHorarioDay } from '../utils/scheduling';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -97,11 +98,12 @@ function StarRating({ rating, size = 13 }) {
   );
 }
 
-function PeluqueriaCard({ peluqueria, distancia, onVerPerfil }) {
+function PeluqueriaCard({ peluqueria, distancia, onVerPerfil, onReservar }) {
   const horarioHoy = getHorarioHoy(peluqueria.horarios, peluqueria.openNow);
   const abierto = horarioHoy !== 'Cerrado hoy' && horarioHoy !== 'Cerrado ahora';
   const esCurly = peluqueria.tipo === 'Para rizadas';
   const isGoogle = peluqueria.isGooglePlace;
+  const esReservable = !isGoogle && peluqueria.businessType === 'peluqueria' && !!onReservar;
 
   const llamar   = () => Linking.openURL(`tel:${peluqueria.telefono}`);
   const whatsapp = () => Linking.openURL(`whatsapp://send?phone=57${peluqueria.telefono}`);
@@ -173,17 +175,37 @@ function PeluqueriaCard({ peluqueria, distancia, onVerPerfil }) {
             </TouchableOpacity>
           </>
         )}
-        <TouchableOpacity style={[styles.reservarBtn, { flex: 1 }]} onPress={verMaps} activeOpacity={0.85}>
-          <LinearGradient
-            colors={['#4A90E2', '#2D6DB5']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.reservarBtnGradient}
+        {esReservable ? (
+          <TouchableOpacity
+            style={[styles.reservarBtn, { flex: 1 }]}
+            onPress={onReservar}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Reservar cita en ${peluqueria.nombre}`}
           >
-            <Ionicons name="map-outline" size={15} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.reservarBtnText}>Ver en Maps</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={['#DEB4CC', '#BF789C']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.reservarBtnGradient}
+            >
+              <Ionicons name="calendar-outline" size={15} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.reservarBtnText}>Reservar</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={[styles.reservarBtn, { flex: 1 }]} onPress={verMaps} activeOpacity={0.85}>
+            <LinearGradient
+              colors={['#4A90E2', '#2D6DB5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.reservarBtnGradient}
+            >
+              <Ionicons name="map-outline" size={15} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.reservarBtnText}>Ver en Maps</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -221,7 +243,9 @@ export default function ExplorarScreen({ navigation, route }) {
   const [loadingPelu, setLoadingPelu]       = useState(true);
   const [userLocation, setUserLocation]     = useState(null);
   const [userCity, setUserCity]             = useState(null);
-  const [soloMiCiudad, setSoloMiCiudad]     = useState(true);
+  const [selectedCity, setSelectedCity]     = useState(null); // null = todas las ciudades
+  const [cityModalVisible, setCityModalVisible] = useState(false);
+  const cityAutoSetRef = useRef(false);
   const [selectedFilter, setSelectedFilter] = useState('Tradicional');
   const [hairProfile, setHairProfile]       = useState(null);
   const [filterPersonalizado, setFilterPersonalizado] = useState(false);
@@ -261,6 +285,13 @@ export default function ExplorarScreen({ navigation, route }) {
       setFilterPersonalizado(true);
     }
   }, [hairProfile]);
+
+  useEffect(() => {
+    if (userCity && !cityAutoSetRef.current) {
+      cityAutoSetRef.current = true;
+      setSelectedCity(userCity);
+    }
+  }, [userCity]);
 
   useEffect(() => {
     if (!userLocation) return;
@@ -343,15 +374,22 @@ export default function ExplorarScreen({ navigation, route }) {
     return null;
   };
 
+  const availableCities = [...new Set(peluquerias.map(p => p.ciudad).filter(Boolean))].sort();
+
   const peluqueriasFiltradas = peluquerias
-    .filter(p => p.tipo === selectedFilter)
-    .filter(p => {
-      if (!soloMiCiudad || !userCity) return true;
-      return p.ciudad?.toLowerCase() === userCity.toLowerCase();
-    })
+    // Esta pestaña es solo para peluquerías (donde se puede reservar cita).
+    // businessType='peluqueria' es explícito. Si falta el campo, solo se
+    // trata como peluquería real cuando además no tiene ownerId — las
+    // curadas a mano (sembradas en consola, antes de este campo) nunca
+    // tienen ownerId; cualquier doc creado desde el panel de empresas sí lo
+    // tiene, así que una tienda vieja sin businessType (ej. "palatsi prueba"
+    // antes de parchearse) cae del lado correcto y no se cuela acá.
+    .filter(p => p.businessType === 'peluqueria' || (!p.businessType && !p.ownerId))
+    .filter(p => !p.tipo || p.tipo === selectedFilter)
+    .filter(p => !selectedCity || (p.ciudad || '').toLowerCase() === selectedCity.toLowerCase())
     .map(p => ({
       ...p,
-      distancia: userLocation
+      distancia: userLocation && p.lat != null && p.lng != null
         ? haversineKm(userLocation.latitude, userLocation.longitude, p.lat, p.lng)
         : null,
     }))
@@ -440,23 +478,21 @@ export default function ExplorarScreen({ navigation, route }) {
       {activeTab === 'peluquerias' && (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.peluScroll}>
 
-          {/* banner ciudad — solo cuando no hay Google Places */}
-          {userCity && !userLocation && (
-            <View style={styles.cityBanner}>
+          {/* selector de ciudad */}
+          {availableCities.length > 0 && (
+            <TouchableOpacity
+              style={styles.cityBanner}
+              onPress={() => setCityModalVisible(true)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Cambiar ciudad"
+            >
               <Ionicons name="location" size={14} color="#BF789C" />
               <Text style={styles.cityBannerText} numberOfLines={1}>
-                {soloMiCiudad ? userCity : 'Todas las ciudades'}
+                {selectedCity || 'Todas las ciudades'}
               </Text>
-              <TouchableOpacity
-                onPress={() => setSoloMiCiudad(v => !v)}
-                activeOpacity={0.75}
-                style={styles.cityToggleBtn}
-              >
-                <Text style={styles.cityToggleText}>
-                  {soloMiCiudad ? 'Ver todas' : `Solo ${userCity}`}
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <Ionicons name="chevron-down" size={14} color="#BF789C" />
+            </TouchableOpacity>
           )}
 
           {/* banner de personalización */}
@@ -497,45 +533,107 @@ export default function ExplorarScreen({ navigation, route }) {
             ))}
           </ScrollView>
 
-          {/* lista */}
-          {(userLocation ? loadingGoogle : loadingPelu) ? (
+          {/* peluquerías registradas en la app — siempre visibles, reservables */}
+          {loadingPelu ? (
             <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 60 }} />
-          ) : googleError && userLocation ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="key-outline" size={44} color="#EDD0D8" />
-              <Text style={styles.emptyText}>
-                {['REQUEST_DENIED', 'INVALID_REQUEST', 'EXPO_PUBLIC_GOOGLE_PLACES_KEY no configurada'].includes(googleError)
-                  ? 'Falta configurar la Google Places API key.\nAbre el archivo .env y reemplaza TU_API_KEY_AQUI con tu clave de Google Cloud.'
-                  : `No se pudieron cargar peluquerías.\n(${googleError})`}
-              </Text>
-            </View>
-          ) : (userLocation ? googlePlaces : peluqueriasFiltradas).length === 0 ? (
+          ) : peluqueriasFiltradas.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="cut-outline" size={44} color="#EDD0D8" />
-              <Text style={styles.emptyText}>No hay peluquerías en esta zona.</Text>
+              <Text style={styles.emptyText}>
+                No hay peluquerías registradas{selectedCity ? ` en ${selectedCity}` : ''}.
+              </Text>
             </View>
           ) : (
             <>
-              {(userLocation ? googlePlaces : peluqueriasFiltradas).map(p => {
-                const distancia = userLocation
-                  ? haversineKm(userLocation.latitude, userLocation.longitude, p.lat, p.lng)
-                  : p.distancia;
-                return (
-                  <PeluqueriaCard
-                    key={p.id}
-                    peluqueria={p}
-                    distancia={distancia}
-                    onVerPerfil={p.isGooglePlace ? undefined : () => openPerfil(p)}
-                  />
-                );
-              })}
-              {userLocation && (
-                <Text style={styles.googleAttrib}>Resultados de Google Maps</Text>
+              <Text style={styles.misReservasTitle}>PELUQUERÍAS</Text>
+              {peluqueriasFiltradas.map(p => (
+                <PeluqueriaCard
+                  key={p.id}
+                  peluqueria={p}
+                  distancia={p.distancia}
+                  onVerPerfil={() => openPerfil(p)}
+                  onReservar={() => navigation.navigate('ReservarCita', {
+                    storeId: p.id,
+                    storeName: p.nombre,
+                    horarios: p.horarios,
+                  })}
+                />
+              ))}
+            </>
+          )}
+
+          {/* resultados de Google Maps cerca de ti — solo informativos */}
+          {userLocation && (
+            <>
+              <Text style={[styles.misReservasTitle, { marginTop: 20 }]}>CERCA DE TI (GOOGLE MAPS)</Text>
+              {loadingGoogle ? (
+                <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 20 }} />
+              ) : googleError ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="key-outline" size={44} color="#EDD0D8" />
+                  <Text style={styles.emptyText}>
+                    {['REQUEST_DENIED', 'INVALID_REQUEST', 'EXPO_PUBLIC_GOOGLE_PLACES_KEY no configurada'].includes(googleError)
+                      ? 'Falta configurar la Google Places API key.\nAbre el archivo .env y reemplaza TU_API_KEY_AQUI con tu clave de Google Cloud.'
+                      : `No se pudieron cargar peluquerías cercanas.\n(${googleError})`}
+                  </Text>
+                </View>
+              ) : googlePlaces.length === 0 ? (
+                <Text style={styles.emptyText}>No encontramos peluquerías cercanas en Google Maps.</Text>
+              ) : (
+                <>
+                  {googlePlaces.map(p => (
+                    <PeluqueriaCard
+                      key={p.id}
+                      peluqueria={p}
+                      distancia={haversineKm(userLocation.latitude, userLocation.longitude, p.lat, p.lng)}
+                      onVerPerfil={undefined}
+                    />
+                  ))}
+                  <Text style={styles.googleAttrib}>Resultados de Google Maps</Text>
+                </>
               )}
             </>
           )}
         </ScrollView>
       )}
+
+      {/* ── Modal selector de ciudad ── */}
+      <Modal visible={cityModalVisible} transparent animationType="fade" onRequestClose={() => setCityModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setCityModalVisible(false)}>
+          <View style={styles.pickerOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.reseniaSheet}>
+                <Text style={styles.reservaTitulo}>Elegir ciudad</Text>
+                <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                  <TouchableOpacity
+                    style={[styles.cityOption, !selectedCity && styles.cityOptionActive]}
+                    onPress={() => { setSelectedCity(null); setCityModalVisible(false); }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.cityOptionText, !selectedCity && styles.cityOptionTextActive]}>
+                      Todas las ciudades
+                    </Text>
+                    {!selectedCity && <Ionicons name="checkmark" size={17} color="#BF789C" />}
+                  </TouchableOpacity>
+                  {availableCities.map(city => (
+                    <TouchableOpacity
+                      key={city}
+                      style={[styles.cityOption, selectedCity === city && styles.cityOptionActive]}
+                      onPress={() => { setSelectedCity(city); setCityModalVisible(false); }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.cityOptionText, selectedCity === city && styles.cityOptionTextActive]}>
+                        {city}
+                      </Text>
+                      {selectedCity === city && <Ionicons name="checkmark" size={17} color="#BF789C" />}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {/* ── Modal perfil peluquería ── */}
       <Modal
@@ -585,6 +683,39 @@ export default function ExplorarScreen({ navigation, route }) {
                       </View>
                     )}
 
+                    {/* reservar cita — solo peluquerías (businessType='peluqueria';
+                        undefined se trata como 'tienda', no muestra el botón) */}
+                    {perfilModal.peluqueria?.businessType === 'peluqueria' && (
+                      <TouchableOpacity
+                        style={styles.reservarBtn}
+                        activeOpacity={0.85}
+                        onPress={() => {
+                          // Hay que cerrar el modal de perfil antes de navegar: al
+                          // ser un <Modal> nativo, se queda flotando por encima de
+                          // ReservarCitaScreen y tapa los servicios si sigue abierto.
+                          const p = perfilModal.peluqueria;
+                          setPerfilModal({ visible: false, peluqueria: null });
+                          navigation.navigate('ReservarCita', {
+                            storeId: p.id,
+                            storeName: p.nombre,
+                            horarios: p.horarios,
+                          });
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Reservar cita en ${perfilModal.peluqueria.nombre}`}
+                      >
+                        <LinearGradient
+                          colors={['#DEB4CC', '#BF789C']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.reservarBtnGradient}
+                        >
+                          <Ionicons name="calendar-outline" size={17} color="#fff" style={{ marginRight: 8 }} />
+                          <Text style={styles.reservarBtnText}>Reservar cita</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
+
                     {/* especialidades */}
                     <View style={styles.especialidadesRow}>
                       {perfilModal.peluqueria.especialidades?.map(e => (
@@ -594,16 +725,23 @@ export default function ExplorarScreen({ navigation, route }) {
                       ))}
                     </View>
 
-                    {/* horarios */}
+                    {/* horarios — soporta el formato viejo curado a mano
+                        ({activo, abre, cierra}) y el nuevo del panel de
+                        empresas ([{inicio, fin}] | null) */}
                     <Text style={styles.perfilSectionLabel}>HORARIOS</Text>
-                    {Object.entries(perfilModal.peluqueria.horarios || {}).map(([dia, h]) => (
-                      <View key={dia} style={styles.horarioRow}>
-                        <Text style={styles.horarioDia}>{dia.charAt(0).toUpperCase() + dia.slice(1)}</Text>
-                        <Text style={[styles.horarioHora, !h.activo && { color: '#CCC' }]}>
-                          {h.activo ? `${h.abre} – ${h.cierra}` : 'Cerrado'}
-                        </Text>
-                      </View>
-                    ))}
+                    {Object.entries(perfilModal.peluqueria.horarios || {}).map(([dia, h]) => {
+                      const rangos = normalizeHorarioDay(h);
+                      return (
+                        <View key={dia} style={styles.horarioRow}>
+                          <Text style={styles.horarioDia}>{dia.charAt(0).toUpperCase() + dia.slice(1)}</Text>
+                          <Text style={[styles.horarioHora, rangos.length === 0 && { color: '#CCC' }]}>
+                            {rangos.length > 0
+                              ? rangos.map((r) => `${r.inicio} – ${r.fin}`).join(', ')
+                              : 'Cerrado'}
+                          </Text>
+                        </View>
+                      );
+                    })}
 
                     {/* reseñas */}
                     <View style={styles.reseniasTitleRow}>
@@ -903,16 +1041,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2D2D2D',
   },
-  cityToggleBtn: {
-    backgroundColor: '#FDF0F5',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  cityOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5EBF0',
   },
-  cityToggleText: {
-    fontSize: 12,
-    fontWeight: '700',
+  cityOptionActive: {},
+  cityOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  cityOptionTextActive: {
     color: '#BF789C',
+    fontWeight: '800',
   },
   filtersRow: {
     gap: 8,
@@ -1398,6 +1544,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginBottom: 18,
+  },
+  reservarBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 18,
+  },
+  reservarBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+  reservarBtnText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 15,
   },
   perfilContactBtn: {
     flex: 1,

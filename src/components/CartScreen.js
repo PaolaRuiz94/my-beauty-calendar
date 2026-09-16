@@ -21,6 +21,8 @@ import { buildAddToCartUrl, buildCartPageUrl } from '../utils/wooCommerceCart';
 
 const defaultProductImage = require('../../assets/icon.png');
 
+const formatCOP = (value) => `$${value.toLocaleString('es-CO')} COP`;
+
 function CartItemImage({ product }) {
   const [fallback, setFallback] = useState(false);
   const src =
@@ -131,6 +133,10 @@ export default function CartScreen({ navigation }) {
   };
 
   const totalUnits = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
+  const pricedSubtotal = cart.reduce(
+    (sum, p) => sum + (typeof p.price === 'number' ? p.price * (p.quantity || 1) : 0),
+    0
+  );
 
   let storeCartCount = 0;
   let storeWaCount = 0;
@@ -226,6 +232,9 @@ export default function CartScreen({ navigation }) {
                     <Text style={styles.itemName} numberOfLines={2}>
                       {product.name}
                     </Text>
+                    {typeof product.price === 'number' && (
+                      <Text style={styles.itemPrice}>{formatCOP(product.price)}</Text>
+                    )}
                     <View style={styles.sourceTag}>
                       {isAmazon ? (
                         <>
@@ -270,6 +279,9 @@ export default function CartScreen({ navigation }) {
                       >
                         <Ionicons name="add" size={14} color="#BF789C" />
                       </TouchableOpacity>
+                      {typeof product.price === 'number' && (product.quantity || 1) > 1 && (
+                        <Text style={styles.itemSubtotal}>{formatCOP(product.price * (product.quantity || 1))}</Text>
+                      )}
                     </View>
                   </View>
 
@@ -290,6 +302,12 @@ export default function CartScreen({ navigation }) {
 
           {/* Footer */}
           <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+            {pricedSubtotal > 0 && (
+              <View style={styles.subtotalRow}>
+                <Text style={styles.subtotalLabel}>Subtotal con precio cargado</Text>
+                <Text style={styles.subtotalValue}>{formatCOP(pricedSubtotal)}</Text>
+              </View>
+            )}
             <TouchableOpacity
               onPress={handleComprar}
               activeOpacity={0.88}
@@ -464,6 +482,18 @@ const styles = StyleSheet.create({
     color: '#2D2D2D',
     lineHeight: 19,
   },
+  itemPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#BF789C',
+    marginTop: 2,
+  },
+  itemSubtotal: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#999',
+    marginLeft: 'auto',
+  },
   sourceTag: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -501,6 +531,21 @@ const styles = StyleSheet.create({
   },
 
   // footer
+  subtotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  subtotalLabel: {
+    fontSize: 13,
+    color: '#999',
+  },
+  subtotalValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2D2D2D',
+  },
   footer: {
     position: 'absolute',
     bottom: 0,

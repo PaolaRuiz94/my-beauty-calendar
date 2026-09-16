@@ -101,6 +101,9 @@ function ProductCard({ product, onBuy, onAddToCart, inCart }) {
           <Text style={styles.productDescription} numberOfLines={2}>
             {product.description}
           </Text>
+          {typeof product.price === 'number' && (
+            <Text style={styles.productPrice}>${product.price.toLocaleString('es-CO')} COP</Text>
+          )}
         </View>
       </View>
 
@@ -737,6 +740,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#999",
     lineHeight: 19,
+  },
+  productPrice: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#BF789C",
+    marginTop: 4,
   },
 
   // card actions

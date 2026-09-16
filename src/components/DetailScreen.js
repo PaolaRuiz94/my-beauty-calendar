@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useTheme } from '../hooks/useTheme';
 import { fetchTipVideo } from '../firebase/videos';
 
@@ -27,8 +27,8 @@ export default function DetailScreen({ navigation, route }) {
     tipKey = '',
   } = route?.params || {};
 
-  const videoRef = useRef(null);
   const [videoUri, setVideoUri] = useState(null);
+  const player = useVideoPlayer(videoUri, () => {});
 
   useEffect(() => {
     if (!tipKey) return;
@@ -56,13 +56,11 @@ export default function DetailScreen({ navigation, route }) {
 
           {videoUri ? (
             <View style={styles.videoWrap}>
-              <Video
-                ref={videoRef}
-                source={{ uri: videoUri }}
+              <VideoView
+                player={player}
                 style={{ width: VIDEO_WIDTH, height: VIDEO_HEIGHT }}
-                resizeMode={ResizeMode.CONTAIN}
-                useNativeControls
-                shouldPlay={false}
+                contentFit="contain"
+                nativeControls
               />
             </View>
           ) : null}

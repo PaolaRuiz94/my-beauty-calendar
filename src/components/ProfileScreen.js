@@ -88,7 +88,14 @@ function InputField({ icon, label, value, onChangeText, placeholder, secureTextE
             autoCapitalize="none"
           />
           {rightIcon ? (
-            <TouchableOpacity onPress={onRightIconPress} activeOpacity={0.7} style={styles.eyeBtn}>
+            <TouchableOpacity
+              onPress={onRightIconPress}
+              activeOpacity={0.7}
+              style={styles.eyeBtn}
+              accessibilityRole="button"
+              accessibilityLabel={rightIcon === 'eye-off-outline' ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              accessibilityState={{ selected: rightIcon === 'eye-off-outline' }}
+            >
               <Ionicons name={rightIcon} size={18} color="#CCC" />
             </TouchableOpacity>
           ) : null}
@@ -434,6 +441,9 @@ function ProfileView() {
               style={[styles.headerBtn, !isEditing && { opacity: 0 }]}
               activeOpacity={0.7}
               disabled={!isEditing}
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar edición"
+              accessibilityState={{ disabled: !isEditing }}
             >
               <Ionicons name="close" size={22} color="#fff" />
             </TouchableOpacity>
@@ -448,11 +458,20 @@ function ProfileView() {
                 style={[styles.headerBtn, isSaving && { opacity: 0.6 }]}
                 activeOpacity={0.7}
                 disabled={isSaving}
+                accessibilityRole="button"
+                accessibilityLabel="Guardar cambios"
+                accessibilityState={{ disabled: isSaving }}
               >
                 <Ionicons name="checkmark" size={22} color="#fff" />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity onPress={handleEdit} style={styles.headerBtn} activeOpacity={0.7}>
+              <TouchableOpacity
+                onPress={handleEdit}
+                style={styles.headerBtn}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Editar perfil"
+              >
                 <Ionicons name="pencil-outline" size={20} color="#fff" />
               </TouchableOpacity>
             )}
@@ -460,7 +479,13 @@ function ProfileView() {
 
           {!isEditing && (
             <View style={styles.avatarSection}>
-              <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.85} style={styles.avatarWrap}>
+              <TouchableOpacity
+                onPress={handlePickPhoto}
+                activeOpacity={0.85}
+                style={styles.avatarWrap}
+                accessibilityRole="button"
+                accessibilityLabel="Cambiar foto de perfil"
+              >
                 {user?.photoURL ? (
                   <Image source={{ uri: user.photoURL }} style={styles.avatarPhoto} />
                 ) : (
@@ -558,6 +583,9 @@ function ProfileView() {
                   style={styles.progressAddBtn}
                   activeOpacity={0.7}
                   disabled={uploadingProgress}
+                  accessibilityRole="button"
+                  accessibilityLabel="Agregar foto de progreso"
+                  accessibilityState={{ disabled: uploadingProgress }}
                 >
                   {uploadingProgress
                     ? <ActivityIndicator size="small" color="#BF789C" />
@@ -584,6 +612,8 @@ function ProfileView() {
                       style={styles.progressThumb}
                       activeOpacity={0.88}
                       onPress={() => setSelectedPhoto(photo)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Ver foto de progreso"
                     >
                       <Image source={{ uri: photo.url }} style={styles.progressThumbImg} />
                       <View style={styles.progressThumbDate}>
@@ -634,7 +664,13 @@ function ProfileView() {
                 <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.8)" />
                 <Text style={styles.photoModalDateText}>{formatDate(selectedPhoto?.date)}</Text>
               </View>
-              <TouchableOpacity onPress={() => setSelectedPhoto(null)} style={styles.photoModalClose} activeOpacity={0.8}>
+              <TouchableOpacity
+                onPress={() => setSelectedPhoto(null)}
+                style={styles.photoModalClose}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar"
+              >
                 <Ionicons name="close" size={22} color="#fff" />
               </TouchableOpacity>
             </View>

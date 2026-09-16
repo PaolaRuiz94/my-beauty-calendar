@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import YearPicker from './YearPicker';
+import { COUNTRY_OPTIONS } from '../data/diagnosisQuestions';
 
 const { width } = Dimensions.get('window');
 
@@ -33,7 +34,8 @@ type Slide =
   | { key: string; type: 'intro'; title: string; subtitle: string }
   | { key: string; type: 'text'; question: string; placeholder: string }
   | { key: string; type: 'numeric'; question: string; placeholder: string }
-  | { key: string; type: 'chips'; title: string; options: string[] };
+  | { key: string; type: 'chips'; title: string; options: string[] }
+  | { key: string; type: 'country'; question: string };
 
 const slides: Slide[] = [
   { key: 'intro-1', type: 'intro', title: 'Hola ✨', subtitle: 'Bienvenida a tu experiencia de cuidado capilar' },
@@ -41,6 +43,7 @@ const slides: Slide[] = [
   { key: 'intro-3', type: 'intro', title: 'Rutina personalizada 🌸', subtitle: 'Recibirás recomendaciones hechas para ti' },
   { key: 'name', type: 'text', question: '¿Cómo te gustaría que te llamara la app?', placeholder: 'Tu nombre' },
   { key: 'age', type: 'numeric', question: 'Registra tu año de nacimiento', placeholder: '1990' },
+  { key: 'country', type: 'country', question: '¿En qué país estás?' },
 ];
 
 const introIcons: Record<string, string> = {
@@ -63,6 +66,7 @@ export default function OnboardingDiagnosisScreen() {
   const [name, setName] = useState('');
   const [age, setAge] = useState(new Date().getFullYear().toString());
   const [skinGoals, setSkinGoals] = useState<string[]>([]);
+  const [country, setCountry] = useState('');
   const scrollViewRef = useRef<ScrollView | null>(null);
 
   const currentSlide = slides[currentIndex];
@@ -71,9 +75,10 @@ export default function OnboardingDiagnosisScreen() {
   const isNextDisabled = useMemo(() => {
     if (currentSlide.type === 'text') return name.trim().length === 0;
     if (currentSlide.type === 'numeric') return age.trim().length !== 4;
+    if (currentSlide.type === 'country') return country.trim().length === 0;
     if (currentSlide.key === 'skinGoals') return skinGoals.length === 0;
     return false;
-  }, [currentSlide, name, age, skinGoals]);
+  }, [currentSlide, name, age, skinGoals, country]);
 
   const handleNext = async () => {
     if (isNextDisabled) return;
@@ -82,7 +87,10 @@ export default function OnboardingDiagnosisScreen() {
       return;
     }
     try {
-      await AsyncStorage.setItem('onboardingProfile', JSON.stringify({ name: name.trim(), age: age.trim(), skinGoals }));
+      await AsyncStorage.multiSet([
+        ['onboardingProfile', JSON.stringify({ name: name.trim(), age: age.trim(), skinGoals, country })],
+        ['@mybeauty-calendar:country', country],
+      ]);
     } catch (e) {
       console.warn('Error saving onboarding profile:', e);
     }
@@ -203,6 +211,40 @@ export default function OnboardingDiagnosisScreen() {
     </View>
   );
 
+  const renderCountry = (slide: Extract<Slide, { type: 'country' }>) => (
+    <View style={styles.cardInner}>
+      <View style={styles.questionIconWrap}>
+        <Ionicons name="earth-outline" size={26} color="#BF789C" />
+      </View>
+
+      <View style={{ width: '100%', alignItems: 'center' }}>
+        <Text style={styles.questionText}>{slide.question}</Text>
+        <View style={styles.chipRow}>
+          {COUNTRY_OPTIONS.map((opt) => {
+            const active = country === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[styles.chip, active && styles.chipActive]}
+                activeOpacity={0.8}
+                onPress={() => setCountry(opt.value)}
+              >
+                {active && (
+                  <Ionicons name="checkmark-circle" size={14} color="#fff" style={{ marginRight: 5 }} />
+                )}
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.value}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      <Text style={styles.helpText}>
+        Esto nos ayuda a mostrarte tiendas cerca tuyo cuando estén disponibles.
+      </Text>
+    </View>
+  );
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -236,6 +278,7 @@ export default function OnboardingDiagnosisScreen() {
               {item.type === 'intro' && renderIntro(item)}
               {(item.type === 'text' || item.type === 'numeric') && renderTextInput(item)}
               {item.type === 'chips' && renderChips(item)}
+              {item.type === 'country' && renderCountry(item)}
             </View>
           </View>
         ))}

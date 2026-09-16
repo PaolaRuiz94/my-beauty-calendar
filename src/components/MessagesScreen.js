@@ -268,6 +268,9 @@ export default function MessagesScreen() {
                               transitionLiked && styles.likedButton,
                             ]}
                             onPress={toggleTransitionLike}
+                            accessibilityRole="button"
+                            accessibilityLabel="Me gusta"
+                            accessibilityState={{ selected: transitionLiked }}
                           >
                             <Text style={styles.likeButtonText}>
                               ❤️
@@ -276,6 +279,8 @@ export default function MessagesScreen() {
                           <TouchableOpacity
                             style={styles.commentIconButton}
                             onPress={() => setShowTransitionComments(true)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Ver comentarios"
                           >
                             <Text style={styles.commentIconText}>💬</Text>
                           </TouchableOpacity>

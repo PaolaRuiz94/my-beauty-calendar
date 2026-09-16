@@ -1,6 +1,11 @@
-const YOUTUBE_API_KEY = 'AIzaSyDCpbq1rrVitsmZT18iOYM7PNH35DrNxZE'; // Reemplaza con tu clave de YouTube Data API v3
+const YOUTUBE_API_KEY = process.env.EXPO_PUBLIC_YOUTUBE_API_KEY;
 
 export async function searchYouTubeVideos(query, maxResults = 8) {
+  if (!YOUTUBE_API_KEY) {
+    console.warn('EXPO_PUBLIC_YOUTUBE_API_KEY no configurada');
+    return [];
+  }
+
   const url =
     `https://www.googleapis.com/youtube/v3/search` +
     `?part=snippet&type=video&key=${YOUTUBE_API_KEY}` +

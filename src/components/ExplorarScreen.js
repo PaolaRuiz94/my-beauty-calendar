@@ -153,10 +153,22 @@ function PeluqueriaCard({ peluqueria, distancia, onVerPerfil }) {
       <View style={styles.cardActionsRow}>
         {!isGoogle && peluqueria.telefono && (
           <>
-            <TouchableOpacity style={styles.contactIconBtn} onPress={llamar} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.contactIconBtn}
+              onPress={llamar}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Llamar a la peluquería"
+            >
               <Ionicons name="call-outline" size={17} color="#BF789C" />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.contactIconBtn, { marginRight: 8 }]} onPress={whatsapp} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={[styles.contactIconBtn, { marginRight: 8 }]}
+              onPress={whatsapp}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Contactar por WhatsApp"
+            >
               <Ionicons name="logo-whatsapp" size={17} color="#25D366" />
             </TouchableOpacity>
           </>
@@ -368,6 +380,8 @@ export default function ExplorarScreen({ navigation, route }) {
             onPress={() => navigation.navigate('Cart')}
             style={styles.cartHeaderBtn}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Ver carrito"
           >
             <Ionicons name="bag-outline" size={20} color="#fff" />
             {cart.length > 0 && (
@@ -456,6 +470,8 @@ export default function ExplorarScreen({ navigation, route }) {
               <TouchableOpacity
                 onPress={() => { setSelectedFilter('Tradicional'); setFilterPersonalizado(false); }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Quitar filtro personalizado"
               >
                 <Ionicons name="close-circle-outline" size={16} color="#D6A4A4" />
               </TouchableOpacity>
@@ -630,7 +646,14 @@ export default function ExplorarScreen({ navigation, route }) {
                 <Text style={styles.reservaLabel}>Puntuación</Text>
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
                   {[1, 2, 3, 4, 5].map(n => (
-                    <TouchableOpacity key={n} onPress={() => setReseniaPuntos(n)} activeOpacity={0.8}>
+                    <TouchableOpacity
+                      key={n}
+                      onPress={() => setReseniaPuntos(n)}
+                      activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Calificar con ${n} ${n === 1 ? 'estrella' : 'estrellas'}`}
+                      accessibilityState={{ selected: n <= reseniaPuntos }}
+                    >
                       <Ionicons
                         name={n <= reseniaPuntos ? 'star' : 'star-outline'}
                         size={30}
@@ -655,6 +678,9 @@ export default function ExplorarScreen({ navigation, route }) {
                   disabled={!reseniaPuntos || !reseniaTexto.trim() || guardandoResenia}
                   onPress={guardarResenia}
                   activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Publicar reseña"
+                  accessibilityState={{ disabled: !reseniaPuntos || !reseniaTexto.trim() || guardandoResenia }}
                 >
                   <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.reservarBtnGradient}>
                     {guardandoResenia
@@ -712,6 +738,8 @@ export default function ExplorarScreen({ navigation, route }) {
                     onPress={() => amazonUrl ? Linking.openURL(amazonUrl) : alert('Sin link de Amazon')}
                     style={[styles.catalogOpenBtn, !hasLink && styles.catalogOpenBtnDisabled]}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel="Abrir en Amazon"
                   >
                     <Ionicons name="open-outline" size={15} color={hasLink ? '#BF789C' : '#CCC'} />
                   </TouchableOpacity>

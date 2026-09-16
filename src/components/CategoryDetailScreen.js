@@ -109,6 +109,8 @@ export default function CategoryDetailScreen({ route, navigation }) {
               onPress={() => navigation.goBack()}
               style={[styles.backBtn, { top: insets.top + 12 }]}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Volver"
             >
               <Ionicons name="chevron-back" size={22} color="#fff" />
             </TouchableOpacity>

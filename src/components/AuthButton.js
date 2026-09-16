@@ -23,6 +23,8 @@ export default function AuthButton() {
       style={styles.button}
       activeOpacity={0.8}
       onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={user ? 'Ver perfil' : 'Iniciar sesión'}
     >
       {user?.photo ? (
         <Image source={{ uri: user.photo }} style={styles.profileImage} />

@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
@@ -15,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
@@ -24,334 +24,33 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BeautyCalendarHeader from './BeautyCalendarHeader';
 import { fetchProductsByProfile } from '../firebase/products';
+import { fetchStoreProductDB } from '../firebase/stores';
 import { PRICE_TIER_LABELS, PRODUCTS } from '../data/products';
 import { syncRoutineNotifications } from '../services/notificationService';
-import { getMatchingProducts } from '../utils/productScoring';
+import { getMatchingProducts, CATEGORY_KEY } from '../utils/productScoring';
 import { getWeatherContext, getWeatherBoostTags, getWeatherHairTip } from '../services/weatherService';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../auth/AuthContext';
 import { saveDiaryEntry } from '../firebase/diary';
 import { addProgressPhoto } from '../firebase/progressPhotos';
 import * as ImagePicker from 'expo-image-picker';
+import styles from './CalendarScreen.styles';
+import { TIPS, MOTIVATIONS, DIARY_HAIR_FEEL, DIARY_HYDRATION, DIARY_SCALP } from '../data/calendarContent';
+import {
+  buildDayFromCycleIndex,
+  expandPlanTo30Days,
+  fmtDate,
+  buildMarkedDates,
+  buildCompletedDates,
+  calcStreak,
+} from '../utils/routineCalendar';
+import ChipGroup from './calendar/ChipGroup';
+import YesNo from './calendar/YesNo';
+import ProductThumb from './calendar/ProductThumb';
+import RoutineCard from './calendar/RoutineCard';
 
-// ─── static content ──────────────────────────────────────────────────────────
-
-const TIPS = [
-  'Usar demasiados productos a la vez puede causar congestión y sensibilidad en el cuero cabelludo (cuando no combinan bien). Asegúrate de conocer tu rutina ideal.',
-  'Lavar el cabello con agua fría ayuda a sellar la cutícula y aporta más brillo natural.',
-  'El masaje capilar estimula la circulación y favorece el crecimiento del cabello.',
-  'Dormir con el cabello húmedo puede causar frizz y rotura. Déjalo secar antes de acostarte.',
-  'Los aceites se aplican al final de la rutina para sellar la hidratación, no antes.',
-  'Evita el calor excesivo: si usas secador, aplica protector térmico siempre.',
-  'La frecuencia de lavado depende de tu tipo de cabello; no hay una regla universal.',
-];
-
-const MOTIVATIONS = [
-  'Hoy es un buen día para cuidar de tu cabello',
-  'Tu cabello te lo agradecerá ✨',
-  'Pequeños hábitos, grandes resultados',
-  'Cuídate hoy, brilla mañana',
-  'Tu rutina es tu momento de autocuidado',
-  'Cada paso cuenta en tu transformación capilar',
-  'Hoy es el día perfecto para mimar tu cabello',
-];
-
-const THUMB_GRADIENTS = [
-  ['#FFD6E0', '#FFAFC5'],
-  ['#C8F7C5', '#96E4A1'],
-  ['#C5D8FF', '#A0BEFF'],
-  ['#FFE5C5', '#FFD0A0'],
-  ['#E5C5FF', '#C8A0FF'],
-  ['#C5FFEE', '#A0FFDA'],
-];
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
-
-function getCategoryForStep(stepText) {
-  const t = stepText.toLowerCase();
-  if (t.includes('shampoo'))                                                              return 'Shampoo';
-  if (t.includes('acondicionador'))                                                       return 'Acondicionador';
-  if (t.includes('mascarilla') || t.includes('proteico') || t.includes('tratamiento'))   return 'Tratamiento';
-  if (t.includes('aceite'))                                                               return 'Aceites';
-  if (t.includes('crema') || t.includes('leave-in') || t.includes('loc') || t.includes('lco')) return 'Crema de Peinar';
-  if (t.includes('gel'))                                                                  return 'Gel';
-  if (t.includes('mousse') || t.includes('espuma'))                                      return 'Espumas';
-  return null;
-}
-
-function buildRoutineStep(s, products) {
-  const text = typeof s === 'string' ? s : s.text;
-  const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
-  const product = (typeof s === 'object' && s.product)
-    ? s.product
-    : (category ? (products.find(p => p.category === category) ?? null) : null);
-  return { text, editable: false, category, product };
-}
-
-// El ciclo se reinicia en el día 0 de cada bloque de 14 días para mantener el
-// "Lavado A" alineado, incluso si el usuario nunca abre la app justo ese día.
-function cycleIndexFor(i, planLength) {
-  return i % 14 === 0 ? 0 : i % planLength;
-}
-
-// Arma los pasos de UNA fecha a partir de un índice específico del ciclo de 7 días.
-// Usado por "cambiar de lavado" y "restablecer rutina".
-function buildDayFromCycleIndex(plan, cycleIdx, products) {
-  const dayPlan = plan[cycleIdx] || plan[0];
-  return {
-    day: (dayPlan.daySteps || []).map(s => buildRoutineStep(s, products)),
-    night: (dayPlan.nightSteps || []).map(s => buildRoutineStep(s, products)),
-  };
-}
-
-function expandPlanTo30Days(plan, products) {
-  const today = new Date();
-  const newDay = {};
-  const newNight = {};
-  const newCycleIndex = {};
-  const buildStep = (s) => buildRoutineStep(s, products);
-  for (let i = 0; i < 30; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
-    const cycleIdx = cycleIndexFor(i, plan.length);
-    const dayPlan = plan[cycleIdx];
-    newCycleIndex[dateStr] = cycleIdx;
-    newDay[dateStr] = (dayPlan.daySteps || []).map(buildStep);
-    newNight[dateStr] = (dayPlan.nightSteps || []).map(buildStep);
-  }
-  return { newDay, newNight, newCycleIndex };
-}
-
-
-// ─── sub-components ───────────────────────────────────────────────────────────
-
-function ChipGroup({ options, selected, multi = false, onSelect, color = '#BF789C' }) {
-  return (
-    <View style={styles.chipGroup}>
-      {options.map(opt => {
-        const active = multi ? selected.includes(opt) : selected === opt;
-        return (
-          <TouchableOpacity
-            key={opt}
-            style={[styles.chip, active && { backgroundColor: color, borderColor: color }]}
-            onPress={() => {
-              if (multi) onSelect(active ? selected.filter(s => s !== opt) : [...selected, opt]);
-              else onSelect(active ? '' : opt);
-            }}
-            activeOpacity={0.75}
-          >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-function YesNo({ value, onChange, color = '#BF789C' }) {
-  return (
-    <View style={styles.yesNoRow}>
-      {[true, false].map(v => (
-        <TouchableOpacity
-          key={String(v)}
-          style={[styles.yesNoBtn, value === v && { backgroundColor: color, borderColor: color }]}
-          onPress={() => onChange(value === v ? null : v)}
-          activeOpacity={0.75}
-        >
-          <Text style={[styles.yesNoBtnText, value === v && styles.yesNoBtnTextActive]}>
-            {v ? 'Sí' : 'No'}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
-
-function ProductThumb({ index, product }) {
-  const [fallback, setFallback] = useState(0);
-
-  const src = useMemo(() => {
-    if (product?.image && fallback === 0) return { uri: product.image };
-    if (!product?.asin || fallback >= 2) return null;
-    if (fallback <= 1) return { uri: `https://m.media-amazon.com/images/P/${product.asin}.01._SL500_.jpg` };
-    return { uri: `https://images-na.ssl-images-amazon.com/images/P/${product.asin}.01.LZZZZZZZ.jpg` };
-  }, [product?.image, product?.asin, fallback]);
-
-  if (!src) {
-    const colors = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length];
-    return <LinearGradient colors={colors} style={styles.productThumb} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />;
-  }
-  return (
-    <Image
-      source={src}
-      style={styles.productThumb}
-      resizeMode="cover"
-      onError={() => setFallback(f => f + 1)}
-    />
-  );
-}
-
-function RoutineItem({ item, index, isCompleted, onToggle, accentColor, onProductPress }) {
-  const raw     = typeof item === 'string' ? item : item.text;
-  const category = typeof item === 'object' ? item.category : null;
-  const colonIdx = raw.indexOf(':');
-  const label = category || (colonIdx !== -1 ? raw.slice(0, colonIdx).trim() : '');
-  const name  = colonIdx !== -1 && !category ? raw.slice(colonIdx + 1).trim() : raw;
-  const product = typeof item === 'object' ? item.product : undefined;
-
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const handleToggle = () => {
-    Animated.sequence([
-      Animated.spring(scaleAnim, { toValue: 1.5, useNativeDriver: true, friction: 3, tension: 300 }),
-      Animated.spring(scaleAnim, { toValue: 1,   useNativeDriver: true, friction: 5, tension: 200 }),
-    ]).start();
-    onToggle();
-  };
-
-  return (
-    <View style={styles.routineItem}>
-      <ProductThumb index={index} product={product} />
-      <View style={styles.routineItemContent}>
-        <Text style={styles.routineItemText}>
-          {label
-            ? <Text style={styles.routineItemLabel}>{index + 1}. {label}: </Text>
-            : <Text style={styles.routineItemLabel}>{index + 1}. </Text>}
-          {name}
-        </Text>
-        {product ? (
-          <TouchableOpacity onPress={onProductPress} activeOpacity={0.7} disabled={!onProductPress}>
-            <Text style={styles.routineItemBrand} numberOfLines={1}>
-              ✦ {product.brand} — {product.name}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-      <TouchableOpacity onPress={handleToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-          <Ionicons
-            name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
-            size={26}
-            color={isCompleted ? accentColor : '#DDD'}
-          />
-        </Animated.View>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function RoutineCard({ title, iconName, accentColor, routines, completed, onToggle, onNavigate, onProductPress, onPlusPress, onMenuPress, isSkipped }) {
-  const total     = routines.length;
-  const done      = completed.length;
-  const isAllDone = total > 0 && done === total;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const colorAnim    = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(progressAnim, {
-      toValue: total > 0 ? done / total : 0,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
-    Animated.timing(colorAnim, {
-      toValue: isAllDone ? 1 : 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [done, total, isAllDone]);
-
-  return (
-    <View style={styles.routineCard}>
-      <View style={styles.routineCardHeader}>
-        <Ionicons name={iconName} size={15} color={accentColor} style={{ marginRight: 6 }} />
-        <Text style={[styles.routineCardTitle, { color: accentColor }]}>{title}</Text>
-        <View style={{ flex: 1 }} />
-        <TouchableOpacity onPress={onMenuPress} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-          <Ionicons name="ellipsis-horizontal" size={18} color="#CCC" />
-        </TouchableOpacity>
-      </View>
-
-      {isSkipped ? (
-        <View style={styles.restDayBox}>
-          <Text style={styles.restDayEmoji}>🌙</Text>
-          <Text style={styles.restDayText}>Día de descanso</Text>
-          <Text style={styles.restDaySubtext}>Saltaste esta rutina a propósito.</Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.myRoutineRow}>
-            <Ionicons name="sparkles" size={13} color={accentColor} />
-            <Text style={[styles.myRoutineText, { color: accentColor }]}>MI RUTINA</Text>
-            {total > 0 && (
-              <Text style={[styles.progressCount, { color: accentColor }]}>{done}/{total}</Text>
-            )}
-          </View>
-
-          {total > 0 && (
-            <View style={styles.progressTrack}>
-              <Animated.View
-                style={[styles.progressFill, {
-                  width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'], extrapolate: 'clamp' }),
-                  backgroundColor: colorAnim.interpolate({ inputRange: [0, 1], outputRange: [accentColor, '#7ADA7A'] }),
-                }]}
-              />
-            </View>
-          )}
-
-          {routines.map((item, i) => {
-            const category = typeof item === 'object' ? (item.category || null) : null;
-            return (
-              <RoutineItem
-                key={i}
-                item={item}
-                index={i}
-                isCompleted={completed.includes(i)}
-                onToggle={() => onToggle(i)}
-                accentColor={accentColor}
-                onProductPress={category ? () => onProductPress(i, category) : null}
-              />
-            );
-          })}
-
-          {isAllDone && (
-            <View style={[styles.completionBanner, { borderColor: accentColor + '55' }]}>
-              <Text style={styles.completionEmoji}>🎉</Text>
-              <Text style={[styles.completionText, { color: accentColor }]}>¡Rutina completa! Sigue así</Text>
-            </View>
-          )}
-
-          <View style={[styles.addRow, { borderTopColor: accentColor + '22' }]}>
-            <TouchableOpacity style={styles.addRowLeft} onPress={onPlusPress} activeOpacity={0.75}>
-              <View style={[styles.plusBtn, { backgroundColor: accentColor + '18', borderColor: accentColor + '44' }]}>
-                <Ionicons name="add" size={18} color={accentColor} />
-              </View>
-            </TouchableOpacity>
-            <View style={{ flex: 1 }} />
-            <TouchableOpacity
-              style={[styles.squareBtn, { borderColor: accentColor + '88' }]}
-              onPress={onNavigate}
-            >
-              <Ionicons name="bag-handle-outline" size={16} color={accentColor} />
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
-    </View>
-  );
-}
 
 // ─── screen ──────────────────────────────────────────────────────────────────
-
-const DIARY_HAIR_FEEL = ['Brilloso', 'Opaco', 'Suave', 'Reseco', 'Con frizz', 'Definido', 'Esponjado', 'Normal'];
-const DIARY_HYDRATION = ['Muy hidratado', 'Hidratado', 'Normal', 'Reseco', 'Muy reseco'];
-const DIARY_SCALP     = ['Normal', 'Graso', 'Reseco', 'Con picazón'];
-
-const MONTH_NAMES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-function fmtDate(dateStr) {
-  const [, m, d] = dateStr.split('-');
-  return `${parseInt(d)} de ${MONTH_NAMES_SHORT[parseInt(m) - 1]}`;
-}
 
 export default function CalendarScreen({ route, navigation }) {
   const { user } = useAuth();
@@ -375,6 +74,8 @@ export default function CalendarScreen({ route, navigation }) {
   const [routinePlanByTier, setRoutinePlanByTier] = useState(null);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [hairProfile, setHairProfile] = useState(null);
+  const [storeId, setStoreId] = useState(null);
+  const [storeProductDB, setStoreProductDB] = useState(null);
   const [skippedDates, setSkippedDates] = useState({});
   const [cycleIndexByDate, setCycleIndexByDate] = useState({});
   const [defaultCycleIndexByDate, setDefaultCycleIndexByDate] = useState({});
@@ -468,6 +169,11 @@ export default function CalendarScreen({ route, navigation }) {
           try { setHairProfile(JSON.parse(profileForScoringRaw)); } catch {}
         }
 
+        const storeIdRaw = await AsyncStorage.getItem('@mybeauty-calendar:selectedStoreId');
+        if (storeIdRaw) {
+          try { setStoreId(JSON.parse(storeIdRaw)); } catch {}
+        }
+
         const [skippedRaw, cycleIdxRaw, defaultCycleIdxRaw] = await Promise.all([
           AsyncStorage.getItem('@mybeauty-calendar:skippedDates'),
           AsyncStorage.getItem('@mybeauty-calendar:cycleIndexByDate'),
@@ -518,6 +224,15 @@ export default function CalendarScreen({ route, navigation }) {
       .then(ctx => { if (ctx) setWeather(ctx); })
       .catch(() => {});
   }, []);
+
+  // ── Catálogo de la tienda elegida en el diagnóstico (para el selector de
+  // "cambiar producto"; genérico si storeId es null) ─────────────────────────
+  useEffect(() => {
+    if (!storeId) { setStoreProductDB(null); return; }
+    fetchStoreProductDB(storeId)
+      .then(setStoreProductDB)
+      .catch(() => setStoreProductDB(null));
+  }, [storeId]);
 
   // ── Guarda en AsyncStorage cada vez que cambia el estado ────────────────────
   useEffect(() => {
@@ -645,6 +360,12 @@ export default function CalendarScreen({ route, navigation }) {
   const dayCompleted  = dayDone[selectedDate]      || [];
   const nightCompleted= nightDone[selectedDate]    || [];
 
+  // Alternativas de "cambiar producto": catálogo de la tienda si tiene algo en
+  // esta categoría, si no cae a Amazon — misma regla que usa el diagnóstico.
+  const productModalCategoryKey = CATEGORY_KEY[productModal.category] || productModal.category;
+  const productModalStoreItems = storeProductDB?.[productModalCategoryKey] || [];
+  const productModalSource = productModalStoreItems.length > 0 ? productModalStoreItems : PRODUCTS;
+
   const dateObj = new Date(selectedDate + 'T12:00:00');
   const tipText = TIPS[dateObj.getDate() % TIPS.length];
   const motText = MOTIVATIONS[dateObj.getDay() % MOTIVATIONS.length];
@@ -703,6 +424,10 @@ export default function CalendarScreen({ route, navigation }) {
         setBudgetTier(route.params.defaultTier);
         AsyncStorage.setItem('@mybeauty-calendar:budgetTier', route.params.defaultTier).catch(() => {});
       }
+      if ('storeId' in route.params) {
+        setStoreId(route.params.storeId);
+        AsyncStorage.setItem('@mybeauty-calendar:selectedStoreId', JSON.stringify(route.params.storeId)).catch(() => {});
+      }
     };
 
     init();
@@ -757,42 +482,6 @@ export default function CalendarScreen({ route, navigation }) {
     checkRefresh().catch(() => {});
   }, []));
 
-
-  const buildMarkedDates = () => {
-    const out = {};
-    const allDates = new Set([...Object.keys(dayByDate), ...Object.keys(nightByDate)]);
-    allDates.forEach(d => {
-      if (dayByDate[d]?.length || nightByDate[d]?.length) out[d] = true;
-    });
-    return out;
-  };
-
-  const buildCompletedDates = () => {
-    const out = {};
-    const allDates = new Set([...Object.keys(dayDone), ...Object.keys(nightDone)]);
-    allDates.forEach(d => {
-      if (dayDone[d]?.length > 0 || nightDone[d]?.length > 0) out[d] = true;
-    });
-    return out;
-  };
-
-  const calcStreak = () => {
-    const today = new Date().toISOString().split('T')[0];
-    let streak = 0;
-    const todayActive = (dayDone[today]?.length > 0) || (nightDone[today]?.length > 0) || skippedDates[today];
-    if (todayActive) streak++;
-    const base = new Date();
-    for (let i = 1; i < 365; i++) {
-      const d = new Date(base);
-      d.setDate(base.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const active = (dayDone[dateStr]?.length > 0) || (nightDone[dateStr]?.length > 0) || skippedDates[dateStr];
-      if (active) streak++;
-      else break;
-    }
-    return streak;
-  };
-
   const toggle = (doneState, setter, date, index) => {
     const cur = doneState[date] || [];
     const isCompleting = !cur.includes(index);
@@ -812,13 +501,43 @@ export default function CalendarScreen({ route, navigation }) {
     setProductModal({ visible: true, dateStr: selectedDate, stepIndex, category, isNight });
 
   const selectProduct = (product) => {
-    const { dateStr, stepIndex, isNight } = productModal;
+    const { dateStr, stepIndex, isNight, category } = productModal;
+    const cycleIdx = cycleIndexByDate[dateStr];
     const setter = isNight ? setNightByDate : setDayByDate;
+
     setter(prev => {
-      const steps = [...(prev[dateStr] || [])];
-      steps[stepIndex] = { ...steps[stepIndex], product };
-      return { ...prev, [dateStr]: steps };
+      const next = { ...prev };
+      Object.keys(next).forEach(d => {
+        // Sin ciclo conocido para esta fecha: solo tocamos la fecha editada.
+        if (cycleIdx == null ? d !== dateStr : cycleIndexByDate[d] !== cycleIdx) return;
+        const steps = next[d];
+        if (!steps?.[stepIndex] || steps[stepIndex].category !== category) return;
+        next[d] = steps.map((s, i) => (i === stepIndex ? { ...s, product } : s));
+      });
+      return next;
     });
+
+    // Persistimos el producto también en la plantilla del ciclo, para que se
+    // mantenga elegido en regeneraciones futuras (cambio de presupuesto, etc.)
+    if (cycleIdx != null) {
+      setRoutinePlanByTier(prev => {
+        if (!prev?.[budgetTier]?.[cycleIdx]) return prev;
+        const key = isNight ? 'nightSteps' : 'daySteps';
+        const tierPlan = prev[budgetTier].map((dayPlan, idx) => {
+          if (idx !== cycleIdx) return dayPlan;
+          const steps = dayPlan[key] || [];
+          if (!steps[stepIndex]) return dayPlan;
+          const newSteps = steps.map((s, i) =>
+            i === stepIndex && typeof s === 'object' ? { ...s, product } : s
+          );
+          return { ...dayPlan, [key]: newSteps };
+        });
+        const updated = { ...prev, [budgetTier]: tierPlan };
+        AsyncStorage.setItem('@mybeauty-calendar:diagnosisRoutinePlanByTier', JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
+    }
+
     setProductModal(p => ({ ...p, visible: false }));
   };
 
@@ -915,9 +634,9 @@ export default function CalendarScreen({ route, navigation }) {
           <BeautyCalendarHeader
             selectedDate={selectedDate}
             onDatePress={handleDatePress}
-            markedDates={buildMarkedDates()}
-            completedDates={buildCompletedDates()}
-            streak={calcStreak()}
+            markedDates={buildMarkedDates(dayByDate, nightByDate)}
+            completedDates={buildCompletedDates(dayDone, nightDone)}
+            streak={calcStreak(dayDone, nightDone, skippedDates)}
             points={points}
             expanded={calendarExpanded}
             onGridPress={() => setCalendarExpanded(e => !e)}
@@ -969,6 +688,9 @@ export default function CalendarScreen({ route, navigation }) {
               onPress={() => setTipLiked(v => !v)}
               activeOpacity={0.7}
               style={styles.tipLike}
+              accessibilityRole="button"
+              accessibilityLabel="Me gusta este tip"
+              accessibilityState={{ selected: tipLiked }}
             >
               <Ionicons
                 name={tipLiked ? 'heart' : 'heart-outline'}
@@ -1033,13 +755,18 @@ export default function CalendarScreen({ route, navigation }) {
               <View style={styles.modalHandle} />
               <Text style={styles.modalTitle}>Elige un producto</Text>
               <Text style={styles.modalCategory}>{productModal.category}</Text>
-              {hairProfile && (
-                <Text style={styles.modalHint}>Alternativas que también funcionan para tu diagnóstico</Text>
-              )}
+              <Text style={styles.modalHint}>
+                {hairProfile
+                  ? 'Alternativas que también funcionan para tu diagnóstico. Se aplica cada vez que toque este paso en tu ciclo.'
+                  : 'Se aplica cada vez que toque este paso en tu ciclo.'}
+              </Text>
               <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
-                {getMatchingProducts(PRODUCTS, productModal.category, hairProfile)
+                {getMatchingProducts(productModalSource, productModal.category, hairProfile)
                   .map(product => {
-                    const current = (dayByDate[productModal.dateStr] || nightByDate[productModal.dateStr] || [])[productModal.stepIndex]?.product;
+                    const currentSteps = productModal.isNight
+                      ? nightByDate[productModal.dateStr]
+                      : dayByDate[productModal.dateStr];
+                    const current = currentSteps?.[productModal.stepIndex]?.product;
                     const isCurrent = current?.id === product.id;
                     return (
                       <TouchableOpacity
@@ -1080,7 +807,12 @@ export default function CalendarScreen({ route, navigation }) {
                   <Ionicons name="bar-chart-outline" size={13} color="#BF789C" />
                   <Text style={styles.streakPointsText}>{points}</Text>
                 </View>
-                <TouchableOpacity onPress={() => setStreakModal(false)} activeOpacity={0.7}>
+                <TouchableOpacity
+                  onPress={() => setStreakModal(false)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar"
+                >
                   <Ionicons name="close" size={22} color="#999" />
                 </TouchableOpacity>
               </View>
@@ -1088,9 +820,9 @@ export default function CalendarScreen({ route, navigation }) {
               {/* Número de racha */}
               <View style={styles.streakCenter}>
                 <Text style={styles.streakBigIcon}>⚡</Text>
-                <Text style={styles.streakBigNumber}>{calcStreak()}</Text>
+                <Text style={styles.streakBigNumber}>{calcStreak(dayDone, nightDone, skippedDates)}</Text>
                 <Text style={styles.streakLabel}>
-                  {calcStreak() === 1 ? 'DÍA CONSECUTIVO' : 'DÍAS CONSECUTIVOS'}
+                  {calcStreak(dayDone, nightDone, skippedDates) === 1 ? 'DÍA CONSECUTIVO' : 'DÍAS CONSECUTIVOS'}
                 </Text>
               </View>
 
@@ -1098,7 +830,7 @@ export default function CalendarScreen({ route, navigation }) {
               <Text style={styles.streakSectionTitle}>DÍAS CONSECUTIVOS</Text>
               <View style={styles.streakCardsRow}>
                 <View style={styles.streakCard}>
-                  <Text style={styles.streakCardNumber}>{calcStreak()}</Text>
+                  <Text style={styles.streakCardNumber}>{calcStreak(dayDone, nightDone, skippedDates)}</Text>
                   <Text style={styles.streakCardLabel}>de rutina</Text>
                 </View>
                 <View style={styles.streakCard}>
@@ -1146,7 +878,12 @@ export default function CalendarScreen({ route, navigation }) {
             <View style={styles.budgetModalBox}>
               <View style={styles.streakModalHeader}>
                 <Text style={styles.budgetModalTitle}>Elige tu presupuesto</Text>
-                <TouchableOpacity onPress={() => setBudgetModalVisible(false)} activeOpacity={0.7}>
+                <TouchableOpacity
+                  onPress={() => setBudgetModalVisible(false)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar"
+                >
                   <Ionicons name="close" size={22} color="#999" />
                 </TouchableOpacity>
               </View>
@@ -1220,7 +957,12 @@ export default function CalendarScreen({ route, navigation }) {
             <View style={styles.budgetModalBox}>
               <View style={styles.streakModalHeader}>
                 <Text style={styles.budgetModalTitle}>Cambiar a otro lavado</Text>
-                <TouchableOpacity onPress={() => setWashPickerVisible(false)} activeOpacity={0.7}>
+                <TouchableOpacity
+                  onPress={() => setWashPickerVisible(false)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar"
+                >
                   <Ionicons name="close" size={22} color="#999" />
                 </TouchableOpacity>
               </View>
@@ -1255,7 +997,12 @@ export default function CalendarScreen({ route, navigation }) {
                 <Text style={styles.budgetModalTitle}>
                   Eliminar un paso · {stepRemoveModal.isNight ? 'Noche' : 'Día'}
                 </Text>
-                <TouchableOpacity onPress={() => setStepRemoveModal(m => ({ ...m, visible: false }))} activeOpacity={0.7}>
+                <TouchableOpacity
+                  onPress={() => setStepRemoveModal(m => ({ ...m, visible: false }))}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar"
+                >
                   <Ionicons name="close" size={22} color="#999" />
                 </TouchableOpacity>
               </View>
@@ -1268,6 +1015,8 @@ export default function CalendarScreen({ route, navigation }) {
                     <TouchableOpacity
                       onPress={() => removeRoutineStep(stepRemoveModal.isNight, i)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Eliminar paso"
                     >
                       <Ionicons name="trash-outline" size={18} color="#E8789A" />
                     </TouchableOpacity>
@@ -1375,7 +1124,12 @@ export default function CalendarScreen({ route, navigation }) {
                 <View style={styles.diaryHeader}>
                   <Text style={styles.diaryTitle}>Diario del cabello</Text>
                   <Text style={styles.diaryDate}>{fmtDate(selectedDate)}</Text>
-                  <TouchableOpacity onPress={() => setDiaryModal(false)} style={styles.diaryClose}>
+                  <TouchableOpacity
+                    onPress={() => setDiaryModal(false)}
+                    style={styles.diaryClose}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cerrar diario"
+                  >
                     <Ionicons name="close" size={20} color="#999" />
                   </TouchableOpacity>
                 </View>
@@ -1431,6 +1185,9 @@ export default function CalendarScreen({ route, navigation }) {
                       onPress={handleDiaryPhoto}
                       disabled={diaryPhotoUploading}
                       activeOpacity={0.75}
+                      accessibilityRole="button"
+                      accessibilityLabel="Agregar foto"
+                      accessibilityState={{ disabled: diaryPhotoUploading }}
                     >
                       {diaryPhotoUploading
                         ? <ActivityIndicator size="small" color="#BF789C" />
@@ -1486,799 +1243,3 @@ export default function CalendarScreen({ route, navigation }) {
   );
 }
 
-// ─── styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#FDF5F8',
-  },
-  headerWrap: {},
-
-  // streak + points
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginTop: 10,
-    marginBottom: 2,
-  },
-  statPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 6,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statEmoji: {
-    fontSize: 15,
-  },
-  statText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#C47898',
-  },
-
-  // date + motivation
-  dateLabel: {
-    marginTop: 14,
-    textAlign: 'center',
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#C47898',
-    textTransform: 'capitalize',
-  },
-  motivRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 18,
-    marginTop: 10,
-    marginBottom: 16,
-    gap: 8,
-  },
-  sparkle: {
-    color: '#7B61FF',
-    fontSize: 15,
-  },
-  motivText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-  },
-  playBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#FDEAF2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // weather banner
-  weatherCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: '#FFF5C2',
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  weatherIcon: {
-    fontSize: 26,
-  },
-  weatherCity: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8A6B00',
-    marginBottom: 3,
-  },
-  weatherTip: {
-    fontSize: 13,
-    color: '#6B5200',
-    fontWeight: '500',
-    lineHeight: 18,
-  },
-
-  // tip card
-  tipCard: {
-    marginHorizontal: 16,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  tipCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  tipLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#E8789A',
-    letterSpacing: 0.8,
-  },
-  tipLike: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  tipLikeNum: {
-    fontSize: 12,
-    color: '#BBB',
-    fontWeight: '500',
-  },
-  tipText: {
-    fontSize: 15,
-    color: '#555',
-    lineHeight: 22,
-  },
-
-  // routine card
-  routineCard: {
-    marginHorizontal: 16,
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 18,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  restDayBox: {
-    alignItems: 'center',
-    paddingVertical: 28,
-  },
-  restDayEmoji: {
-    fontSize: 30,
-    marginBottom: 8,
-  },
-  restDayText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#3A2E35',
-    marginBottom: 4,
-  },
-  restDaySubtext: {
-    fontSize: 13,
-    color: '#999',
-    textAlign: 'center',
-  },
-  actionSheetBox: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    marginHorizontal: 32,
-    paddingVertical: 8,
-    shadowColor: '#BF789C',
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
-  },
-  actionSheetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-  },
-  actionSheetText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#3A2E35',
-  },
-  routineCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  routineCardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  progressCount: {
-    marginLeft: 'auto',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  progressTrack: {
-    height: 5,
-    backgroundColor: '#F3ECF0',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  progressFill: {
-    height: 5,
-    borderRadius: 3,
-  },
-  completionBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F6FFF6',
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  completionEmoji: {
-    fontSize: 18,
-  },
-  completionText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  myRoutineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 14,
-  },
-  myRoutineText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-  },
-
-  // routine item
-  routineItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-    gap: 12,
-  },
-  productThumb: {
-    width: 44,
-    height: 56,
-    borderRadius: 10,
-  },
-  routineItemContent: {
-    flex: 1,
-  },
-  routineItemText: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 21,
-  },
-  routineItemLabel: {
-    fontWeight: '700',
-  },
-  routineItemBrand: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    marginTop: 2,
-  },
-  addRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  addRowText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  squareBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // product selector modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 36,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E0E0E0',
-    alignSelf: 'center',
-    marginBottom: 18,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#2D2D2D',
-    marginBottom: 4,
-  },
-  modalHint: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 12,
-  },
-  modalCategory: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#D6A4A4',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 6,
-  },
-  modalProductRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F0F3',
-  },
-  modalProductRowActive: {
-    backgroundColor: '#FDF0F5',
-    borderRadius: 12,
-  },
-  modalProductBrand: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#D6A4A4',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  modalProductName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  modalCancel: {
-    marginTop: 18,
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: '#F7F0F4',
-  },
-  modalCancelText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#BF789C',
-  },
-
-  centerBtn: {
-    alignSelf: 'center',
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 14,
-  },
-
-  // + button
-  plusBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // add step modal
-  stepInput: {
-    backgroundColor: '#FBF5F8',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#333',
-    borderWidth: 1.5,
-    borderColor: '#F0E0E8',
-  },
-  stepSaveBtn: {
-    marginTop: 18,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  stepSaveBtnGradient: {
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  stepSaveBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-
-  // diary modal
-  diarySheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    width: '100%',
-    maxHeight: '90%',
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 36,
-  },
-  diaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 8,
-  },
-  diaryTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#2D2D2D',
-    flex: 1,
-  },
-  diaryDate: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#D6A4A4',
-  },
-  diaryClose: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F5F0F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  diaryScroll: {
-    paddingBottom: 16,
-  },
-  diaryQuestion: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#555',
-    marginBottom: 10,
-    letterSpacing: 0.2,
-  },
-  diaryDivider: {
-    height: 1,
-    backgroundColor: '#F5E8EC',
-    marginVertical: 18,
-  },
-  diaryYesNoRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  diaryNoteInput: {
-    backgroundColor: '#FBF5F8',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#333',
-    borderWidth: 1.5,
-    borderColor: '#F0E0E8',
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-
-  // diary photos
-  diaryPhotosRow: {
-    gap: 10,
-    paddingBottom: 4,
-  },
-  diaryPhotoThumb: {
-    width: 80,
-    height: 100,
-    borderRadius: 12,
-    backgroundColor: '#F5E8EC',
-  },
-  diaryPhotoAdd: {
-    width: 80,
-    height: 100,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E8D0D8',
-    borderStyle: 'dashed',
-    backgroundColor: '#FDF5F8',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // chips
-  chipGroup: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    borderRadius: 99,
-    borderWidth: 1.5,
-    borderColor: '#E8D0D8',
-    backgroundColor: '#FDF5F8',
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#999',
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-
-  // yes/no
-  yesNoRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  yesNoBtn: {
-    flex: 1,
-    paddingVertical: 9,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E8D0D8',
-    backgroundColor: '#FDF5F8',
-    alignItems: 'center',
-  },
-  yesNoBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#999',
-  },
-  yesNoBtnTextActive: {
-    color: '#fff',
-  },
-
-  // picker modal (selector agregar)
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  pickerSheet: {
-    backgroundColor: '#FDF5F8',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    width: '100%',
-    shadowColor: '#BF789C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  pickerTitleBar: {
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 18,
-    marginBottom: 16,
-  },
-  pickerTitleText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 15,
-    letterSpacing: 0.3,
-  },
-  pickerOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    gap: 14,
-  },
-  pickerOptionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    backgroundColor: '#FDEAF2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pickerOptionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2D2D2D',
-    marginBottom: 2,
-  },
-  pickerOptionSub: {
-    fontSize: 12,
-    color: '#AAA',
-    fontWeight: '500',
-  },
-  pickerDivider: {
-    height: 1,
-    backgroundColor: '#F0E0E8',
-    marginVertical: 2,
-  },
-
-  // streak modal
-  budgetPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    backgroundColor: '#FDF0F5',
-    borderWidth: 1,
-    borderColor: '#F0D5E2',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    marginTop: 16,
-    marginHorizontal: 20,
-  },
-  budgetPillEmoji: { fontSize: 14 },
-  budgetPillText: { fontSize: 13, fontWeight: '600', color: '#BF789C' },
-  budgetModalBox: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    width: '100%',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
-    shadowColor: '#BF789C',
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 10,
-  },
-  budgetModalTitle: { fontSize: 17, fontWeight: '700', color: '#3A2E35' },
-  budgetOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#F0E0E8',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  budgetOptionActive: {
-    borderColor: '#BF789C',
-    backgroundColor: '#FDF0F5',
-  },
-  budgetOptionEmoji: { fontSize: 22 },
-  budgetOptionLabel: { fontSize: 15, fontWeight: '600', color: '#3A2E35' },
-  budgetOptionHint: { fontSize: 12, color: '#BF789C', marginTop: 2 },
-  streakModalBox: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    width: '100%',
-    height: '82%',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 48,
-    shadowColor: '#BF789C',
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 10,
-  },
-  streakModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  streakPointsPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FDF0F5',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  streakPointsText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#BF789C',
-  },
-  streakCenter: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  streakBigIcon: {
-    fontSize: 36,
-    marginBottom: 4,
-  },
-  streakBigNumber: {
-    fontSize: 64,
-    fontWeight: '800',
-    color: '#2D2D2D',
-    lineHeight: 72,
-  },
-  streakLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#CCC',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginTop: 4,
-  },
-  streakSectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#D6A4A4',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  streakCardsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  streakCard: {
-    flex: 1,
-    backgroundColor: '#FDF5F8',
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  streakCardNumber: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#2D2D2D',
-  },
-  streakCardLabel: {
-    fontSize: 12,
-    color: '#AAA',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  streakStatsList: {
-    backgroundColor: '#FDF5F8',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-  },
-  streakStatRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5EBF0',
-  },
-  streakStatLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  streakStatValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#BF789C',
-  },
-});

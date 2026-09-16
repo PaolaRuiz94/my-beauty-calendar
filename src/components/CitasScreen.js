@@ -42,7 +42,13 @@ function CitaCard({ cita, onCancelar }) {
         <View style={styles.cardTop}>
           <Text style={styles.cardNombre} numberOfLines={1}>{cita.peluqueriaNombre}</Text>
           {!esPasada && !esCancelada && onCancelar && (
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => onCancelar(cita.id)} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => onCancelar(cita.id)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar cita"
+            >
               <Ionicons name="close" size={13} color="#BBB" />
             </TouchableOpacity>
           )}

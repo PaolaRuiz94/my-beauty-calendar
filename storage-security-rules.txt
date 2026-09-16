@@ -1,0 +1,23 @@
+// Copia esto en Firebase Console > Storage > Rules
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Fotos de progreso: cada usuario solo accede a su propia carpeta
+    match /progress_photos/{userId}/{fileName} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Fotos del foro: cualquier usuaria logueada las puede ver (se muestran en el
+    // feed público), pero solo la dueña puede subir a su propia carpeta.
+    match /forum_posts/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Cualquier otra ruta: bloqueada por defecto
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

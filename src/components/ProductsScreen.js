@@ -105,6 +105,9 @@ function ProductCard({ product, onBuy, onAddToCart, inCart }) {
           onPress={onAddToCart}
           activeOpacity={0.85}
           style={[styles.cartIconBtn, inCart && styles.cartIconBtnActive]}
+          accessibilityRole="button"
+          accessibilityLabel="Agregar al carrito"
+          accessibilityState={{ selected: inCart }}
         >
           <Ionicons
             name={inCart ? 'bag-check' : 'bag-add-outline'}
@@ -338,6 +341,8 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
                 onPress={() => navigation.goBack()}
                 style={styles.headerBtn}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Volver"
               >
                 <Ionicons name="chevron-back" size={22} color="#fff" />
               </TouchableOpacity>
@@ -355,6 +360,8 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
               style={styles.cartHeaderBtn}
               onPress={() => navigation.navigate('Cart')}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Ver carrito"
             >
               <Ionicons name="bag-outline" size={20} color="#fff" />
               {cart.length > 0 && (
@@ -379,7 +386,12 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
               cursorColor="#fff"
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")} activeOpacity={0.7}>
+              <TouchableOpacity
+                onPress={() => setSearchQuery("")}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Borrar búsqueda"
+              >
                 <Ionicons name="close-circle" size={17} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
             )}

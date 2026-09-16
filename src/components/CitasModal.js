@@ -41,7 +41,13 @@ function CitaCard({ cita, onCancelar }) {
         <View style={styles.cardTopRow}>
           <Text style={styles.cardNombre} numberOfLines={1}>{cita.peluqueriaNombre}</Text>
           {!esPasada && !esCancelada && onCancelar && (
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => onCancelar(cita.id)} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => onCancelar(cita.id)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar cita"
+            >
               <Ionicons name="close" size={13} color="#BBB" />
             </TouchableOpacity>
           )}
@@ -108,12 +114,24 @@ export default function CitasModal({ visible, onClose, userId }) {
       onShow={onShow}
     >
       <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} onPress={onClose} activeOpacity={1} />
+        <TouchableOpacity
+          style={styles.backdrop}
+          onPress={onClose}
+          activeOpacity={1}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar"
+        />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Mis Citas</Text>
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={onClose}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+            >
               <Ionicons name="close" size={18} color="#BF789C" />
             </TouchableOpacity>
           </View>

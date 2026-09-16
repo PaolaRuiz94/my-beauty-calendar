@@ -75,6 +75,8 @@ export default function CartScreen({ navigation }) {
             onPress={() => navigation.goBack()}
             style={styles.headerBtn}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
           >
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </TouchableOpacity>
@@ -158,6 +160,8 @@ export default function CartScreen({ navigation }) {
                     style={styles.removeBtn}
                     activeOpacity={0.7}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Eliminar producto del carrito"
                   >
                     <Ionicons name="trash-outline" size={18} color="#D6A4A4" />
                   </TouchableOpacity>

@@ -13,6 +13,8 @@ import {
   Modal,
   ActivityIndicator,
   Dimensions,
+  Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,9 +22,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
 import {
-  subscribeToPosts, subscribeToComments, toggleLike, addComment, addUserPost,
+  subscribeToPosts, fetchMorePosts, subscribeToComments, toggleLike, addComment, addUserPost,
+  deletePost, deleteComment, uploadPostImage,
 } from '../firebase/posts';
+import { reportContent } from '../firebase/reports';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 
 import rizadasImage from '../../assets/rizadas.png';
 import lisasImage from '../../assets/lisas.png';
@@ -142,9 +147,9 @@ function validLikes(arr) {
   return Array.isArray(arr) ? arr.filter((l) => typeof l === 'string' && l.includes('@')) : [];
 }
 
-function PostCard({ post, userEmail, onPress, onLike }) {
+function PostCard({ post, userId, onPress, onLike }) {
   const likes = validLikes(post.likesUsuarios);
-  const liked = likes.includes(userEmail);
+  const liked = likes.includes(userId);
   const likesCount = likes.length;
 
   return (
@@ -167,7 +172,14 @@ function PostCard({ post, userEmail, onPress, onLike }) {
           <Text style={styles.forumCardTitle}>{post.texto}</Text>
 
           <View style={styles.forumCardActions}>
-            <TouchableOpacity style={styles.forumCardAction} onPress={onLike} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.forumCardAction}
+              onPress={onLike}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Me gusta"
+              accessibilityState={{ selected: liked }}
+            >
               <Ionicons
                 name={liked ? 'heart' : 'heart-outline'}
                 size={20}
@@ -176,7 +188,13 @@ function PostCard({ post, userEmail, onPress, onLike }) {
               <Text style={styles.forumCardActionText}>{likesCount}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.forumCardAction} onPress={onPress} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.forumCardAction}
+              onPress={onPress}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Ver comentarios"
+            >
               <Ionicons name="chatbubble-outline" size={18} color="rgba(255,255,255,0.85)" />
               <Text style={styles.forumCardActionText}>{post.commentsCount ?? 0}</Text>
             </TouchableOpacity>
@@ -189,7 +207,7 @@ function PostCard({ post, userEmail, onPress, onLike }) {
 
 // ── CommentItem ───────────────────────────────────────────────────────────────
 
-function CommentItem({ comment }) {
+function CommentItem({ comment, isOwn, onDelete, onReport }) {
   return (
     <View style={styles.commentRow}>
       <View style={styles.commentAvatar}>
@@ -199,15 +217,36 @@ function CommentItem({ comment }) {
         <Text style={styles.commentAuthorForo}>{comment.autor}</Text>
         <Text style={styles.commentTextForo}>{comment.texto}</Text>
       </View>
+      {isOwn ? (
+        <TouchableOpacity
+          onPress={onDelete}
+          style={{ alignSelf: 'center' }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Eliminar comentario"
+        >
+          <Ionicons name="trash-outline" size={16} color="#C0A0A8" />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          onPress={onReport}
+          style={{ alignSelf: 'center' }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Reportar comentario"
+        >
+          <Ionicons name="flag-outline" size={16} color="#C0A0A8" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 // ── QuestionCard ──────────────────────────────────────────────────────────────
 
-function QuestionCard({ post, userEmail, onPress, onLike }) {
+function QuestionCard({ post, userId, onPress, onLike }) {
   const likes = validLikes(post.likesUsuarios);
-  const liked = likes.includes(userEmail);
+  const liked = likes.includes(userId);
   return (
     <TouchableOpacity style={styles.questionCard} onPress={onPress} activeOpacity={0.88}>
       <View style={styles.questionHeader}>
@@ -218,11 +257,24 @@ function QuestionCard({ post, userEmail, onPress, onLike }) {
       </View>
       <Text style={styles.questionText}>{post.texto}</Text>
       <View style={styles.questionFooter}>
-        <TouchableOpacity style={styles.questionAction} onPress={onLike} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.questionAction}
+          onPress={onLike}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Me gusta"
+          accessibilityState={{ selected: liked }}
+        >
           <Ionicons name={liked ? 'heart' : 'heart-outline'} size={16} color={liked ? '#FF6B8A' : '#CCC'} />
           <Text style={[styles.questionActionText, liked && { color: '#FF6B8A' }]}>{likes.length}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.questionAction} onPress={onPress} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.questionAction}
+          onPress={onPress}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Ver comentarios"
+        >
           <Ionicons name="chatbubble-outline" size={15} color="#CCC" />
           <Text style={styles.questionActionText}>{post.commentsCount ?? 0}</Text>
         </TouchableOpacity>
@@ -263,22 +315,56 @@ export default function CommunityScreen({ navigation }) {
   // ── Foro state (Firestore) ──────────────────────────────────────────────────
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+  const lastPostDocRef = useRef(null);
+  const olderPostsLoadedRef = useRef(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [sending, setSending] = useState(false);
   const [createVisible, setCreateVisible] = useState(false);
   const [newPostText, setNewPostText] = useState('');
+  const [postImage, setPostImage] = useState(null);
   const [publishing, setPublishing] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    const unsub = subscribeToPosts((data) => {
-      setPosts(data);
+    const unsub = subscribeToPosts((livePage, lastDoc, more) => {
+      setPosts(prev => {
+        if (!olderPostsLoadedRef.current) {
+          lastPostDocRef.current = lastDoc;
+          setHasMorePosts(more);
+          return livePage;
+        }
+        // Ya se cargaron páginas siguientes: solo refrescamos la ventana en vivo
+        // (likes, nuevos posts), sin perder lo que ya se cargó más abajo.
+        const liveIds = new Set(livePage.map(p => p.id));
+        return [...livePage, ...prev.filter(p => !liveIds.has(p.id))];
+      });
       setPostsLoading(false);
     });
     return unsub;
   }, []);
+
+  const handleLoadMorePosts = async () => {
+    if (!hasMorePosts || loadingMorePosts || !lastPostDocRef.current) return;
+    setLoadingMorePosts(true);
+    try {
+      const { posts: more, lastDoc, hasMore } = await fetchMorePosts(lastPostDocRef.current);
+      setPosts(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        return [...prev, ...more.filter(p => !existingIds.has(p.id))];
+      });
+      lastPostDocRef.current = lastDoc;
+      setHasMorePosts(hasMore);
+      olderPostsLoadedRef.current = true;
+    } catch {
+      // onEndReached puede disparar varias veces; un fallo puntual no amerita alertar
+    } finally {
+      setLoadingMorePosts(false);
+    }
+  };
 
   useEffect(() => {
     if (!selectedPost) { setComments([]); return; }
@@ -294,16 +380,60 @@ export default function CommunityScreen({ navigation }) {
 
   const handleLike = async (post) => {
     if (!user) return;
-    const liked = post.likesUsuarios?.includes(user.email);
-    await toggleLike(post.id, user.email, liked);
+    const liked = post.likesUsuarios?.includes(user.uid);
+    try {
+      await toggleLike(post.id, user.uid, liked);
+    } catch {
+      Alert.alert('Error', 'No se pudo registrar el like.');
+    }
   };
 
   const handleSendComment = async () => {
     if (!commentText.trim() || !user || !selectedPost || sending) return;
     setSending(true);
-    await addComment(selectedPost.id, commentText, user.name);
-    setCommentText('');
-    setSending(false);
+    try {
+      await addComment(selectedPost.id, commentText, user.displayName, user.uid);
+      setCommentText('');
+    } catch {
+      Alert.alert('Error', 'No se pudo enviar el comentario.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleDeletePost = (post) => {
+    Alert.alert('Eliminar publicación', '¿Seguro que quieres eliminar esta publicación? No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deletePost(post.id);
+            closeDetail();
+          } catch {
+            Alert.alert('Error', 'No se pudo eliminar la publicación.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteComment = (commentId) => {
+    Alert.alert('Eliminar comentario', '¿Seguro que quieres eliminar este comentario?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteComment(selectedPost.id, commentId);
+          } catch {
+            Alert.alert('Error', 'No se pudo eliminar el comentario.');
+          }
+        },
+      },
+    ]);
   };
 
   const closeDetail = () => {
@@ -312,13 +442,61 @@ export default function CommunityScreen({ navigation }) {
     setCommentText('');
   };
 
+  const submitReport = async (targetType, postId, commentId, reason) => {
+    if (!user) return;
+    try {
+      await reportContent({ targetType, postId, commentId, reason, reporterId: user.uid });
+      Alert.alert('Gracias', 'Vamos a revisar este contenido.');
+    } catch {
+      Alert.alert('Error', 'No se pudo enviar el reporte.');
+    }
+  };
+
+  const handleReportPost = (post) => {
+    Alert.alert('Reportar publicación', '¿Por qué querés reportarla?', [
+      { text: 'Spam', onPress: () => submitReport('post', post.id, null, 'spam') },
+      { text: 'Contenido inapropiado', onPress: () => submitReport('post', post.id, null, 'inapropiado') },
+      { text: 'Otro', onPress: () => submitReport('post', post.id, null, 'otro') },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+
+  const handleReportComment = (comment) => {
+    if (!selectedPost) return;
+    Alert.alert('Reportar comentario', '¿Por qué querés reportarlo?', [
+      { text: 'Spam', onPress: () => submitReport('comment', selectedPost.id, comment.id, 'spam') },
+      { text: 'Contenido inapropiado', onPress: () => submitReport('comment', selectedPost.id, comment.id, 'inapropiado') },
+      { text: 'Otro', onPress: () => submitReport('comment', selectedPost.id, comment.id, 'otro') },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+
+  const handlePickPostImage = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.75,
+    });
+    if (!result.canceled) setPostImage(result.assets[0].uri);
+  };
+
   const handleCreatePost = async () => {
     if (!newPostText.trim() || !user || publishing) return;
     setPublishing(true);
-    await addUserPost(newPostText, user.name);
-    setNewPostText('');
-    setPublishing(false);
-    setCreateVisible(false);
+    try {
+      const imageUrl = postImage ? await uploadPostImage(user.uid, postImage) : null;
+      await addUserPost(newPostText, user.displayName, user.uid, imageUrl);
+      setNewPostText('');
+      setPostImage(null);
+      setCreateVisible(false);
+    } catch {
+      Alert.alert('Error', 'No se pudo publicar. Intenta de nuevo.');
+    } finally {
+      setPublishing(false);
+    }
   };
 
   // ── Tips search ─────────────────────────────────────────────────────────────
@@ -365,7 +543,12 @@ export default function CommunityScreen({ navigation }) {
           returnKeyType="search"
         />
         {isSearching && (
-          <TouchableOpacity onPress={() => setTipsSearch('')} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={() => setTipsSearch('')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Borrar búsqueda"
+          >
             <Ionicons name="close-circle" size={17} color="#CCC" />
           </TouchableOpacity>
         )}
@@ -497,24 +680,31 @@ export default function CommunityScreen({ navigation }) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.forumList, { paddingBottom: insets.bottom + 100 }]}
           showsVerticalScrollIndicator={false}
+          onEndReached={handleLoadMorePosts}
+          onEndReachedThreshold={0.4}
           ListEmptyComponent={
             <View style={styles.center}>
               <Ionicons name="flower-outline" size={48} color="#E8C4D8" />
               <Text style={styles.forumEmptyText}>Sé la primera en publicar</Text>
             </View>
           }
+          ListFooterComponent={
+            loadingMorePosts ? (
+              <ActivityIndicator size="small" color="#D6A4A4" style={{ marginVertical: 16 }} />
+            ) : null
+          }
           renderItem={({ item }) =>
             item.tipo === 'pregunta' ? (
               <QuestionCard
                 post={item}
-                userEmail={user?.email}
+                userId={user?.uid}
                 onPress={() => setSelectedPost(item)}
                 onLike={() => handleLike(item)}
               />
             ) : (
               <PostCard
                 post={item}
-                userEmail={user?.email}
+                userId={user?.uid}
                 onPress={() => setSelectedPost(item)}
                 onLike={() => handleLike(item)}
               />
@@ -525,6 +715,8 @@ export default function CommunityScreen({ navigation }) {
           style={[styles.fab, { bottom: insets.bottom + 24 }]}
           onPress={() => setCreateVisible(true)}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Nueva publicación"
         >
           <LinearGradient colors={['#DEB4CC', '#BF789C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.fabGradient}>
             <Ionicons name="add" size={26} color="#fff" />
@@ -592,7 +784,12 @@ export default function CommunityScreen({ navigation }) {
       <Modal visible={createVisible} animationType="slide" onRequestClose={() => setCreateVisible(false)}>
         <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#FDF5F8' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.createHeader, { paddingTop: insets.top + 16 }]}>
-            <TouchableOpacity onPress={() => setCreateVisible(false)} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={() => setCreateVisible(false)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+            >
               <Ionicons name="chevron-down" size={24} color="#BF789C" />
             </TouchableOpacity>
             <Text style={styles.createHeaderTitle}>Nueva publicación</Text>
@@ -600,6 +797,9 @@ export default function CommunityScreen({ navigation }) {
               onPress={handleCreatePost}
               disabled={!newPostText.trim() || publishing}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Publicar"
+              accessibilityState={{ disabled: !newPostText.trim() || publishing }}
             >
               {publishing
                 ? <ActivityIndicator size="small" color="#BF789C" />
@@ -610,7 +810,7 @@ export default function CommunityScreen({ navigation }) {
 
           <View style={styles.createBody}>
             <View style={styles.createAvatar}>
-              <Text style={styles.createAvatarText}>{user?.name?.charAt(0).toUpperCase() ?? '?'}</Text>
+              <Text style={styles.createAvatarText}>{user?.displayName?.charAt(0).toUpperCase() ?? '?'}</Text>
             </View>
             <TextInput
               style={styles.createInput}
@@ -623,6 +823,33 @@ export default function CommunityScreen({ navigation }) {
               maxLength={500}
             />
           </View>
+
+          {postImage ? (
+            <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+              <View style={{ position: 'relative', alignSelf: 'flex-start' }}>
+                <Image source={{ uri: postImage }} style={styles.createImagePreview} />
+                <TouchableOpacity
+                  onPress={() => setPostImage(null)}
+                  style={styles.createImageRemove}
+                  accessibilityRole="button"
+                  accessibilityLabel="Quitar foto"
+                >
+                  <Ionicons name="close" size={14} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={handlePickPostImage}
+              style={styles.createImageBtn}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel="Agregar foto a la publicación"
+            >
+              <Ionicons name="image-outline" size={18} color="#BF789C" />
+              <Text style={styles.createImageBtnText}>Agregar foto</Text>
+            </TouchableOpacity>
+          )}
         </KeyboardAvoidingView>
       </Modal>
 
@@ -648,9 +875,33 @@ export default function CommunityScreen({ navigation }) {
                   style={[styles.backBtn, { top: insets.top + 12 }]}
                   onPress={closeDetail}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar"
                 >
                   <Ionicons name="chevron-down" size={22} color="#fff" />
                 </TouchableOpacity>
+
+                {selectedPost.autorId === user?.uid ? (
+                  <TouchableOpacity
+                    style={[styles.backBtn, { top: insets.top + 12, left: undefined, right: 16 }]}
+                    onPress={() => handleDeletePost(selectedPost)}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Eliminar publicación"
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#fff" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.backBtn, { top: insets.top + 12, left: undefined, right: 16 }]}
+                    onPress={() => handleReportPost(selectedPost)}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Reportar publicación"
+                  >
+                    <Ionicons name="flag-outline" size={20} color="#fff" />
+                  </TouchableOpacity>
+                )}
 
                 <View style={styles.detailBottom}>
                   <Text style={styles.detailTitle}>{selectedPost.texto}</Text>
@@ -658,11 +909,14 @@ export default function CommunityScreen({ navigation }) {
                     style={styles.detailLikeBtn}
                     onPress={() => handleLike(selectedPost)}
                     activeOpacity={0.75}
+                    accessibilityRole="button"
+                    accessibilityLabel="Me gusta"
+                    accessibilityState={{ selected: validLikes(selectedPost.likesUsuarios).includes(user?.uid) }}
                   >
                     <Ionicons
-                      name={validLikes(selectedPost.likesUsuarios).includes(user?.email) ? 'heart' : 'heart-outline'}
+                      name={validLikes(selectedPost.likesUsuarios).includes(user?.uid) ? 'heart' : 'heart-outline'}
                       size={20}
-                      color={validLikes(selectedPost.likesUsuarios).includes(user?.email) ? '#FF6B8A' : '#fff'}
+                      color={validLikes(selectedPost.likesUsuarios).includes(user?.uid) ? '#FF6B8A' : '#fff'}
                     />
                     <Text style={styles.detailLikeBtnText}>
                       {validLikes(selectedPost.likesUsuarios).length}
@@ -676,9 +930,38 @@ export default function CommunityScreen({ navigation }) {
               colors={['#DEB4CC', '#BF789C']}
               style={[styles.detailQuestionHeader, { paddingTop: insets.top + 12 }]}
             >
-              <TouchableOpacity style={styles.detailQuestionBack} onPress={closeDetail} activeOpacity={0.8}>
-                <Ionicons name="chevron-down" size={22} color="#fff" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <TouchableOpacity
+                  style={styles.detailQuestionBack}
+                  onPress={closeDetail}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar"
+                >
+                  <Ionicons name="chevron-down" size={22} color="#fff" />
+                </TouchableOpacity>
+                {selectedPost.autorId === user?.uid ? (
+                  <TouchableOpacity
+                    style={styles.detailQuestionBack}
+                    onPress={() => handleDeletePost(selectedPost)}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Eliminar publicación"
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#fff" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.detailQuestionBack}
+                    onPress={() => handleReportPost(selectedPost)}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Reportar publicación"
+                  >
+                    <Ionicons name="flag-outline" size={18} color="#fff" />
+                  </TouchableOpacity>
+                )}
+              </View>
               <View style={styles.detailQuestionContent}>
                 <Text style={styles.detailQuestionAuthor}>{selectedPost.autor}</Text>
                 <Text style={styles.detailQuestionText}>{selectedPost.texto}</Text>
@@ -686,11 +969,14 @@ export default function CommunityScreen({ navigation }) {
                   style={styles.detailLikeBtn}
                   onPress={() => handleLike(selectedPost)}
                   activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel="Me gusta"
+                  accessibilityState={{ selected: validLikes(selectedPost.likesUsuarios).includes(user?.uid) }}
                 >
                   <Ionicons
-                    name={validLikes(selectedPost.likesUsuarios).includes(user?.email) ? 'heart' : 'heart-outline'}
+                    name={validLikes(selectedPost.likesUsuarios).includes(user?.uid) ? 'heart' : 'heart-outline'}
                     size={18}
-                    color={validLikes(selectedPost.likesUsuarios).includes(user?.email) ? '#FF6B8A' : 'rgba(255,255,255,0.8)'}
+                    color={validLikes(selectedPost.likesUsuarios).includes(user?.uid) ? '#FF6B8A' : 'rgba(255,255,255,0.8)'}
                   />
                   <Text style={styles.detailLikeBtnText}>
                     {validLikes(selectedPost.likesUsuarios).length}
@@ -717,13 +1003,20 @@ export default function CommunityScreen({ navigation }) {
                     : `${comments.length} comentario${comments.length !== 1 ? 's' : ''}`}
                 </Text>
               }
-              renderItem={({ item }) => <CommentItem comment={item} />}
+              renderItem={({ item }) => (
+                <CommentItem
+                  comment={item}
+                  isOwn={item.autorId === user?.uid}
+                  onDelete={() => handleDeleteComment(item.id)}
+                  onReport={() => handleReportComment(item)}
+                />
+              )}
             />
 
             <View style={[styles.inputRow, { paddingBottom: insets.bottom + 12 }]}>
               <View style={styles.inputAvatar}>
                 <Text style={styles.inputAvatarText}>
-                  {user?.name?.charAt(0).toUpperCase() ?? '?'}
+                  {user?.displayName?.charAt(0).toUpperCase() ?? '?'}
                 </Text>
               </View>
               <TextInput
@@ -741,6 +1034,9 @@ export default function CommunityScreen({ navigation }) {
                 onPress={handleSendComment}
                 disabled={!commentText.trim() || sending}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Enviar comentario"
+                accessibilityState={{ disabled: !commentText.trim() || sending }}
               >
                 {sending ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -1342,6 +1638,34 @@ const styles = StyleSheet.create({
     color: '#2D2D2D',
     lineHeight: 24,
     textAlignVertical: 'top',
+  },
+  createImageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EDD0E2',
+  },
+  createImageBtnText: { fontSize: 14, fontWeight: '700', color: '#BF789C' },
+  createImagePreview: {
+    width: 120, height: 120,
+    borderRadius: 14,
+    marginBottom: 20,
+  },
+  createImageRemove: {
+    position: 'absolute',
+    top: -8, right: -8,
+    width: 24, height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // detail for question posts (no image)

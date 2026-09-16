@@ -71,13 +71,23 @@ export default function YouTubeCarousel({ query, title = 'Videos para ti' }) {
         animationType="fade"
         onRequestClose={() => setSelected(null)}
       >
-        <Pressable style={styles.overlay} onPress={() => setSelected(null)}>
+        <Pressable
+          style={styles.overlay}
+          onPress={() => setSelected(null)}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar video"
+        >
           <Pressable style={styles.modalCard} onPress={() => {}}>
             <View style={styles.modalHandle} />
             <View style={styles.modalTitleRow}>
               <View style={styles.modalTitleDot} />
               <Text style={styles.modalTitle} numberOfLines={2}>{selected?.title ?? ''}</Text>
-              <Pressable style={styles.modalClose} onPress={() => setSelected(null)}>
+              <Pressable
+                style={styles.modalClose}
+                onPress={() => setSelected(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar video"
+              >
                 <Ionicons name="close" size={18} color="#D6A4A4" />
               </Pressable>
             </View>

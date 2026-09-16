@@ -135,6 +135,8 @@ export default function RecommendationsScreen({ navigation }) {
             onPress={() => navigation.navigate('Profile')}
             style={styles.headerBtn}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Ver perfil"
           >
             <Ionicons name="person-outline" size={20} color="#fff" />
           </TouchableOpacity>

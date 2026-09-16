@@ -24,6 +24,21 @@ import { ThemeProvider } from './src/hooks/useTheme';
 import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import ErrorBoundary, { withErrorBoundary } from './src/components/ErrorBoundary';
+
+const SafeCalendarScreen = withErrorBoundary(CalendarScreen, { title: 'No pudimos cargar el calendario' });
+const SafeDetailScreen = withErrorBoundary(DetailScreen);
+const SafeExplorarScreen = withErrorBoundary(ExplorarScreen, { title: 'No pudimos cargar Explorar' });
+const SafeProductsScreen = withErrorBoundary(ProductsScreen, { title: 'No pudimos cargar los productos' });
+const SafeCommunityScreen = withErrorBoundary(CommunityScreen, { title: 'No pudimos cargar la comunidad' });
+const SafeSplashScreen = withErrorBoundary(SplashScreen);
+const SafeOnboardingDiagnosisScreen = withErrorBoundary(OnboardingDiagnosisScreen);
+const SafeLoginScreen = withErrorBoundary(LoginScreen);
+const SafeRegisterScreen = withErrorBoundary(RegisterScreen);
+const SafeProfileScreen = withErrorBoundary(ProfileScreen, { title: 'No pudimos cargar tu perfil' });
+const SafeDiagnosisScreen = withErrorBoundary(DiagnosisScreen, { title: 'No pudimos cargar el diagnóstico' });
+const SafeCategoryDetailScreen = withErrorBoundary(CategoryDetailScreen);
+const SafeCartScreen = withErrorBoundary(CartScreen, { title: 'No pudimos cargar el carrito' });
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -50,20 +65,20 @@ function CalendarStackScreen() {
     >
       <CalendarStack.Screen
         name="CalendarMain"
-        component={CalendarScreen}
+        component={SafeCalendarScreen}
         options={{ headerShown: false }}
       />
 
       <CalendarStack.Screen
         name="DetailScreen"
-        component={DetailScreen}
+        component={SafeDetailScreen}
         options={{ headerShown: true }}
       />
 
       {/* 🔥 AGREGA ESTO */}
       <CalendarStack.Screen
         name="ProductsModal"
-        component={ProductsScreen}
+        component={SafeProductsScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
@@ -108,10 +123,10 @@ function MainTabNavigator({ initialTab = 'Calendario' }) {
       })}
     >
       <Tab.Screen name="Calendario" component={CalendarStackScreen} />
-      <Tab.Screen name="Diagnóstico" component={DiagnosisScreen} />
-      <Tab.Screen name="Explorar" component={ExplorarScreen} />
-      <Tab.Screen name="Comunidad" component={CommunityScreen} />
-      <Tab.Screen name="Perfil" component={ProfileScreen} />
+      <Tab.Screen name="Diagnóstico" component={SafeDiagnosisScreen} />
+      <Tab.Screen name="Explorar" component={SafeExplorarScreen} />
+      <Tab.Screen name="Comunidad" component={SafeCommunityScreen} />
+      <Tab.Screen name="Perfil" component={SafeProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -119,8 +134,8 @@ function MainTabNavigator({ initialTab = 'Calendario' }) {
 function AuthStackScreen() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-      <AuthStack.Screen name="Login" component={LoginScreen} />
-      <AuthStack.Screen name="Register" component={RegisterScreen} />
+      <AuthStack.Screen name="Login" component={SafeLoginScreen} />
+      <AuthStack.Screen name="Register" component={SafeRegisterScreen} />
     </AuthStack.Navigator>
   );
 }
@@ -144,17 +159,17 @@ function AppRouter() {
         {user ? (
           <>
             {!hasDiagnosis && (
-              <RootStack.Screen name="OnboardingDiagnosis" component={OnboardingDiagnosisScreen} />
+              <RootStack.Screen name="OnboardingDiagnosis" component={SafeOnboardingDiagnosisScreen} />
             )}
             <RootStack.Screen name="Main" component={MainTabNavigator} />
-            <RootStack.Screen name="TipDetail" component={DetailScreen} />
-            <RootStack.Screen name="CategoryDetail" component={CategoryDetailScreen} options={{ headerShown: false }} />
-            <RootStack.Screen name="Cart" component={CartScreen} options={{ headerShown: false }} />
+            <RootStack.Screen name="TipDetail" component={SafeDetailScreen} />
+            <RootStack.Screen name="CategoryDetail" component={SafeCategoryDetailScreen} options={{ headerShown: false }} />
+            <RootStack.Screen name="Cart" component={SafeCartScreen} options={{ headerShown: false }} />
           </>
         ) : (
           <>
-            <RootStack.Screen name="Splash" component={SplashScreen} />
-            <RootStack.Screen name="OnboardingDiagnosis" component={OnboardingDiagnosisScreen} />
+            <RootStack.Screen name="Splash" component={SafeSplashScreen} />
+            <RootStack.Screen name="OnboardingDiagnosis" component={SafeOnboardingDiagnosisScreen} />
             <RootStack.Screen name="Auth" component={AuthStackScreen} />
           </>
         )}
@@ -173,13 +188,15 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <CartProvider>
-          <AuthProvider>
-            <AppRouter />
-          </AuthProvider>
-        </CartProvider>
-      </ThemeProvider>
+      <ErrorBoundary title="La app tuvo un problema" message="Cierra y vuelve a abrir la app. Si el problema sigue, contáctanos.">
+        <ThemeProvider>
+          <CartProvider>
+            <AuthProvider>
+              <AppRouter />
+            </AuthProvider>
+          </CartProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

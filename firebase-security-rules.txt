@@ -40,14 +40,60 @@ service cloud.firestore {
     match /Post/{postId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if false;
+      allow update: if request.auth != null; // incluye likes y commentsCount de otras usuarias
+      allow delete: if request.auth != null && resource.data.autorId == request.auth.uid;
 
       match /comments/{commentId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null;
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if request.auth != null && resource.data.autorId == request.auth.uid;
       }
+    }
+
+    // Reportes de contenido del foro — solo se pueden crear, la revisión es manual
+    // desde la consola de Firebase (nadie puede leer/editar/borrar reportes ajenos).
+    match /reports/{reportId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+
+    // Directorio de peluquerías/tiendas — leído por my-beauty-calendar (Explorar) y
+    // gestionado (creado/editado) por el panel de empresas (mycalendarbeauty-empresas).
+    // Los documentos curados a mano (sembrados sin ownerId) quedan de solo-lectura:
+    // no pasan el check de "update" y solo se editan desde la consola.
+    match /peluquerias/{peluqueriaId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow delete: if false;
+
+      // Catálogo propio de la tienda (panel de empresas — "Mis productos").
+      // Cualquiera logueada lo puede leer (para el matching del diagnóstico);
+      // solo la dueña de la peluquería puede escribirlo.
+      match /products/{productId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null &&
+          get(/databases/$(database)/documents/peluquerias/$(peluqueriaId)).data.ownerId == request.auth.uid;
+      }
+    }
+
+    // Citas del cliente final — cada quien lee/actualiza (cancela) solo las suyas.
+    // No se crean todavía desde ninguna app: se habilita cuando se defina el
+    // esquema nuevo (storeId/clientId/staffId/serviceId/date/status) con el panel
+    // de empresas.
+    match /reservas/{reservaId} {
+      allow read, update: if request.auth != null && resource.data.clienteUid == request.auth.uid;
+      allow create: if false;
+      allow delete: if false;
+    }
+
+    // Reseñas de peluquerías — cualquiera logueada puede leerlas (se muestran en el
+    // perfil público) y crear la suya propia; no hay edición ni borrado hoy.
+    match /resenias/{reseniaId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.clienteUid == request.auth.uid;
+      allow update, delete: if false;
     }
 
     // Otras colecciones que puedas tener

@@ -231,10 +231,23 @@ export default function BeautyCalendarHeader({
         </Text>
 
         <View style={styles.iconsRow}>
-          <TouchableOpacity onPress={onBellPress} activeOpacity={0.7} style={styles.iconBtn}>
+          <TouchableOpacity
+            onPress={onBellPress}
+            activeOpacity={0.7}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Ver notificaciones"
+          >
             <Ionicons name="notifications-outline" size={18} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onGridPress} activeOpacity={0.7} style={styles.iconBtn}>
+          <TouchableOpacity
+            onPress={onGridPress}
+            activeOpacity={0.7}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel={expanded ? 'Contraer calendario' : 'Expandir calendario'}
+            accessibilityState={{ expanded }}
+          >
             <Ionicons name={expanded ? 'chevron-up' : 'calendar-outline'} size={18} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -244,13 +257,25 @@ export default function BeautyCalendarHeader({
         /* ── MONTH VIEW ── */
         <>
           <View style={styles.monthNav}>
-            <TouchableOpacity onPress={prevMonth} style={styles.monthNavBtn} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={prevMonth}
+              style={styles.monthNavBtn}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Mes anterior"
+            >
               <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.85)" />
             </TouchableOpacity>
             <Text style={styles.monthNavTitle}>
               {MONTH_NAMES[viewMonth]} {viewYear}
             </Text>
-            <TouchableOpacity onPress={nextMonth} style={styles.monthNavBtn} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={nextMonth}
+              style={styles.monthNavBtn}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Mes siguiente"
+            >
               <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.85)" />
             </TouchableOpacity>
           </View>

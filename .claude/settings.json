@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); deps={**d.get\\('dependencies',{}\\),**d.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\) if 'expo' in k.lower\\(\\)]\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://images-na.ssl-images-amazon.com/images/P/B07D37PQGL.01.LZZZZZZZ.jpg\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://images-na.ssl-images-amazon.com/images/P/B0BZZJYKZ6.01.LZZZZZZZ.jpg\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://images-na.ssl-images-amazon.com/images/P/B08N84PWMT.01.LZZZZZZZ.jpg\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://images-na.ssl-images-amazon.com/images/P/B0007X749U.01.LZZZZZZZ.jpg\")"
+    ]
+  }
+}

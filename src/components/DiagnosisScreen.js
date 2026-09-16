@@ -12,7 +12,7 @@ import {
   Animated,
 } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import YoutubeIframe from 'react-native-youtube-iframe';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,198 +20,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { productDB, recommendationDB, PRODUCTS } from '../data/products';
-
-// Único producto de la categoría "Accesorios" — no participa en el algoritmo de
-// recomendación (productDB no incluye esa categoría), así que se asigna directo
-// para que el paso de "gorro de seda" siempre tenga la misma foto.
-const GORRO_SEDA_PRODUCT = PRODUCTS.find(p => p.id === 'malma-gorro-seda') || null;
-import { scoreProductForProfile } from '../utils/productScoring';
 import { fetchRoutineVideos } from '../firebase/videos';
+import { fetchStoresWithCatalog, fetchStoreProductDB } from '../firebase/stores';
 import { searchYouTubeVideos } from '../services/youtube';
 import YouTubeCarousel from './YouTubeCarousel';
+import StatChip from './diagnosis/StatChip';
+import StoreSelectionStep from './diagnosis/StoreSelectionStep';
+import styles from './DiagnosisScreen.styles';
+import { questions, CURL_TYPE_OPTIONS, getStepVideoKey } from '../data/diagnosisQuestions';
+import {
+  getScalpCondition,
+  getPorosity,
+  buildHairProfile,
+  getHairType,
+  getObjectiveLabel,
+  getRoutinePlan,
+  getRecommendedProducts,
+  getCategorizedProducts,
+  getRoutineSteps,
+  getPersonalizedTips,
+  getFrequencyRecommendations,
+} from '../utils/hairDiagnosisEngine';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MODAL_CARD_WIDTH = SCREEN_WIDTH - 48;
 const MODAL_VIDEO_HEIGHT = Math.round(MODAL_CARD_WIDTH * 9 / 16);
-
-const STEP_TO_KEY = {
-  shampoo: 'lavado',
-  acondicionador: 'lavado',
-  tratamiento: 'tratamiento',
-  'leave-in': 'definicion',
-  'gel definidor': 'definicion',
-  'aceite sellador': 'secado',
-};
-
-function getStepVideoKey(label, texture) {
-  if (!label || !texture) return null;
-  const lower = label.toLowerCase();
-  const stepKey = lower.startsWith('método') ? 'definicion' : STEP_TO_KEY[lower];
-  return stepKey ? `${texture.toLowerCase()}_${stepKey}` : null;
-}
-
-// Opciones de subtipo de rizo filtradas por textura
-const CURL_TYPE_OPTIONS = {
-  Ondulado: [
-    { value: '2A', title: '2A — Ondulado sutil', desc: 'Ondas suaves que tienden a desaparecer con humedad o peso.' },
-    { value: '2B', title: '2B — Ondulado definido', desc: 'Ondas en S con volumen y resistencia al aplastarse.' },
-    { value: '2C', title: '2C — Ondulado pronunciado', desc: 'Ondas marcadas que rozan el rizo, con volumen notorio.' },
-  ],
-  Rizado: [
-    { value: '3A', title: '3A — Rizo amplio', desc: 'Rizos grandes y brillosos, fáciles de definir.' },
-    { value: '3B', title: '3B — Rizo mediano', desc: 'Rizos compactos y elásticos con buen rebote.' },
-    { value: '3C', title: '3C — Rizo apretado', desc: 'Rizos pequeños y densos, mucha retracción al secar.' },
-  ],
-  Coily: [
-    { value: '4A', title: '4A — Coily suave', desc: 'Espirales apretadas con patrón S visible y algo de brillo.' },
-    { value: '4B', title: '4B — Coily angular', desc: 'Patrón en Z o zig-zag, gran retracción y volumen.' },
-    { value: '4C', title: '4C — Coily denso', desc: 'Patrón muy apretado, poca definición visible, máxima retracción.' },
-  ],
-};
-
-const questions = [
-  // Módulo 1 — Textura y patrón
-  {
-    id: 'texture',
-    title: '¿Cuál es tu textura de cabello?',
-    options: [
-      { value: 'Lacio', title: 'Lacio', desc: 'Textura suave y lineal, sin rizos ni ondas.' },
-      { value: 'Ondulado', title: 'Ondulado', desc: 'Movimiento natural con ondas que van de sutiles a pronunciadas.' },
-      { value: 'Rizado', title: 'Rizado', desc: 'Rizos definidos, desde amplios hasta pequeños y apretados.' },
-      { value: 'Coily', title: 'Afrorizado', desc: 'Patrón muy apretado con espirales o zig-zag, máxima retracción.' },
-      { value: 'Transición', title: 'Transición capilar', desc: 'Cabello que mezcla zona natural nueva y zona con proceso químico anterior.' },
-    ],
-  },
-  {
-    id: 'curlType',
-    title: 'Identifica tu subtipo de rizo',
-    conditional: true,
-    options: [], // se llena dinámicamente según textura
-  },
-  // Módulo 2 — Estructura
-  {
-    id: 'strandThickness',
-    title: '¿Cómo es el grosor de cada mechón?',
-    options: [
-      { value: 'Fino', title: 'Fino', desc: 'Casi no se siente entre los dedos, parece transparente a la luz.' },
-      { value: 'Medio', title: 'Medio', desc: 'Se siente claramente pero sin rigidez.' },
-      { value: 'Grueso', title: 'Grueso / Coarse', desc: 'Robusto y resistente, casi como un hilo de coser.' },
-    ],
-  },
-  {
-    id: 'density',
-    title: '¿Cuánto cabello tienes en total?',
-    options: [
-      { value: 'Escasa', title: 'Escasa', desc: 'Se ve el cuero cabelludo con facilidad.' },
-      { value: 'Media', title: 'Media', desc: 'Ni demasiado poco ni demasiado.' },
-      { value: 'Abundante', title: 'Abundante', desc: 'Mucho volumen, tarda en secar por dentro.' },
-    ],
-  },
-  // Módulo 3 — Cuero cabelludo
-  {
-    id: 'scalp',
-    title: '¿Cómo describirías tu cuero cabelludo?',
-    options: [
-      { value: 'Grasa', title: 'Graso', desc: 'Brillo y peso en la raíz al final del día.' },
-      { value: 'Normal', title: 'Equilibrado', desc: 'Se mantiene fresco y con balance natural.' },
-      { value: 'Seco', title: 'Seco', desc: 'Se siente tirante y puede picar.' },
-    ],
-  },
-  {
-    id: 'scalpIssues',
-    title: '¿Tienes alguno de estos problemas?',
-    multiSelect: true,
-    options: [
-      { value: 'caspa', title: 'Caspa / descamación', desc: 'Escamas blancas o amarillentas visibles.' },
-      { value: 'picazon', title: 'Picazón o sensibilidad', desc: 'Cuero cabelludo irritado o reactivo.' },
-      { value: 'caida', title: 'Caída excesiva', desc: 'Pérdida notoria al peinar o en la ducha.' },
-      { value: 'ninguno', title: 'Ninguno', desc: 'Sin problemas específicos.' },
-    ],
-  },
-  // Módulo 4 — Comportamiento
-  {
-    id: 'porosity',
-    title: '¿Cómo absorbe tu cabello el agua?',
-    options: [
-      { value: 'Alta', title: 'Alta porosidad', desc: 'Absorbe rápido pero pierde hidratación fácilmente.' },
-      { value: 'Media', title: 'Porosidad media', desc: 'Buena absorción y retención cuando está bien cuidado.' },
-      { value: 'Baja', title: 'Baja porosidad', desc: 'Los productos tardan en penetrar y se acumulan.' },
-    ],
-  },
-  {
-    id: 'elasticity',
-    title: '¿Qué pasa cuando estiras un mechón mojado?',
-    options: [
-      { value: 'Alta', title: 'Se estira bien', desc: 'Se alarga y regresa a su forma sin romperse.' },
-      { value: 'Normal', title: 'Estiramiento normal', desc: 'Algo de estiramiento antes de romperse con fuerza.' },
-      { value: 'Baja', title: 'Se rompe rápido', desc: 'Poca elasticidad, se quiebra sin casi estirarse.' },
-    ],
-  },
-  // Módulo 5 — Historial
-  {
-    id: 'chemical',
-    title: '¿Tu cabello tiene algún proceso químico?',
-    options: [
-      { value: 'Natural', title: 'Natural', desc: 'Sin procesos químicos de ningún tipo.' },
-      { value: 'Color', title: 'Color / tinte', desc: 'Tinte parcial o completo, reciente o acumulado.' },
-      { value: 'Alisado', title: 'Alisado / keratina', desc: 'Alisado permanente o tratamiento de keratina.' },
-      { value: 'Calor', title: 'Solo calor', desc: 'Natural pero con uso frecuente de herramientas.' },
-      { value: 'Varios', title: 'Varios procesos', desc: 'Combinación de color, alisado u otros tratamientos.' },
-    ],
-  },
-  {
-    id: 'heatFrequency',
-    title: '¿Con qué frecuencia usas herramientas de calor?',
-    options: [
-      { value: 'Nunca', title: 'Nunca', desc: 'No uso plancha, secador ni rizador con calor.' },
-      { value: 'Ocasional', title: 'Ocasional', desc: '1 a 2 veces por semana.' },
-      { value: 'Frecuente', title: 'Frecuente', desc: '3 o más veces por semana.' },
-    ],
-  },
-  // Módulo 6 — Longitud y objetivo
-  {
-    id: 'length',
-    title: '¿Cuál es la longitud de tu cabello?',
-    options: [
-      { value: 'Corto', title: 'Corto', desc: 'Hasta cuello o hombros.' },
-      { value: 'Medio', title: 'Medio', desc: 'Entre hombros y pecho.' },
-      { value: 'Largo', title: 'Largo', desc: 'Debajo del pecho.' },
-    ],
-  },
-  {
-    id: 'objective',
-    title: '¿Cuál es tu objetivo capilar principal?',
-    options: [
-      { value: 'crecimiento', title: 'Crecimiento', desc: 'Apoya el crecimiento y la fortaleza del cabello.' },
-      { value: 'hidratación', title: 'Hidratación', desc: 'Aporta suavidad y flexibilidad a la fibra.' },
-      { value: 'reparación', title: 'Reparación', desc: 'Repara el cabello dañado por procesos o calor.' },
-      { value: 'definición', title: 'Definición', desc: 'Mejora la forma y el rebote de tus rizos u ondas.' },
-      { value: 'volumen', title: 'Volumen', desc: 'Aporta cuerpo y movimiento ligero.' },
-    ],
-  },
-  {
-    id: 'photo',
-    title: 'Sube una foto de tu cabello (opcional)',
-    options: [],
-  },
-];
-
-// ─── StatChip ─────────────────────────────────────────────────────────────────
-
-function StatChip({ icon, label, value, valueColor }) {
-  return (
-    <View style={styles.statChip}>
-      <View style={styles.statChipIcon}>
-        <Ionicons name={icon} size={15} color="#D6A4A4" />
-      </View>
-      <Text style={styles.statChipLabel}>{label}</Text>
-      <Text style={[styles.statChipValue, valueColor ? { color: valueColor } : null]}>
-        {value}
-      </Text>
-    </View>
-  );
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -228,9 +61,23 @@ export default function DiagnosisScreen({ navigation }) {
   const [image, setImage] = useState(null);
   const [videoModal, setVideoModal] = useState({ visible: false, label: '', value: '', videos: [], isLoadingVideos: false });
   const [routineVideos, setRoutineVideos] = useState({});
+
+  // ── Selector de país / tienda (paso previo al quiz) ─────────────────────────
+  const [country, setCountry] = useState(undefined); // undefined = cargando desde AsyncStorage
+  const [selectedStoreId, setSelectedStoreId] = useState(undefined); // undefined = sin resolver; null = genérico
+  const [stores, setStores] = useState([]);
+  const [loadingStores, setLoadingStores] = useState(false);
+
   const flatListRef = useRef(null);
   const videoRef = useRef(null);
   const spinAnim = useRef(new Animated.Value(0)).current;
+
+  const modalYtKey = getStepVideoKey(videoModal.label, result?.texture);
+  const modalVideoData = modalYtKey ? routineVideos[modalYtKey] : null;
+  const modalVideoUri = !modalVideoData?.youtubeId && modalVideoData?.uri ? modalVideoData.uri : null;
+  const modalPlayer = useVideoPlayer(modalVideoUri, (p) => {
+    if (modalVideoUri) p.play();
+  });
 
   useEffect(() => {
     fetchRoutineVideos()
@@ -247,6 +94,62 @@ export default function DiagnosisScreen({ navigation }) {
       if (savedPlan) setRoutinePlan(JSON.parse(savedPlan));
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@mybeauty-calendar:country')
+      .then((saved) => setCountry(saved || null))
+      .catch(() => setCountry(null));
+  }, []);
+
+  // Si no hay país guardado, si el país no es Colombia, o si Colombia no tiene
+  // tiendas con catálogo todavía, no hay nada que preguntar — saltamos directo
+  // al diagnóstico genérico sin que la usuaria vea ningún paso extra. La espera
+  // del fetch y la decisión de saltar viven en el MISMO efecto a propósito: si
+  // se separan (uno que hace fetch, otro que decide) hay una carrera donde el
+  // que decide lee loadingStores/stores desde una closure vieja, antes de que
+  // el fetch termine, y siempre concluye "no hay tiendas" de entrada.
+  useEffect(() => {
+    if (country === undefined) return;
+    if (country !== 'Colombia') { setSelectedStoreId(null); return; }
+
+    let cancelled = false;
+    setLoadingStores(true);
+    fetchStoresWithCatalog()
+      .then((result) => {
+        if (cancelled) return;
+        setStores(result);
+        if (result.length === 0) setSelectedStoreId(null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setStores([]);
+        setSelectedStoreId(null);
+      })
+      .finally(() => { if (!cancelled) setLoadingStores(false); });
+
+    return () => { cancelled = true; };
+  }, [country]);
+
+  // Cubre "Nuevo diagnóstico": si ya sabíamos que Colombia no tiene tiendas y
+  // se vuelve a pedir elegir tienda, saltamos otra vez sin re-hacer el fetch.
+  // Deps a propósito solo [selectedStoreId] (no country/stores/loadingStores):
+  // si se agregan, este efecto se dispara en el mismo commit que el de arriba
+  // cuando country recién cambia, con closures viejas de stores/loadingStores
+  // (el mismo bug de carrera que el comentario de arriba explica). Al depender
+  // solo de selectedStoreId, este efecto no corre en ese commit — solo cuando
+  // selectedStoreId cambia de verdad (montaje o handleReset), momento en el
+  // que stores/loadingStores ya están asentados.
+  useEffect(() => {
+    if (selectedStoreId !== undefined) return;
+    if (country !== 'Colombia' || loadingStores) return;
+    if (stores.length === 0) setSelectedStoreId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStoreId]);
+
+  useEffect(() => {
+    if (selectedStoreId === undefined) return;
+    AsyncStorage.setItem('@mybeauty-calendar:selectedStoreId', JSON.stringify(selectedStoreId)).catch(() => {});
+  }, [selectedStoreId]);
 
   useEffect(() => {
     if (isLoadingDiagnosis) {
@@ -270,6 +173,15 @@ export default function DiagnosisScreen({ navigation }) {
     ? Array.isArray(rawAnswer) && rawAnswer.length > 0
     : !!rawAnswer;
   const isLastQuestion = currentQuestion === questions.length - 1;
+
+  const handleSelectCountry = (value) => {
+    setCountry(value);
+    AsyncStorage.setItem('@mybeauty-calendar:country', value).catch(() => {});
+  };
+
+  const handleSelectStore = (storeId) => {
+    setSelectedStoreId(storeId);
+  };
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -344,613 +256,17 @@ export default function DiagnosisScreen({ navigation }) {
     }
   }).current;
 
-  // ── Lógica de diagnóstico ─────────────────────────────────────────────────────
 
-  const getScalpCondition = (v) =>
-    v === 'Grasa' ? 'Cuero cabelludo graso' : v === 'Seco' ? 'Cuero cabelludo seco' : 'Cuero cabelludo equilibrado';
-
-  const getPorosity = (v) => (v === 'Alta' ? 'Alta' : v === 'Baja' ? 'Baja' : 'Media');
-
-  const buildHairProfile = (answersObject) => {
-    const {
-      scalp, porosity, density, chemical, texture, objective,
-      curlType, strandThickness, elasticity, scalpIssues,
-      heatFrequency, length,
-    } = answersObject;
-
-    const isLacio = texture === 'Lacio';
-    const isOndulado = texture === 'Ondulado';
-    const isRizado = texture === 'Rizado';
-    const isCoily = texture === 'Coily';
-    const isTransicion = texture === 'Transición';
-    const isCurly = isRizado || isCoily;
-    const isWavy = isOndulado;
-    const isCurlyOrWavy = isCurly || isWavy || isTransicion;
-
-    const fineStrand = strandThickness === 'Fino';
-    const coarseStrand = strandThickness === 'Grueso';
-    const lowDensity = density === 'Escasa';
-    const highDensity = density === 'Abundante';
-    const fineDensity = lowDensity; // alias de compatibilidad
-    const denseDensity = highDensity; // alias para productos con perfil de densidad alta
-
-    const isColor = chemical === 'Color';
-    const isAlisado = chemical === 'Alisado';
-    const isVarios = chemical === 'Varios';
-    const isChemical = isColor || isAlisado || isVarios;
-    const isHeatDamaged = chemical === 'Calor' || heatFrequency === 'Frecuente';
-
-    const lowElasticity = elasticity === 'Baja';
-
-    const scalpIssuesList = Array.isArray(scalpIssues) ? scalpIssues : [];
-    const hasDandruff = scalpIssuesList.includes('caspa');
-    const hasSensitivity = scalpIssuesList.includes('picazon');
-    const hasHairLoss = scalpIssuesList.includes('caida');
-
-    const highPorosity = porosity === 'Alta';
-    const lowPorosity = porosity === 'Baja';
-    const oilyScalp = scalp === 'Grasa';
-    const dryScalp = scalp === 'Seco';
-
-    const needsProtein = isChemical || isHeatDamaged || lowElasticity;
-    const needsClarifying = oilyScalp || lowPorosity || hasDandruff;
-    const isScalpOilyWithDryEnds = oilyScalp && (highPorosity || isChemical);
-    const stylingMethod = isCurlyOrWavy ? (highPorosity ? 'LOC' : 'LCO') : null;
-
-    const proteinFrequencyWeeks = (isAlisado || isVarios) ? 2
-      : isColor ? 3
-      : isHeatDamaged || lowElasticity ? 2
-      : 4;
-
-    let damageLevel;
-    if ((isAlisado || isVarios) && (highPorosity || lowElasticity)) damageLevel = 'Alto';
-    else if (isAlisado || isVarios || (isColor && highPorosity)) damageLevel = 'Moderado-Alto';
-    else if (isColor || (isHeatDamaged && highPorosity) || lowElasticity) damageLevel = 'Moderado';
-    else damageLevel = 'Bajo';
-
-    const isShort = length === 'Corto';
-    const isLong = length === 'Largo';
-
-    return {
-      scalp, porosity, density, chemical, texture, objective,
-      curlType, strandThickness, elasticity, scalpIssues: scalpIssuesList,
-      heatFrequency, length,
-      isLacio, isOndulado, isRizado, isCoily, isTransicion,
-      isCurly, isWavy, isCurlyOrWavy,
-      fineStrand, coarseStrand, lowDensity, highDensity, fineDensity,
-      isColor, isAlisado, isVarios, isChemical, isHeatDamaged,
-      lowElasticity,
-      hasDandruff, hasSensitivity, hasHairLoss,
-      highPorosity, lowPorosity, oilyScalp, dryScalp,
-      needsProtein, needsClarifying, isScalpOilyWithDryEnds,
-      stylingMethod, proteinFrequencyWeeks, damageLevel,
-      isShort, isLong, denseDensity,
-    };
-  };
-
-  const getHairType = (answersObject) => {
-    const { texture, curlType, strandThickness, chemical } = answersObject;
-    const curlSuffix = curlType ? ` ${curlType}` : '';
-    const thicknessLabel = strandThickness === 'Fino' ? 'fino'
-      : strandThickness === 'Grueso' ? 'grueso' : 'medio';
-    const treatedLabel = chemical === 'Natural' ? 'natural'
-      : chemical === 'Calor' ? 'natural c/ calor' : 'tratado';
-    const base = texture === 'Transición' ? 'Transición capilar' : texture;
-    return `${base}${curlSuffix} ${thicknessLabel} / ${treatedLabel}`;
-  };
-
-  const getObjectiveLabel = (value) => {
-    const map = {
-      crecimiento: 'Crecimiento', hidratación: 'Hidratación',
-      reparación: 'Reparación', definición: 'Definición', volumen: 'Volumen',
-    };
-    return map[value] || 'Objetivo personalizado';
-  };
-
-  const getRoutinePlan = (profile, { products = [], treatments = {} } = {}) => {
-    const byCategory = {};
-    products.forEach(p => { byCategory[p.category] = p; });
-    const tag = (text, category, specificProduct = undefined) => ({
-      text,
-      category,
-      product: specificProduct !== undefined ? specificProduct : (byCategory[category] || null),
-    });
-    const tagGelOrMousse = (text) => {
-      const category = byCategory['Gel'] ? 'Gel' : 'Espumas';
-      return { text, category, product: byCategory[category] || null };
-    };
-    const {
-      isCurly, isWavy, isCurlyOrWavy, isCoily, isTransicion, objective,
-      oilyScalp, dryScalp, highPorosity, needsProtein, isChemical, isHeatDamaged,
-      damageLevel, fineStrand, hasDandruff, hasHairLoss,
-    } = profile;
-
-    const detoxShampoo = tag(
-      hasDandruff ? 'Lavar el cuero cabelludo con masajes circulares (shampoo anticaspa clarificante)'
-      : oilyScalp  ? 'Lavar solo en raíz con masajes circulares suaves para resetear el cuero cabelludo'
-                   : 'Lavar con masajes circulares para resetear el cabello',
-      'Shampoo'
-    );
-
-    const hydraShampoo = tag(
-      hasDandruff ? 'Lavar con masajes circulares suaves en cuero cabelludo (alternar con clarificante)'
-      : oilyScalp  ? 'Lavar solo en raíz con masajes circulares, sin llevar a las puntas'
-      : dryScalp   ? 'Lavar con masajes circulares nutritivos en cuero cabelludo'
-                   : 'Lavar con masajes circulares suaves en raíz, sin frotar puntas',
-      'Shampoo'
-    );
-
-    const conditioner = tag(
-      highPorosity
-        ? 'Aplicar en todo el largo y enjuagar con agua fría para sellar la cutícula'
-        : 'Aplicar en medios y puntas, enjuagar con agua templada',
-      'Acondicionador'
-    );
-
-    const tonicoPreWash = tag(
-      hasHairLoss
-        ? 'Aplicar tónico estimulante en cuero cabelludo, masajear 5 min — dejar actuar 1 hora antes de lavar'
-        : objective === 'crecimiento'
-        ? 'Aplicar tónico capilar estimulante en cuero cabelludo — dejar actuar 1 hora antes de lavar'
-        : oilyScalp
-        ? 'Aplicar tónico equilibrante en cuero cabelludo — dejar actuar 1 hora antes de lavar'
-        : dryScalp
-        ? 'Aplicar tónico nutritivo en cuero cabelludo — dejar actuar 1 hora antes de lavar'
-        : 'Aplicar tónico capilar fortalecedor en cuero cabelludo — dejar actuar 1 hora antes de lavar',
-      'Tónico'
-    );
-
-    const stylingDaySteps = (isCurly || isCoily)
-      ? [
-          tag(
-            isCoily
-              ? 'Aplicar en cabello muy húmedo por secciones (praying hands o shingling)'
-              : 'Aplicar de medios a puntas en cabello húmedo (scrunch)',
-            'Crema de Peinar'
-          ),
-          tagGelOrMousse(
-            fineStrand
-              ? 'Aplicar gel o espuma ligera sobre la crema (scrunch suave, sin presionar)'
-              : isCoily
-              ? 'Aplicar sobre la crema en cabello muy húmedo para sellar y definir'
-              : 'Aplicar sobre cabello húmedo (scrunch de puntas a raíz)'
-          ),
-        ]
-      : isWavy
-      ? [tag('Aplicar en medios y puntas sobre cabello húmedo', 'Crema de Peinar'), tagGelOrMousse('Aplicar sobre cabello húmedo para definir ondas (scrunch suave)')]
-      : isTransicion
-      ? [tag('Aplicar leave-in en zona de raíz natural', 'Crema de Peinar'), tag('Aplicar en puntas tratadas para unificar textura', 'Crema de Peinar')]
-      : [tag('Aplicar en medios y puntas sobre cabello húmedo', 'Crema de Peinar')];
-
-    const refreshDaySteps = (isCurly || isCoily)
-      ? ['Humedecer con spray de agua y hacer scrunch para reactivar rizos', tagGelOrMousse('Aplicar sobre los rizos húmedos para sellar y refrescar'), tag('Aplicar 1-2 gotas solo en puntas para suavizar', 'Aceites')]
-      : isWavy
-      ? ['Humedecer con spray refrescante y hacer scrunch suave', tag('Aplicar 1-2 gotas solo en puntas', 'Aceites')]
-      : isTransicion
-      ? ['Humedecer la zona natural con spray de agua', tag('Aplicar 1-2 gotas solo en puntas tratadas', 'Aceites')]
-      : ['Usar shampoo en seco en raíz si es necesario', tag('Aplicar 1-2 gotas solo en puntas', 'Aceites')];
-
-    const nightOil = tag(
-      isChemical || damageLevel === 'Alto'
-        ? 'Aplicar solo en puntas antes de dormir (reparador)'
-        : highPorosity
-        ? 'Aplicar en medios y puntas para sellar la hidratación'
-        : isHeatDamaged
-        ? 'Aplicar 1-2 gotas en puntas antes de dormir'
-        : oilyScalp
-        ? 'Aplicar máx. 2 gotas solo en puntas, evitar la raíz'
-        : 'Aplicar en puntas para nutrirlas durante la noche',
-      'Aceites'
-    );
-
-    const nightSteps = [tag('Proteger el cabello con gorro de seda o pañuelo de satín', 'Accesorios', GORRO_SEDA_PRODUCT), nightOil];
-
-    // Tratamiento nutritivo — Día 1 (lavado A)
-    const treatNutritivo = tag(
-      highPorosity || isCoily
-        ? 'Aplicar de medios a puntas y dejar actuar 20 min bajo gorro de vapor (nutritivo)'
-        : 'Aplicar de medios a puntas y dejar actuar 15 min (nutritivo)',
-      'Tratamiento',
-      treatments.nutritivo ?? null
-    );
-
-    // Tratamiento reparador — Día 3 (lavado B)
-    const treatReparador = tag(
-      needsProtein
-        ? `Aplicar de medios a puntas y dejar actuar ${isChemical ? '20' : '30'} min (reparador proteico)`
-        : highPorosity
-        ? 'Aplicar de medios a puntas y dejar actuar 20 min bajo calor (reparador)'
-        : 'Aplicar de medios a puntas y dejar actuar 15-20 min (reparador)',
-      'Tratamiento',
-      treatments.reparador ?? null
-    );
-
-    // Tratamiento hidratante — Día 5 (lavado C)
-    const treatHidratante = tag(
-      highPorosity || isCoily
-        ? 'Aplicar de medios a puntas y dejar actuar 20 min bajo gorro de vapor (hidratante)'
-        : objective === 'hidratación'
-        ? 'Aplicar de medios a puntas y dejar actuar 20 min (hidratación profunda)'
-        : 'Aplicar de medios a puntas y dejar actuar 15 min (hidratante)',
-      'Tratamiento',
-      treatments.hidratante ?? null
-    );
-
-    // Pasos de lavado A (detox + nutritivo)
-    const washASteps = [tonicoPreWash, detoxShampoo, treatNutritivo, conditioner, ...stylingDaySteps];
-
-    // Pasos de lavado B (hidratante + reparador)
-    const washBSteps = [tonicoPreWash, hydraShampoo, treatReparador, conditioner, ...stylingDaySteps];
-
-    // Pasos de lavado C (hidratante + hidratante)
-    const washCSteps = [tonicoPreWash, hydraShampoo, treatHidratante, conditioner, ...stylingDaySteps];
-
-    return [
-      { day: 1, title: 'Lavado A — Nutritivo',   daySteps: washASteps,     nightSteps },
-      { day: 2, title: isCurlyOrWavy ? 'Refresco y activación' : 'Descanso', daySteps: refreshDaySteps, nightSteps },
-      { day: 3, title: 'Lavado B — Reparador',   daySteps: washBSteps,     nightSteps },
-      { day: 4, title: isCurlyOrWavy ? 'Refresco y activación' : 'Descanso', daySteps: refreshDaySteps, nightSteps },
-      { day: 5, title: 'Lavado C — Hidratante',  daySteps: washCSteps,     nightSteps },
-      { day: 6, title: isCurlyOrWavy ? 'Refresco y activación' : 'Descanso', daySteps: refreshDaySteps, nightSteps },
-      { day: 7, title: 'Descanso profundo',       daySteps: ['Masaje suave en cuero cabelludo con yemas de los dedos por 3-5 min (sin productos)', 'Evitar calor, tintes o manipulación excesiva hoy'], nightSteps },
-    ];
-  };
-
-  const getRecommendedProducts = (profile) => {
-    const categoryEntries = Object.entries(productDB);
-    const allProducts = categoryEntries.flatMap(([category, products]) => products.map((product) => ({ category, product })));
-
-    // Score all products
-    const allScored = allProducts.map(entry => ({
-      ...entry,
-      score: scoreProductForProfile(entry.product, entry.category, profile),
-    }));
-
-    // Arma una recomendación completa (cohesión de marca + tratamientos) a partir de un pool de productos ya scoreado
-    const buildRecommendationFromPool = (pool) => {
-      // Brand cohesion: find the brand with the best combined routine score across all categories
-      const brandCatBest = {};
-      pool.forEach(({ category, product, score }) => {
-        const b = product.brand;
-        if (!brandCatBest[b]) brandCatBest[b] = {};
-        if (!brandCatBest[b][category] || score > brandCatBest[b][category].score) {
-          brandCatBest[b][category] = { product, score };
-        }
-      });
-      const brandTotals = {};
-      Object.entries(brandCatBest).forEach(([b, cats]) => {
-        brandTotals[b] = Object.values(cats).reduce((s, { score }) => s + Math.max(0, score), 0);
-      });
-      const routineBrand = Object.entries(brandTotals).sort((a, b) => b[1] - a[1])[0]?.[0];
-
-      // Pick the best product per category from the routine brand; fall back to global best (dentro del mismo pool)
-      const globalCatBest = {};
-      [...pool].sort((a, b) => b.score - a.score).forEach(({ category, product, score }) => {
-        if (!globalCatBest[category]) globalCatBest[category] = { product, score };
-      });
-      const categoryBest = {};
-      Object.keys(productDB).forEach(category => {
-        const brandEntry = brandCatBest[routineBrand]?.[category];
-        categoryBest[category] = (brandEntry && brandEntry.score > 0) ? brandEntry : globalCatBest[category];
-      });
-
-      const recommended = Object.keys(productDB).map((category) => {
-        const best = categoryBest[category];
-        if (best && best.score > 0) return best.product;
-        // Fallback: primer producto del pool en esa categoría; si no hay, primero del catálogo global
-        const poolFallback = pool.find(e => e.category === category)?.product;
-        return poolFallback || productDB[category][0];
-      }).filter(Boolean);
-
-      const totalScore = Object.values(categoryBest).reduce((s, entry) => s + Math.max(0, entry?.score || 0), 0);
-
-      // Seleccionar 3 tratamientos distintos: nutritivo, reparador, hidratante
-      const tratamientoScored = pool
-        .filter(({ category }) => category === 'tratamiento')
-        .sort((a, b) => b.score - a.score);
-
-      const brandTratamientos = tratamientoScored.filter(({ product }) => product.brand === routineBrand);
-      const treatPool = brandTratamientos.length >= 3 ? brandTratamientos : tratamientoScored;
-
-      const pickTreat = (keywords, exclude = []) => {
-        const match = treatPool.find(({ product }) =>
-          !exclude.includes(product.id) &&
-          keywords.some(kw => (product.tags || []).some(t => t.toLowerCase().includes(kw)))
-        ) || treatPool.find(({ product }) => !exclude.includes(product.id));
-        return match?.product || null;
-      };
-
-      const treatNutritivo = pickTreat(['nutritivo', 'nutrición', 'regenerante', 'suavizante']);
-      const usedAfterN = treatNutritivo ? [treatNutritivo.id] : [];
-      const treatReparador = pickTreat(['reparador', 'daño', 'bond', 'fortalecimiento', 'proteína'], usedAfterN);
-      const usedAfterR = [...usedAfterN, ...(treatReparador ? [treatReparador.id] : [])];
-      const treatHidratante = pickTreat(['hidratante', 'humectante', 'hidratación', 'brillo', 'suavidad'], usedAfterR);
-
-      return {
-        products: recommended,
-        treatments: {
-          nutritivo:  treatNutritivo  || recommended.find(p => p?.category === 'Tratamiento') || null,
-          reparador:  treatReparador  || recommended.find(p => p?.category === 'Tratamiento') || null,
-          hidratante: treatHidratante || recommended.find(p => p?.category === 'Tratamiento') || null,
-        },
-        totalScore,
-      };
-    };
-
-    // 3 recomendaciones alternativas por presupuesto (heurística de precio por marca)
-    const tiers = ['low', 'mid', 'high'];
-    const byTier = {};
-    tiers.forEach((tier) => {
-      const tierPool = allScored.filter(({ product }) => (product.priceTier || 'mid') === tier);
-      byTier[tier] = buildRecommendationFromPool(tierPool.length > 0 ? tierPool : allScored);
-    });
-
-    // La "más acertada" es la de mayor score total; esa es la que se muestra por defecto
-    const defaultTier = tiers.reduce(
-      (best, t) => (byTier[t].totalScore > byTier[best].totalScore ? t : best),
-      'mid'
-    );
-
-    return {
-      products: byTier[defaultTier].products,
-      treatments: byTier[defaultTier].treatments,
-      byTier,
-      defaultTier,
-    };
-  };
-
-  const getCategorizedProducts = (products) => {
-    const categoriesMap = new Map();
-    // Orden personalizado
-    ['Shampoo', 'Tratamiento', 'Acondicionador', 'Crema de Peinar', 'Gel', 'Espumas', 'Aceites'].forEach(cat => categoriesMap.set(cat, []));
-
-    products.forEach((product) => {
-      const key = product.category?.trim();
-      if (categoriesMap.has(key)) categoriesMap.get(key).push(product);
-    });
-
-    // Convertir a objeto manteniendo orden
-    return Object.fromEntries(categoriesMap);
-  };
-
-  const getRoutineSteps = (profile) => {
-    const {
-      oilyScalp, dryScalp, highPorosity, lowPorosity, needsProtein,
-      stylingMethod, isScalpOilyWithDryEnds, damageLevel, fineDensity,
-      proteinFrequencyWeeks, isCurly, isWavy, isCoily, isTransicion,
-      hasDandruff, hasSensitivity, fineStrand, coarseStrand, lowElasticity,
-    } = profile;
-
-    const shampoo = hasDandruff
-      ? 'Shampoo anticaspa (zinc o ketoconazol) en cuero cabelludo — alterna con shampoo suave hidratante'
-      : hasSensitivity
-      ? 'Shampoo hipoalergénico sin sulfatos ni fragancia, masaje muy suave'
-      : oilyScalp
-      ? 'Shampoo equilibrante aplicado solo en la raíz. No llevar a las puntas.'
-      : dryScalp
-      ? 'Shampoo nutritivo suave con masaje circular en cuero cabelludo'
-      : 'Shampoo hidratante con movimientos circulares suaves en raíz';
-
-    const conditioner = lowPorosity
-      ? 'Acondicionador ligero (medios → puntas), dejar 3 min con agua tibia para activar absorción'
-      : highPorosity
-      ? 'Acondicionador nutritivo (todo el largo), enjuagar con agua fría para sellar la cutícula'
-      : 'Acondicionador nutritivo (medios y puntas), enjuague templado';
-
-    const treatment = damageLevel === 'Alto'
-      ? 'Mascarilla reparadora con bond builders o proteínas (1x por semana)'
-      : damageLevel === 'Moderado-Alto'
-      ? 'Mascarilla proteica ligera cada 2 semanas + mascarilla hidratante la otra semana'
-      : needsProtein || lowElasticity
-      ? 'Alternar: mascarilla proteica cada 3-4 semanas con mascarilla hidratante las demás'
-      : 'Mascarilla hidratante profunda cada 1-2 semanas';
-
-    let leaveIn;
-    if (isTransicion) {
-      leaveIn = 'Zona de raíz natural: leave-in hidratante ligero. Zona de puntas tratadas: acondicionador sin enjuague nutritivo para equilibrar.';
-    } else if (stylingMethod === 'LOC') {
-      leaveIn = fineStrand
-        ? 'L: Leave-in ligero → O: Aceite en puntas (1-2 gotas) → C: Crema ligera de peinar'
-        : 'L: Leave-in → O: Aceite sellador en puntas → C: Crema de peinar para definir';
-    } else if (stylingMethod === 'LCO') {
-      leaveIn = 'L: Leave-in → C: Crema de peinar para definir → O: Aceite ligero para sellar';
-    } else {
-      leaveIn = oilyScalp
-        ? 'Leave-in muy ligero solo en puntas, evitar acercarse a la raíz'
-        : 'Leave-in nutritivo en medios y puntas';
-    }
-
-    const oil = isScalpOilyWithDryEnds
-      ? 'Aceite solo en puntas y medios (zona tratada). No tocar raíz.'
-      : oilyScalp
-      ? 'Aceite ultra ligero únicamente en puntas (máx. 2 gotas)'
-      : coarseStrand
-      ? 'Aceite nutritivo denso (karité o aguacate) en medios y puntas para penetrar la cutícula gruesa'
-      : 'Aceite nutritivo para sellar la hidratación en medios y puntas';
-
-    let gel = null;
-    if (isTransicion) {
-      gel = 'Crema de peinar ligera en zona de raíz natural y gel o espuma en las puntas tratadas para unificar la textura.';
-    } else if (isCurly || isCoily) {
-      gel = fineDensity
-        ? 'Gel ligero para rizos finos sobre cabello húmedo (scrunch suave). Evita frotar para no romper el rizo.'
-        : isCoily
-        ? 'Gel fuerte o manteca de styling sobre cabello muy húmedo (shingling o praying hands). Deja secar sin tocar.'
-        : 'Gel de fijación media-fuerte sobre cabello húmedo (scrunch de puntas a raíz). Deja el cast secar antes de romperlo.';
-    } else if (isWavy) {
-      gel = 'Gel ligero o espuma sobre cabello húmedo para definir ondas sin pesarlas (scrunch suave).';
-    }
-
-    const steps = [
-      { label: 'Shampoo', value: shampoo },
-      { label: 'Acondicionador', value: conditioner },
-      { label: 'Tratamiento', value: treatment },
-      { label: stylingMethod ? `Método ${stylingMethod}` : 'Leave-in', value: leaveIn },
-    ];
-    if (gel) steps.push({ label: 'Gel definidor', value: gel });
-    steps.push({ label: 'Aceite sellador', value: oil });
-    if (needsProtein) {
-      steps.push({ label: 'Frecuencia proteica', value: `Tratamiento proteico cada ${proteinFrequencyWeeks} semanas. Siempre seguir con mascarilla hidratante.` });
-    } else if (lowElasticity) {
-      steps.push({ label: 'Elasticidad', value: 'Incluye tratamiento proteico ligero cada 3-4 semanas para recuperar la elasticidad. Sigue siempre con hidratación.' });
-    }
-    return steps;
-  };
-
-  const getPersonalizedTips = (profile) => {
-    const tips = [];
-    const {
-      oilyScalp, dryScalp, highPorosity, lowPorosity, isChemical, isHeatDamaged, isAlisado,
-      needsProtein, isScalpOilyWithDryEnds, isCurlyOrWavy, damageLevel, stylingMethod,
-      hasDandruff, hasSensitivity, hasHairLoss, lowElasticity, isTransicion, isCoily,
-      heatFrequency, fineStrand, coarseStrand,
-    } = profile;
-
-    if (isTransicion) tips.push({
-      title: 'Cuidado en transición capilar',
-      description: 'Tu cabello tiene dos zonas con necesidades distintas: la raíz natural necesita hidratación y definición, mientras que las puntas tratadas necesitan reparación. Trabaja en secciones y evita estirar el punto de demarcación para reducir el quiebre.',
-      videoQuery: 'transición capilar cabello cuidado',
-    });
-    if (isScalpOilyWithDryEnds) tips.push({
-      title: 'Tratamiento por zonas',
-      description: 'Tu raíz produce exceso de sebo pero las puntas están secas o dañadas. Aplica el shampoo solo en la raíz y el acondicionador/mascarilla solo en medios y puntas. Los aceites pesados en la raíz agravan la oleosidad.',
-      videoQuery: 'tratamiento cabello raíz grasosa puntas secas',
-    });
-    if (isCoily) tips.push({
-      title: 'Hidratación profunda para cabello coily',
-      description: 'El cabello afrorizado es naturalmente más seco porque el sebo tarda en bajar por la espiral del cabello. Aplica el método LOC o LCO cada vez que mojes y usa mascarillas intensivas semanales. El pre-poo con aceite antes del lavado protege las puntas.',
-      videoQuery: 'cabello afrorizado hidratación LOC LCO método',
-    });
-    if (isCurlyOrWavy && fineStrand) tips.push({
-      title: 'Productos ligeros para rizo fino',
-      description: 'Tu cabello fino y rizado necesita definición sin peso. Las mousses y espumas ligeras definen sin aplanar el rizo. Las cremas muy pesadas o el exceso de aceite quitan volumen. Prefiere geles fluidos sobre cremas densas.',
-      videoQuery: 'cabello rizado fino productos ligeros definición',
-    });
-    if (hasDandruff) tips.push({
-      title: 'Control de caspa',
-      description: 'La caspa puede ser oleosa (escamas amarillentas) o seca (escamas blancas). Usa shampoo con zinc piritionato o ketoconazol 2 veces/semana. Evita agua muy caliente y alterna con shampoo nutritivo para no resecar el cuero cabelludo.',
-      videoQuery: 'control caspa shampoo anticaspa',
-    });
-    if (hasHairLoss) tips.push({
-      title: 'Estimular el folículo capilar',
-      description: 'Incorpora un tónico estimulante con cafeína o biotina directamente en el cuero cabelludo. Masajea 3-5 minutos al aplicarlo para activar la circulación. Evita colas y peinados muy tensos que traccionan el folículo.',
-      videoQuery: 'caída cabello estimular folículos masaje cuero cabelludo',
-    });
-    if (hasSensitivity) tips.push({
-      title: 'Cuero cabelludo sensible',
-      description: 'Evita productos con alcohol deshidratante, parfum y sulfatos agresivos. Enjuaga siempre con agua fría al final para cerrar los poros. Haz una prueba de parche antes de introducir nuevos productos.',
-      videoQuery: 'cuero cabelludo sensible irritación productos suaves',
-    });
-    if (lowElasticity) tips.push({
-      title: 'Recupera la elasticidad',
-      description: 'La elasticidad baja indica déficit de proteína en la corteza. Incorpora una mascarilla proteica ligera (hidrolizada) cada 2-3 semanas y sigue siempre con una hidratante. Si el cabello se vuelve rígido o crujiente, pausa la proteína y enfócate en hidratación.',
-      videoQuery: 'elasticidad cabello proteína tratamiento recuperar',
-    });
-    if (coarseStrand) tips.push({
-      title: 'Cabello grueso — penetración profunda',
-      description: 'La cutícula gruesa necesita calor suave para abrir y absorber productos. Aplica mascarillas bajo un gorro de ducha durante 20-30 min. Los aceites densos como coco o aguacate penetran mejor que los silicones.',
-      videoQuery: 'cabello grueso mascarilla profunda penetración',
-    });
-    if (isChemical && dryScalp) tips.push({
-      title: 'Reparación sin agravar la sequedad',
-      description: 'El proceso químico combinado con cuero cabelludo seco requiere bond builders (como Olaplex) que reparan sin resecar. Lava máximo 2 veces por semana con shampoo ultra suave libre de sulfatos.',
-      videoQuery: 'cabello procesado cuero cabelludo seco Olaplex reparación',
-    });
-    if (oilyScalp && !isScalpOilyWithDryEnds) tips.push({
-      title: 'Limpieza selectiva en raíz',
-      description: 'Aplica el shampoo exclusivamente en el cuero cabelludo, sin frotar el largo. Lavar las puntas con frecuencia las reseca y aumenta la producción de sebo. Termina con agua fría para cerrar los poros.',
-      videoQuery: 'cuero cabelludo grasoso limpieza selectiva raíz',
-    });
-    if (highPorosity) tips.push({
-      title: 'Sella la cutícula abierta',
-      description: 'La porosidad alta indica cutículas levantadas que pierden humedad fácilmente. Termina siempre con agua fría, aplica aceite después del leave-in para sellar, y evita agua caliente que abre más la cutícula.',
-      videoQuery: 'porosidad alta cabello sellar cutícula agua fría',
-    });
-    if (lowPorosity) tips.push({
-      title: 'Activa la absorción con calor suave',
-      description: 'La porosidad baja resiste la entrada de productos. Aplica tratamientos con el cabello húmedo y cálido (gorro de vapor o toalla tibia), dejando actuar más tiempo. El calor suave abre la cutícula temporalmente.',
-      videoQuery: 'porosidad baja cabello calor vapor absorción',
-    });
-    if (needsProtein && !lowElasticity) tips.push({
-      title: 'Balance proteína / hidratación',
-      description: 'Si el cabello se siente rígido o crujiente, es exceso de proteína; si se estira sin volver y se rompe fácil, falta proteína. Siempre sigue un tratamiento proteico con una mascarilla hidratante.',
-      videoQuery: 'balance proteína hidratación cabello tratamiento',
-    });
-    if (isCurlyOrWavy && stylingMethod) tips.push({
-      title: `Método ${stylingMethod} para tus rizos`,
-      description: stylingMethod === 'LOC'
-        ? 'Alta porosidad → LOC: Leave-in (hidratación) → Oil (sella antes de que se evapore) → Cream (define). El aceite entre capas protege la humedad del leave-in.'
-        : 'Porosidad media → LCO: Leave-in → Cream (define y penetra mejor) → Oil (sella al final). La crema funciona mejor sobre el leave-in antes del aceite en tu tipo de porosidad.',
-      videoQuery: `método ${stylingMethod} cabello rizado rizos`,
-    });
-    if (heatFrequency === 'Frecuente' || (isHeatDamaged && !isAlisado)) tips.push({
-      title: 'Protección térmica siempre',
-      description: 'Aplica siempre un protector térmico antes de cualquier herramienta con calor. Usa temperatura máxima de 180°C y no repases la misma sección más de dos veces.',
-      videoQuery: 'protector térmico cabello heat protectant secador',
-    });
-    if (damageLevel === 'Alto') tips.push({
-      title: 'Reconstrucción progresiva',
-      description: 'Con daño alto, los tratamientos reparadores semanales son esenciales durante al menos 4-6 semanas. Evita el calor directo y usa difusor a temperatura baja si necesitas secar.',
-      videoQuery: 'cabello dañado reparación tratamiento intensivo',
-    });
-    if (damageLevel === 'Bajo' && !lowElasticity && !hasDandruff && !hasHairLoss) tips.push({
-      title: 'Mantén la salud sin sobretratar',
-      description: 'Tu cabello está en buen estado. Elige productos ligeros y evita acumular tratamientos innecesarios. Una rutina simple y consistente es más efectiva que muchos productos.',
-      videoQuery: 'rutina cabello simple mantenimiento salud',
-    });
-    return tips.slice(0, 5);
-  };
-
-  const getFrequencyRecommendations = (profile) => {
-    const {
-      oilyScalp, dryScalp, isCoily, hasDandruff,
-      highPorosity, lowPorosity, needsProtein, isChemical,
-      isCurlyOrWavy, hasHairLoss,
-    } = profile;
-
-    const washNote = hasDandruff
-      ? 'Día 1: shampoo clarificante anticaspa. Días 3 y 5: shampoo suave hidratante.'
-      : oilyScalp
-      ? 'Los 3 días aplica solo en raíz con masajes circulares, sin llevar a puntas.'
-      : dryScalp || isCoily
-      ? '3 veces/semana. Si el cuero cabelludo lo tolera, puedes reducir a 2 lavados ajustando los días de descanso.'
-      : '3 veces/semana (días alternos). Mínimo día de por medio — no dejar pasar más de 2 días sin lavar.';
-
-    const treatNote = needsProtein
-      ? 'Nutritivo (Lav. A) → Reparador proteico (Lav. B, 20-30 min) → Hidratante (Lav. C). El reparador actúa como tratamiento proteico.'
-      : isChemical
-      ? 'Nutritivo (Lav. A) → Reparador bond-builder (Lav. B, 20 min) → Hidratante (Lav. C). Rotar en cada lavado.'
-      : 'Nutritivo (Lav. A) → Reparador (Lav. B) → Hidratante (Lav. C). Rotar en cada lavado, siempre que te laves.';
-
-    const tonicoNote = hasHairLoss
-      ? '3 veces/semana, 1 hora antes de cada lavado. Masajear 5 min para activar circulación.'
-      : '3 veces/semana, 1 hora antes de cada lavado. Masajear con yemas de los dedos.';
-
-    const nightNote = highPorosity
-      ? 'Cada noche: gorro de seda + aceite en medios y puntas para sellar la hidratación.'
-      : 'Cada noche: gorro de seda + aceite solo en puntas.';
-
-    const refreshNote = isCurlyOrWavy
-      ? 'Días 2, 4 y 6 (sin lavado): humedecer con spray y aplicar gel o espuma para reactivar la forma.'
-      : lowPorosity
-      ? 'Días de descanso: evitar agua y productos — el cabello necesita tiempo sin saturar.'
-      : 'Días de descanso: hidratación mínima con aceite en puntas si es necesario.';
-
-    return [
-      { label: 'Lavado',              value: washNote },
-      { label: 'Tratamiento',         value: treatNote },
-      { label: 'Tónico capilar',      value: tonicoNote },
-      { label: 'Rutina nocturna',     value: nightNote },
-      { label: 'Días de descanso',    value: refreshNote },
-    ];
-  };
-
-  const generateResult = (answersObject) => {
+  const generateResult = async (answersObject) => {
     setIsLoadingDiagnosis(true);
     spinAnim.setValue(0);
 
-    setTimeout(() => {
-      const profile = buildHairProfile(answersObject);
+    const [storeProductDB] = await Promise.all([
+      selectedStoreId ? fetchStoreProductDB(selectedStoreId).catch(() => null) : Promise.resolve(null),
+      new Promise((resolve) => setTimeout(resolve, 1800)),
+    ]);
+
+    const profile = buildHairProfile(answersObject);
       
       // Crear una versión limpia del perfil solo con flags booleanos
       const profileFlags = {
@@ -995,12 +311,6 @@ export default function DiagnosisScreen({ navigation }) {
         fineStrand: profile.fineStrand,
         coarseStrand: profile.coarseStrand,
       };
-      
-      const trueFlags = Object.entries(profileFlags)
-        .filter(([, v]) => v === true)
-        .map(([k]) => k);
-      console.log("✅ [generateResult] Profile flags (true values):", trueFlags);
-      
       AsyncStorage.setItem('@mybeauty-calendar:hairProfile', JSON.stringify(profileFlags))
         .catch((err) => {
           console.error("❌ [generateResult] Error saving profile:", err);
@@ -1008,7 +318,7 @@ export default function DiagnosisScreen({ navigation }) {
 
       
       const { damageLevel, stylingMethod } = profile;
-      const { products: recommendedProducts, treatments, byTier, defaultTier } = getRecommendedProducts(profile);
+      const { products: recommendedProducts, treatments, byTier, defaultTier } = getRecommendedProducts(profile, storeProductDB);
       const routinePlanResult = getRoutinePlan(profile, { products: recommendedProducts, treatments });
       const routinePlanByTier = {
         low:  getRoutinePlan(profile, byTier.low),
@@ -1047,7 +357,6 @@ export default function DiagnosisScreen({ navigation }) {
         ['@mybeauty-calendar:calendarNeedsRefresh', 'true'],
       ]).catch(() => {});
       setIsLoadingDiagnosis(false);
-    }, 1800);
   };
 
   const handleReset = () => {
@@ -1055,10 +364,12 @@ export default function DiagnosisScreen({ navigation }) {
     setAnswers({});
     setCurrentQuestion(0);
     setImage(null);
+    setSelectedStoreId(undefined);
     AsyncStorage.multiRemove([
       '@mybeauty-calendar:hairProfile',
       '@mybeauty-calendar:diagnosisResult',
       '@mybeauty-calendar:diagnosisRoutinePlan',
+      '@mybeauty-calendar:selectedStoreId',
     ]).catch(() => {});
   };
 
@@ -1114,7 +425,13 @@ export default function DiagnosisScreen({ navigation }) {
           style={[styles.quizHeader, { paddingTop: insets.top + 14 }]}
         >
           <View style={styles.headerRow}>
-            <TouchableOpacity onPress={handleReset} style={styles.headerBtn} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={handleReset}
+              style={styles.headerBtn}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Reiniciar diagnóstico"
+            >
               <Ionicons name="refresh-outline" size={20} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Tu Diagnóstico</Text>
@@ -1167,7 +484,7 @@ export default function DiagnosisScreen({ navigation }) {
           {/* BOTÓN CALENDARIO */}
           <TouchableOpacity
             style={[styles.primaryButton, { marginTop: 20, marginBottom: 4 }]}
-            onPress={() => navigation.navigate('Calendario', { screen: 'CalendarMain', params: { routinePlan, routinePlanByTier, defaultTier: defaultBudgetTier, objective: result.objective } })}
+            onPress={() => navigation.navigate('Calendario', { screen: 'CalendarMain', params: { routinePlan, routinePlanByTier, defaultTier: defaultBudgetTier, objective: result.objective, storeId: selectedStoreId ?? null } })}
             activeOpacity={0.85}
           >
             <LinearGradient
@@ -1263,6 +580,8 @@ export default function DiagnosisScreen({ navigation }) {
                 <TouchableOpacity
                   onPress={() => setVideoModal({ visible: false, label: '', value: '', videos: [], isLoadingVideos: false })}
                   style={styles.modalClose}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar video"
                 >
                   <Ionicons name="close" size={18} color="#888" />
                 </TouchableOpacity>
@@ -1282,14 +601,11 @@ export default function DiagnosisScreen({ navigation }) {
                   />
                 </View>
               ) : (() => {
-                const ytKey = getStepVideoKey(videoModal.label, result?.texture);
-                const ytVideo = ytKey ? routineVideos[ytKey] : null;
-                if (ytVideo?.youtubeId) {
-                  const ytId = ytVideo.youtubeId;
+                if (modalVideoData?.youtubeId) {
                   return (
                     <View style={styles.ytPlayerWrap}>
                       <YoutubeIframe
-                        videoId={ytId}
+                        videoId={modalVideoData.youtubeId}
                         width={MODAL_CARD_WIDTH}
                         height={MODAL_VIDEO_HEIGHT}
                         play
@@ -1297,21 +613,21 @@ export default function DiagnosisScreen({ navigation }) {
                     </View>
                   );
                 }
-                const videoData = ytVideo || routineVideos[ytKey];
-                if (videoData?.uri) {
+                if (modalVideoUri) {
                   return (
                     <View style={styles.videoContainer}>
-                      <Video
+                      <VideoView
                         ref={videoRef}
-                        source={{ uri: videoData.uri }}
+                        player={modalPlayer}
                         style={styles.modalVideo}
-                        resizeMode={ResizeMode.CONTAIN}
-                        shouldPlay
-                        useNativeControls
+                        contentFit="contain"
+                        nativeControls
                       />
                       <TouchableOpacity
                         style={styles.expandBtn}
-                        onPress={() => videoRef.current?.presentFullscreenPlayer()}
+                        onPress={() => videoRef.current?.enterFullscreen()}
+                        accessibilityRole="button"
+                        accessibilityLabel="Pantalla completa"
                       >
                         <Ionicons name="expand-outline" size={18} color="#fff" />
                       </TouchableOpacity>
@@ -1331,6 +647,21 @@ export default function DiagnosisScreen({ navigation }) {
           </View>
         </Modal>
       </View>
+    );
+  }
+
+  // ── SELECTOR DE PAÍS / TIENDA (antes del quiz) ──────────────────────────────
+
+  if (selectedStoreId === undefined) {
+    if (country === undefined) return null; // cargando país guardado
+    return (
+      <StoreSelectionStep
+        country={country}
+        stores={stores}
+        loadingStores={loadingStores}
+        onSelectCountry={handleSelectCountry}
+        onSelectStore={handleSelectStore}
+      />
     );
   }
 
@@ -1397,7 +728,13 @@ export default function DiagnosisScreen({ navigation }) {
                   <Text style={styles.question}>{item.title}</Text>
 
                   {item.id === 'photo' ? (
-                    <TouchableOpacity style={styles.uploadButton} onPress={pickImage} activeOpacity={0.85}>
+                    <TouchableOpacity
+                      style={styles.uploadButton}
+                      onPress={pickImage}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel="Subir foto de tu cabello"
+                    >
                       {image ? (
                         <Image source={{ uri: image }} style={styles.uploadImage} />
                       ) : (
@@ -1517,793 +854,3 @@ export default function DiagnosisScreen({ navigation }) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#FDF5F8',
-  },
-
-  // shared header
-  header: {
-    paddingHorizontal: 18,
-    paddingBottom: 28,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#BF789C',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    elevation: 10,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-  headerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-
-  // quiz header extras
-  quizHeader: {
-    paddingHorizontal: 18,
-    paddingBottom: 50,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#BF789C',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    elevation: 10,
-  },
-  stepPill: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    minWidth: 60,
-    alignItems: 'center',
-  },
-  stepPillText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  progressBar: {
-    height: 4,
-    borderRadius: 99,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 99,
-    backgroundColor: '#fff',
-  },
-
-  // quiz slide
-  slide: {
-    flex: 1,
-  },
-  slideContent: {
-    paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 130,
-  },
-  stepLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#D6A4A4',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  question: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#2D2D2D',
-    marginBottom: 24,
-    lineHeight: 30,
-  },
-
-  // option cards
-  optionsContainer: {
-    width: '100%',
-  },
-  optionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: '#F0DDE2',
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  optionCardActive: {
-    borderColor: '#BF789C',
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-  },
-  optionCardInner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  optionRadio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#DDD',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 2,
-    flexShrink: 0,
-  },
-  optionRadioActive: {
-    borderColor: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.3)',
-  },
-  optionRadioDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#fff',
-  },
-  optionTextBlock: {
-    flex: 1,
-  },
-  optionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2D2D2D',
-    marginBottom: 4,
-  },
-  optionTitleActive: {
-    color: '#fff',
-  },
-  optionDesc: {
-    fontSize: 13,
-    color: '#999',
-    lineHeight: 19,
-  },
-  optionDescActive: {
-    color: 'rgba(255,255,255,0.85)',
-  },
-
-  // photo upload
-  uploadButton: {
-    alignSelf: 'center',
-    width: 220,
-    height: 220,
-    borderRadius: 28,
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#F0DDE2',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 12,
-    overflow: 'hidden',
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 3,
-  },
-  uploadIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FDF0F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  uploadText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  uploadSubText: {
-    fontSize: 12,
-    color: '#CCC',
-    textAlign: 'center',
-  },
-  uploadImage: {
-    width: '100%',
-    height: '100%',
-  },
-
-  // next button
-  nextContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 20,
-    right: 20,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  backButtonWrapper: {
-    flex: 0.35,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    paddingVertical: 16,
-  },
-  backText: {
-    color: '#D6A4A4',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  nextButtonWrapper: {
-    flex: 1,
-  },
-  nextButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    paddingVertical: 16,
-  },
-  nextText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-
-  // result header avatar area
-  resultAvatarSection: {
-    alignItems: 'center',
-  },
-  resultIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  resultHairType: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 8,
-    textTransform: 'capitalize',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-  },
-  badge: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 99,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-
-  // scroll / sections
-  scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 8,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#D6A4A4',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-
-  // stats grid
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 28,
-  },
-  statChip: {
-    width: '47%',
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 14,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  statChipIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#FDF0F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statChipLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#CCC',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  statChipValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#333',
-    lineHeight: 18,
-  },
-
-  // hair image
-  hairImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 20,
-    marginTop: 16,
-    marginBottom: 8,
-    resizeMode: 'cover',
-  },
-
-  // card
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    marginBottom: 28,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 4,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F5E8EC',
-  },
-
-  // routine
-  routineRow: {
-    paddingVertical: 14,
-  },
-  routineLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  routineDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#D6A4A4',
-    flexShrink: 0,
-  },
-  routineLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#D6A4A4',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  routineValue: {
-    fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
-    paddingLeft: 15,
-  },
-
-  // products button
-  productsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF5C2',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    borderWidth: 1.5,
-    borderColor: '#F0D97A',
-    marginBottom: 24,
-  },
-  productsButtonText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8A6B00',
-  },
-
-  // product categories and cards
-  // products
-  categoryGroup: {
-    paddingTop: 14,
-    paddingBottom: 4,
-  },
-  categoryHeading: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#D6A4A4',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  productRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 9,
-    gap: 12,
-  },
-  productRowName: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  productRowTag: {
-    backgroundColor: '#FDF0F3',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  productRowTagText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#D6A4A4',
-  },
-
-  // tips
-  tipCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#C47898',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  tipCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 6,
-  },
-  tipDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D6A4A4',
-    flexShrink: 0,
-  },
-  tipTitle: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#333',
-  },
-  tipPreview: {
-    fontSize: 13,
-    color: '#999',
-    lineHeight: 19,
-    paddingLeft: 18,
-  },
-
-  // frequency
-  frequencyRow: {
-    paddingVertical: 13,
-    gap: 4,
-  },
-  frequencyLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#555',
-  },
-  frequencyValue: {
-    fontSize: 13,
-    color: '#888',
-    lineHeight: 19,
-  },
-
-  // action buttons
-  primaryButton: {
-    borderRadius: 18,
-    overflow: 'hidden',
-    marginTop: 8,
-    marginBottom: 14,
-  },
-  primaryButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-    letterSpacing: 0.3,
-  },
-  secondaryButton: {
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: '#D6A4A4',
-    paddingVertical: 16,
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    marginBottom: 8,
-  },
-  secondaryButtonText: {
-    color: '#D6A4A4',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E0E0E0',
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  // modal video flotante
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(20,10,20,0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  modalCard: {
-    backgroundColor: '#1C1220',
-    borderRadius: 24,
-    overflow: 'hidden',
-    width: MODAL_CARD_WIDTH,
-    shadowColor: '#D6A4A4',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 20,
-  },
-  modalTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    gap: 8,
-  },
-  modalTitleDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D6A4A4',
-    flexShrink: 0,
-  },
-  modalTitle: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#F5E0EC',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  modalClose: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(214,164,164,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ytPlayerWrap: {
-    backgroundColor: '#000',
-  },
-  ytThumbWrap: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: '#111',
-    marginBottom: 4,
-  },
-  ytThumb: {
-    width: '100%',
-    height: '100%',
-  },
-  ytPlayOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.38)',
-    gap: 8,
-  },
-  ytPlayBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FF0000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ytPlayLabel: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  videoContainer: {
-    position: 'relative',
-    flex: 1,
-  },
-  modalVideo: {
-    width: MODAL_CARD_WIDTH,
-    height: MODAL_VIDEO_HEIGHT,
-    backgroundColor: '#1A1A1A',
-  },
-  expandBtn: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalDesc: {
-    fontSize: 13,
-    color: 'rgba(245,224,236,0.7)',
-    lineHeight: 20,
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 20,
-  },
-
-  loadingContainer: {
-    paddingVertical: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 150,
-  },
-  videosContainer: {
-    height: 240,
-    marginVertical: 12,
-  },
-  videosScrollView: {
-    flex: 1,
-  },
-  videoThumbnail: {
-    marginHorizontal: 8,
-    width: 140,
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  videoThumbnailImage: {
-    width: 140,
-    height: 84,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  playButtonOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  videoTitle: {
-    fontSize: 11,
-    color: '#2D2D2D',
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 14,
-    width: 140,
-  },
-  videoPlaceholder: {
-    height: 180,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(214, 164, 164, 0.1)',
-    borderRadius: 12,
-    marginVertical: 12,
-  },
-  videoPlaceholderText: {
-    fontSize: 14,
-    color: '#D6A4A4',
-    marginTop: 12,
-    fontWeight: '600',
-  },
-
-  // loading modal
-  loadingModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(45,45,45,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingModalContent: {
-    width: 200,
-    height: 280,
-    borderRadius: 28,
-    overflow: 'hidden',
-    shadowColor: '#BF789C',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4,
-    shadowRadius: 32,
-    elevation: 25,
-  },
-  loadingGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
-  },
-  spinner: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: 0.3,
-  },
-  loadingSubtext: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-});

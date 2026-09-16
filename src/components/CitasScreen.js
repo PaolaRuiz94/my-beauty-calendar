@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../auth/AuthContext';
 import { cancelReservation } from '../firebase/reservations';
+import { cancelAppointmentReminder } from '../services/notificationService';
 
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -94,6 +95,7 @@ export default function CitasScreen() {
   const [citas, setCitas]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showHistorial, setShowHistorial] = useState(false);
 
   const fetchCitas = async () => {
     if (!user?.uid) { setLoading(false); return; }
@@ -114,18 +116,34 @@ export default function CitasScreen() {
 
   const onRefresh = () => { setRefreshing(true); fetchCitas(); };
 
-  const cancelarCita = async (cita) => {
-    try {
-      // Reservas viejas (antes del esquema de servicios) no tienen storeId ni
-      // slotIds — cancelReservation ya maneja ese caso, solo cambia el estado.
-      await cancelReservation(cita.id, cita.storeId, cita.slotIds);
-      setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, estado: 'cancelada' } : c));
-    } catch {}
+  const cancelarCita = (cita) => {
+    Alert.alert(
+      'Cancelar cita',
+      `¿Seguro que quieres cancelar tu cita del ${formatFecha(cita.fecha)} a las ${cita.hora}${cita.servicioNombre ? ` (${cita.servicioNombre})` : ''}?`,
+      [
+        { text: 'No, mantener', style: 'cancel' },
+        {
+          text: 'Sí, cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Reservas viejas (antes del esquema de servicios) no tienen
+              // storeId ni slotIds — cancelReservation ya maneja ese caso,
+              // solo cambia el estado.
+              await cancelReservation(cita.id, cita.storeId, cita.slotIds);
+              cancelAppointmentReminder(cita.id).catch(() => {});
+              setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, estado: 'cancelada' } : c));
+            } catch {}
+          },
+        },
+      ]
+    );
   };
 
   const hoy = new Date().toISOString().split('T')[0];
-  const proximas = citas.filter(c => c.fecha >= hoy && c.estado !== 'cancelada');
-  const pasadas  = citas.filter(c => c.fecha < hoy || c.estado === 'cancelada');
+  const proximas   = citas.filter(c => c.fecha >= hoy && c.estado !== 'cancelada');
+  const historial  = citas.filter(c => c.fecha < hoy && c.estado !== 'cancelada');
+  const canceladas = citas.filter(c => c.estado === 'cancelada');
 
   return (
     <View style={styles.screen}>
@@ -136,8 +154,20 @@ export default function CitasScreen() {
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.5 }}
         style={[styles.header, { paddingTop: insets.top + 14 }]}
       >
-        <Text style={styles.headerTitle}>Mis Citas</Text>
-        {proximas.length > 0 && (
+        <View style={styles.headerTopRow}>
+          <Text style={styles.headerTitle}>{showHistorial ? 'Historial' : 'Mis Citas'}</Text>
+          <TouchableOpacity
+            onPress={() => setShowHistorial(v => !v)}
+            style={styles.historialBtn}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={showHistorial ? 'Ver citas vigentes' : 'Ver historial de citas'}
+          >
+            <Ionicons name={showHistorial ? 'calendar-outline' : 'time-outline'} size={14} color="#fff" />
+            <Text style={styles.historialBtnText}>{showHistorial ? 'Vigentes' : 'Historial'}</Text>
+          </TouchableOpacity>
+        </View>
+        {!showHistorial && proximas.length > 0 && (
           <View style={styles.headerBadge}>
             <Text style={styles.headerBadgeText}>{proximas.length} próxima{proximas.length > 1 ? 's' : ''}</Text>
           </View>
@@ -152,32 +182,44 @@ export default function CitasScreen() {
           contentContainerStyle={styles.scroll}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D6A4A4" />}
         >
-          {citas.length === 0 ? (
+          {showHistorial ? (
+            historial.length === 0 && canceladas.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="time-outline" size={52} color="#EDD0D8" />
+                <Text style={styles.emptyTitle}>Sin historial todavía</Text>
+                <Text style={styles.emptySub}>Acá van a aparecer tus citas ya realizadas y las que canceles.</Text>
+              </View>
+            ) : (
+              <>
+                {historial.length > 0 && (
+                  <>
+                    <Text style={styles.sectionLabel}>REALIZADAS</Text>
+                    {historial.map(c => (
+                      <CitaCard key={c.id} cita={c} />
+                    ))}
+                  </>
+                )}
+
+                {canceladas.length > 0 && (
+                  <>
+                    <Text style={[styles.sectionLabel, { marginTop: historial.length > 0 ? 24 : 0 }]}>CANCELADAS</Text>
+                    {canceladas.map(c => (
+                      <CitaCard key={c.id} cita={c} />
+                    ))}
+                  </>
+                )}
+              </>
+            )
+          ) : proximas.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="calendar-outline" size={52} color="#EDD0D8" />
-              <Text style={styles.emptyTitle}>Sin citas aún</Text>
+              <Text style={styles.emptyTitle}>Sin citas vigentes</Text>
               <Text style={styles.emptySub}>Reserva en una peluquería desde la sección Explorar.</Text>
             </View>
           ) : (
-            <>
-              {proximas.length > 0 && (
-                <>
-                  <Text style={styles.sectionLabel}>PRÓXIMAS</Text>
-                  {proximas.map(c => (
-                    <CitaCard key={c.id} cita={c} onCancelar={cancelarCita} />
-                  ))}
-                </>
-              )}
-
-              {pasadas.length > 0 && (
-                <>
-                  <Text style={[styles.sectionLabel, { marginTop: proximas.length > 0 ? 24 : 0 }]}>HISTORIAL</Text>
-                  {pasadas.map(c => (
-                    <CitaCard key={c.id} cita={c} />
-                  ))}
-                </>
-              )}
-            </>
+            proximas.map(c => (
+              <CitaCard key={c.id} cita={c} onCancelar={cancelarCita} />
+            ))
           )}
         </ScrollView>
       )}
@@ -199,12 +241,31 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 10,
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
   headerTitle: {
     color: '#fff',
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: 0.3,
-    marginBottom: 6,
+  },
+  historialBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 99,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  historialBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   headerBadge: {
     alignSelf: 'flex-start',

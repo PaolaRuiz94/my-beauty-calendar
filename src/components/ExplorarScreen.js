@@ -249,6 +249,7 @@ export default function ExplorarScreen({ navigation, route }) {
   const [selectedFilter, setSelectedFilter] = useState('Tradicional');
   const [hairProfile, setHairProfile]       = useState(null);
   const [filterPersonalizado, setFilterPersonalizado] = useState(false);
+  const [diagnosisStoreId, setDiagnosisStoreId] = useState(null);
 
   // Google Places
   const [googlePlaces, setGooglePlaces]     = useState([]);
@@ -272,6 +273,9 @@ export default function ExplorarScreen({ navigation, route }) {
     requestLocation();
     AsyncStorage.getItem('@mybeauty-calendar:hairProfile')
       .then(raw => { if (raw) setHairProfile(JSON.parse(raw)); })
+      .catch(() => {});
+    AsyncStorage.getItem('@mybeauty-calendar:selectedStoreId')
+      .then(raw => { if (raw) setDiagnosisStoreId(JSON.parse(raw)); })
       .catch(() => {});
   }, []);
 
@@ -399,6 +403,32 @@ export default function ExplorarScreen({ navigation, route }) {
       return a.distancia - b.distancia;
     });
 
+  // Tienda elegida en el diagnóstico (guardada en AsyncStorage por
+  // DiagnosisScreen) — se muestra fija arriba de todo, ajena a los filtros de
+  // ciudad/tipo, para que siempre sea fácil volver a reservar ahí. Solo si es
+  // una peluquería reservable (una tienda de productos no tendría sentido acá).
+  const diagnosisStore = diagnosisStoreId
+    ? peluquerias.find(p => p.id === diagnosisStoreId && p.businessType === 'peluqueria')
+    : null;
+  const diagnosisStoreDistancia = diagnosisStore && userLocation && diagnosisStore.lat != null && diagnosisStore.lng != null
+    ? haversineKm(userLocation.latitude, userLocation.longitude, diagnosisStore.lat, diagnosisStore.lng)
+    : null;
+
+  // Lista única de "peluquerías cerca de ti": las propias (reservables o
+  // curadas) más las de Google Maps, todas juntas y ordenadas por distancia
+  // real. La del diagnóstico se excluye acá porque ya se muestra fija arriba.
+  const cercaDeTi = [
+    ...peluqueriasFiltradas.filter(p => p.id !== diagnosisStore?.id),
+    ...googlePlaces.map(p => ({
+      ...p,
+      distancia: userLocation ? haversineKm(userLocation.latitude, userLocation.longitude, p.lat, p.lng) : null,
+    })),
+  ].sort((a, b) => {
+    if (a.distancia == null) return 1;
+    if (b.distancia == null) return -1;
+    return a.distancia - b.distancia;
+  });
+
   const nextDays = getNextDays(7);
 
   return (
@@ -478,6 +508,24 @@ export default function ExplorarScreen({ navigation, route }) {
       {activeTab === 'peluquerias' && (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.peluScroll}>
 
+          {/* peluquería elegida en el diagnóstico — fija arriba de todo, ajena
+              a los filtros de ciudad/tipo */}
+          {diagnosisStore && (
+            <>
+              <Text style={styles.misReservasTitle}>TU PELUQUERÍA DEL DIAGNÓSTICO</Text>
+              <PeluqueriaCard
+                peluqueria={diagnosisStore}
+                distancia={diagnosisStoreDistancia}
+                onVerPerfil={() => openPerfil(diagnosisStore)}
+                onReservar={() => navigation.navigate('ReservarCita', {
+                  storeId: diagnosisStore.id,
+                  storeName: diagnosisStore.nombre,
+                  horarios: diagnosisStore.horarios,
+                })}
+              />
+            </>
+          )}
+
           {/* selector de ciudad */}
           {availableCities.length > 0 && (
             <TouchableOpacity
@@ -533,66 +581,48 @@ export default function ExplorarScreen({ navigation, route }) {
             ))}
           </ScrollView>
 
-          {/* peluquerías registradas en la app — siempre visibles, reservables */}
-          {loadingPelu ? (
-            <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 60 }} />
-          ) : peluqueriasFiltradas.length === 0 ? (
+          {/* lista única: tus peluquerías registradas + las cercanas de Google
+              Maps, todas juntas y ordenadas por distancia real — sin separar
+              en secciones que puedan verse como contradictorias entre sí. */}
+          <Text style={styles.misReservasTitle}>
+            {diagnosisStore ? 'OTRAS PELUQUERÍAS CERCA DE TI' : 'PELUQUERÍAS CERCA DE TI'}
+          </Text>
+          {(loadingPelu || (userLocation && loadingGoogle)) ? (
+            <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 20 }} />
+          ) : cercaDeTi.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="cut-outline" size={44} color="#EDD0D8" />
               <Text style={styles.emptyText}>
-                No hay peluquerías registradas{selectedCity ? ` en ${selectedCity}` : ''}.
+                No encontramos peluquerías{selectedCity ? ` en ${selectedCity}` : ' cerca de ti'}.
               </Text>
             </View>
           ) : (
             <>
-              <Text style={styles.misReservasTitle}>PELUQUERÍAS</Text>
-              {peluqueriasFiltradas.map(p => (
+              {cercaDeTi.map(p => (
                 <PeluqueriaCard
                   key={p.id}
                   peluqueria={p}
                   distancia={p.distancia}
-                  onVerPerfil={() => openPerfil(p)}
-                  onReservar={() => navigation.navigate('ReservarCita', {
+                  onVerPerfil={p.isGooglePlace ? undefined : () => openPerfil(p)}
+                  onReservar={p.isGooglePlace ? undefined : () => navigation.navigate('ReservarCita', {
                     storeId: p.id,
                     storeName: p.nombre,
                     horarios: p.horarios,
                   })}
                 />
               ))}
+              {userLocation && googlePlaces.length > 0 && (
+                <Text style={styles.googleAttrib}>Incluye resultados de Google Maps</Text>
+              )}
             </>
           )}
 
-          {/* resultados de Google Maps cerca de ti — solo informativos */}
-          {userLocation && (
-            <>
-              <Text style={[styles.misReservasTitle, { marginTop: 20 }]}>CERCA DE TI (GOOGLE MAPS)</Text>
-              {loadingGoogle ? (
-                <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 20 }} />
-              ) : googleError ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="key-outline" size={44} color="#EDD0D8" />
-                  <Text style={styles.emptyText}>
-                    {['REQUEST_DENIED', 'INVALID_REQUEST', 'EXPO_PUBLIC_GOOGLE_PLACES_KEY no configurada'].includes(googleError)
-                      ? 'Falta configurar la Google Places API key.\nAbre el archivo .env y reemplaza TU_API_KEY_AQUI con tu clave de Google Cloud.'
-                      : `No se pudieron cargar peluquerías cercanas.\n(${googleError})`}
-                  </Text>
-                </View>
-              ) : googlePlaces.length === 0 ? (
-                <Text style={styles.emptyText}>No encontramos peluquerías cercanas en Google Maps.</Text>
-              ) : (
-                <>
-                  {googlePlaces.map(p => (
-                    <PeluqueriaCard
-                      key={p.id}
-                      peluqueria={p}
-                      distancia={haversineKm(userLocation.latitude, userLocation.longitude, p.lat, p.lng)}
-                      onVerPerfil={undefined}
-                    />
-                  ))}
-                  <Text style={styles.googleAttrib}>Resultados de Google Maps</Text>
-                </>
-              )}
-            </>
+          {googleError && userLocation && (
+            <Text style={[styles.emptyText, { marginTop: 8 }]}>
+              {['REQUEST_DENIED', 'INVALID_REQUEST', 'EXPO_PUBLIC_GOOGLE_PLACES_KEY no configurada'].includes(googleError)
+                ? 'Falta configurar la Google Places API key.\nAbre el archivo .env y reemplaza TU_API_KEY_AQUI con tu clave de Google Cloud.'
+                : `No se pudieron cargar peluquerías cercanas de Google Maps.\n(${googleError})`}
+            </Text>
           )}
         </ScrollView>
       )}

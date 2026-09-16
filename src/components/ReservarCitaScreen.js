@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,22 +7,122 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
 import { fetchServicios, fetchOccupiedTimes, createReservation } from '../firebase/reservations';
 import { dayKeyFor, normalizeHorarioDay, availableStartTimes } from '../utils/scheduling';
+import { scheduleAppointmentReminder } from '../services/notificationService';
 
-const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-const MESES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const MESES_LARGO = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+const DIAS_SEMANA = ['L', 'M', 'M', 'J', 'V', 'S', 'D']; // lunes a domingo
 
-function nextDays(count) {
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getMonthGrid(year, month) {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDow = firstDay.getDay();
+  const offset = startDow === 0 ? 6 : startDow - 1; // semana empieza en lunes
+  const days = [];
+  for (let i = 0; i < offset; i++) days.push(null);
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const mm = String(month + 1).padStart(2, '0');
+    const dd = String(d).padStart(2, '0');
+    days.push({ dateStr: `${year}-${mm}-${dd}`, number: d });
+  }
+  return days;
+}
+
+function MonthCalendar({ selectedFecha, onSelectFecha }) {
+  const hoy = todayStr();
   const today = new Date();
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return {
-      fecha: d.toISOString().split('T')[0],
-      diaLabel: DIAS_CORTO[d.getDay()],
-      numero: d.getDate(),
-      mesLabel: MESES_CORTO[d.getMonth()],
-    };
-  });
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const isCurrentMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth();
+
+  const prevMonth = () => {
+    if (isCurrentMonth) return;
+    if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11); }
+    else setViewMonth((m) => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewYear((y) => y + 1); setViewMonth(0); }
+    else setViewMonth((m) => m + 1);
+  };
+
+  const days = getMonthGrid(viewYear, viewMonth);
+
+  return (
+    <View style={styles.calendarCard}>
+      <View style={styles.calendarNav}>
+        <TouchableOpacity
+          onPress={prevMonth}
+          disabled={isCurrentMonth}
+          style={styles.calendarNavBtn}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Mes anterior"
+        >
+          <Ionicons name="chevron-back" size={20} color={isCurrentMonth ? '#E5D5DC' : '#BF789C'} />
+        </TouchableOpacity>
+        <Text style={styles.calendarNavTitle}>
+          {MESES_LARGO[viewMonth].charAt(0).toUpperCase() + MESES_LARGO[viewMonth].slice(1)} {viewYear}
+        </Text>
+        <TouchableOpacity
+          onPress={nextMonth}
+          style={styles.calendarNavBtn}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Mes siguiente"
+        >
+          <Ionicons name="chevron-forward" size={20} color="#BF789C" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.calendarDowRow}>
+        {DIAS_SEMANA.map((l, i) => (
+          <Text key={i} style={styles.calendarDowText}>{l}</Text>
+        ))}
+      </View>
+
+      <View style={styles.calendarGrid}>
+        {days.map((day, i) => {
+          if (!day) return <View key={`empty-${i}`} style={styles.calendarCell} />;
+          const isPast = day.dateStr < hoy;
+          const isSelected = day.dateStr === selectedFecha;
+          const isToday = day.dateStr === hoy;
+          return (
+            <TouchableOpacity
+              key={day.dateStr}
+              style={styles.calendarCell}
+              disabled={isPast}
+              onPress={() => onSelectFecha(day.dateStr)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`${day.number} de ${MESES_LARGO[viewMonth]}`}
+              accessibilityState={{ selected: isSelected, disabled: isPast }}
+            >
+              <View style={[
+                styles.calendarDayCircle,
+                isSelected && styles.calendarDayCircleSelected,
+                isToday && !isSelected && styles.calendarDayCircleToday,
+              ]}>
+                <Text style={[
+                  styles.calendarDayNum,
+                  isPast && styles.calendarDayNumPast,
+                  isSelected && styles.calendarDayNumSelected,
+                  isToday && !isSelected && styles.calendarDayNumToday,
+                ]}>
+                  {day.number}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 export default function ReservarCitaScreen({ route, navigation }) {
@@ -34,7 +134,6 @@ export default function ReservarCitaScreen({ route, navigation }) {
   const [loadingServicios, setLoadingServicios] = useState(true);
   const [selectedServicio, setSelectedServicio] = useState(null);
 
-  const dias = useMemo(() => nextDays(14), []);
   const [selectedFecha, setSelectedFecha] = useState(null);
 
   const [horariosDisponibles, setHorariosDisponibles] = useState([]);
@@ -71,7 +170,7 @@ export default function ReservarCitaScreen({ route, navigation }) {
     if (!user?.uid || !selectedServicio || !selectedFecha || !selectedHora) return;
     setConfirming(true);
     try {
-      await createReservation({
+      const reservaId = await createReservation({
         storeId,
         storeName,
         servicio: selectedServicio,
@@ -79,6 +178,13 @@ export default function ReservarCitaScreen({ route, navigation }) {
         horaInicio: selectedHora,
         clienteUid: user.uid,
       });
+      scheduleAppointmentReminder({
+        reservaId,
+        storeName,
+        servicioNombre: selectedServicio.nombre,
+        fecha: selectedFecha,
+        hora: selectedHora,
+      }).catch(() => {});
       Alert.alert('¡Listo!', 'Tu cita quedó reservada.', [
         { text: 'Ver mis citas', onPress: () => navigation.replace('MisCitas') },
         { text: 'Cerrar', onPress: () => navigation.goBack() },
@@ -153,25 +259,7 @@ export default function ReservarCitaScreen({ route, navigation }) {
         {selectedServicio && (
           <>
             <Text style={styles.sectionLabel}>FECHA</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.diasRow}>
-              {dias.map((d) => {
-                const active = selectedFecha === d.fecha;
-                return (
-                  <TouchableOpacity
-                    key={d.fecha}
-                    onPress={() => setSelectedFecha(d.fecha)}
-                    style={[styles.diaChip, active && styles.diaChipActive]}
-                    activeOpacity={0.8}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${d.diaLabel} ${d.numero} de ${d.mesLabel}`}
-                    accessibilityState={{ selected: active }}
-                  >
-                    <Text style={[styles.diaChipDia, active && styles.diaChipTextActive]}>{d.diaLabel}</Text>
-                    <Text style={[styles.diaChipNumero, active && styles.diaChipTextActive]}>{d.numero}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <MonthCalendar selectedFecha={selectedFecha} onSelectFecha={setSelectedFecha} />
           </>
         )}
 
@@ -264,15 +352,31 @@ const styles = StyleSheet.create({
   servicioMeta: { fontSize: 12, color: '#999', marginTop: 4 },
   servicioMetaActive: { color: 'rgba(255,255,255,0.85)' },
 
-  diasRow: { gap: 10, paddingRight: 20 },
-  diaChip: {
-    width: 52, alignItems: 'center', paddingVertical: 10, borderRadius: 14,
-    borderWidth: 1.5, borderColor: '#F0DDE2', backgroundColor: '#fff',
+  calendarCard: {
+    backgroundColor: '#fff', borderRadius: 18, padding: 14,
+    borderWidth: 1.5, borderColor: '#F0DDE2',
   },
-  diaChipActive: { backgroundColor: '#BF789C', borderColor: '#BF789C' },
-  diaChipDia: { fontSize: 11, fontWeight: '600', color: '#999' },
-  diaChipNumero: { fontSize: 16, fontWeight: '800', color: '#2D2D2D', marginTop: 2 },
-  diaChipTextActive: { color: '#fff' },
+  calendarNav: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  calendarNavBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  calendarNavTitle: { fontSize: 14, fontWeight: '800', color: '#2D2D2D', textTransform: 'capitalize' },
+  calendarDowRow: { flexDirection: 'row', marginBottom: 4 },
+  calendarDowText: {
+    width: '14.28%', textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#D6A4A4',
+  },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarCell: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  calendarDayCircle: {
+    width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+  },
+  calendarDayCircleSelected: { backgroundColor: '#BF789C' },
+  calendarDayCircleToday: { borderWidth: 1.5, borderColor: '#BF789C' },
+  calendarDayNum: { fontSize: 13, fontWeight: '600', color: '#2D2D2D' },
+  calendarDayNumPast: { color: '#DDD' },
+  calendarDayNumSelected: { color: '#fff', fontWeight: '800' },
+  calendarDayNumToday: { color: '#BF789C', fontWeight: '800' },
 
   horaChip: {
     paddingVertical: 10, paddingHorizontal: 16, borderRadius: 99,

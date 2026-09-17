@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../theme';
+import { logError } from '../services/errorReporting';
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -16,6 +17,7 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error('[ErrorBoundary]', this.props.label || '', error, info?.componentStack);
+    logError(error, this.props.label || this.props.title || 'ErrorBoundary');
   }
 
   handleRetry = () => {

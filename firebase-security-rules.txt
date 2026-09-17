@@ -58,6 +58,14 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // Registro de errores de la app (src/services/errorReporting.js) — mismo
+    // patrón que reports: cualquiera logueada puede crear el suyo, la revisión
+    // es manual desde la consola de Firebase, nadie puede leer/editar/borrar.
+    match /error_logs/{errorId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+
     // Directorio de peluquerías/tiendas — leído por my-beauty-calendar (Explorar) y
     // gestionado (creado/editado) por el panel de empresas (mycalendarbeauty-empresas).
     // Los documentos curados a mano (sembrados sin ownerId) quedan de solo-lectura:

@@ -19,20 +19,10 @@ import { useCart } from '../context/CartContext';
 import { fetchAllProducts } from '../firebase/products';
 import { buildAmazonUrl } from '../utils/amazonUtils';
 import { normalizeHorarioDay } from '../utils/scheduling';
+import { haversineKm } from '../utils/geo';
+import { logError } from '../services/errorReporting';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-    Math.cos((lat2 * Math.PI) / 180) *
-    Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
 const DIAS_LABEL = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -314,7 +304,9 @@ export default function ExplorarScreen({ navigation, route }) {
         .filter(d => !d.data()._info)
         .map(d => ({ id: d.id, ...d.data() }));
       setPeluquerias(data);
-    } catch {}
+    } catch (error) {
+      logError(error, 'ExplorarScreen.fetchPeluquerias');
+    }
     setLoadingPelu(false);
   };
 
@@ -339,7 +331,10 @@ export default function ExplorarScreen({ navigation, route }) {
         .filter(d => d.data().peluqueriaId === peluqueriaId && !d.data()._info)
         .map(d => ({ id: d.id, ...d.data() }));
       setResenias(data);
-    } catch { setResenias([]); }
+    } catch (error) {
+      logError(error, 'ExplorarScreen.fetchResenias');
+      setResenias([]);
+    }
   };
 
   const openPerfil = (peluqueria) => {
@@ -364,7 +359,9 @@ export default function ExplorarScreen({ navigation, route }) {
       setReseniaPuntos(0);
       setReseniaTexto('');
       fetchResenias(perfilModal.peluqueria.id);
-    } catch {}
+    } catch (error) {
+      logError(error, 'ExplorarScreen.guardarResenia');
+    }
     setGuardandoResenia(false);
   };
 

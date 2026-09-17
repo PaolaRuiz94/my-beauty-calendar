@@ -27,6 +27,7 @@ import { buildAmazonUrl } from '../utils/amazonUtils';
 import { fetchStoreInfo, fetchStoreProductDB } from '../firebase/stores';
 import { buildAddToCartUrl, buildCartPageUrl } from '../utils/wooCommerceCart';
 import { buildWhatsAppUrl, buildOrderMessage } from '../utils/storeContact';
+import { logError } from '../services/errorReporting';
 
 const defaultProductImage = require("../../assets/icon.png");
 
@@ -258,6 +259,7 @@ export default function ProductsScreen({ route, navigation, hideHeader }) {
       setProfileProducts(data);
     } catch (error) {
       console.error("❌ [ProductsScreen] Error loading products:", error);
+      logError(error, 'ProductsScreen.loadProfileProducts');
       setProfileProducts([]);
     }
 

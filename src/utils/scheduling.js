@@ -50,7 +50,10 @@ export function normalizeHorarioDay(value) {
 
 // Todos los horarios de inicio posibles para un servicio ese día, dados los
 // rangos de atención (ya normalizados) y las horas ya ocupadas (Set de 'HH:MM').
-export function availableStartTimes(rangos, duracionMinutos, occupiedTimes) {
+// minStartMinutes (opcional, minutos desde medianoche) descarta los horarios
+// que ya pasaron — se usa cuando la fecha elegida es hoy, para no ofrecer un
+// inicio anterior a la hora actual.
+export function availableStartTimes(rangos, duracionMinutos, occupiedTimes, minStartMinutes = null) {
   if (!Array.isArray(rangos) || rangos.length === 0) return [];
   const count = slotsForDuration(duracionMinutos);
   const occupied = occupiedTimes || new Set();
@@ -61,6 +64,7 @@ export function availableStartTimes(rangos, duracionMinutos, occupiedTimes) {
     const startMin = toMinutes(inicio);
     const endMin = toMinutes(fin);
     for (let t = startMin; t + count * SLOT_MINUTES <= endMin; t += SLOT_MINUTES) {
+      if (minStartMinutes != null && t < minStartMinutes) continue;
       const wouldOccupy = Array.from({ length: count }, (_, i) => toHHMM(t + i * SLOT_MINUTES));
       if (wouldOccupy.every((hhmm) => !occupied.has(hhmm))) starts.push(toHHMM(t));
     }

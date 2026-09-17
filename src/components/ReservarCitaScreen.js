@@ -156,7 +156,10 @@ export default function ReservarCitaScreen({ route, navigation }) {
     try {
       const rangos = normalizeHorarioDay(horarios?.[dayKeyFor(selectedFecha)]);
       const occupied = await fetchOccupiedTimes(storeId, selectedFecha);
-      setHorariosDisponibles(availableStartTimes(rangos, selectedServicio.duracionMinutos, occupied));
+      // Si la fecha elegida es hoy, no ofrecer horarios que ya pasaron.
+      const now = new Date();
+      const minStartMinutes = selectedFecha === todayStr() ? now.getHours() * 60 + now.getMinutes() : null;
+      setHorariosDisponibles(availableStartTimes(rangos, selectedServicio.duracionMinutos, occupied, minStartMinutes));
     } catch {
       setHorariosDisponibles([]);
     } finally {

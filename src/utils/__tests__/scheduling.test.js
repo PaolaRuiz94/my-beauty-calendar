@@ -97,4 +97,17 @@ describe('availableStartTimes', () => {
     expect(availableStartTimes([], 15, new Set())).toEqual([]);
     expect(availableStartTimes(null, 15, new Set())).toEqual([]);
   });
+
+  it('con minStartMinutes, descarta los horarios que ya pasaron (fecha = hoy)', () => {
+    // Son las 09:20 (9*60+20=560): 09:00 y 09:15 ya pasaron, quedan 09:30 y 09:45
+    expect(availableStartTimes(rangos, 15, new Set(), 9 * 60 + 20)).toEqual([
+      '09:30', '09:45',
+    ]);
+  });
+
+  it('sin minStartMinutes (fecha futura), no descarta nada por hora', () => {
+    expect(availableStartTimes(rangos, 15, new Set(), null)).toEqual([
+      '09:00', '09:15', '09:30', '09:45',
+    ]);
+  });
 });

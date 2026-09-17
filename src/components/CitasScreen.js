@@ -13,6 +13,7 @@ import { db } from '../firebase/config';
 import { useAuth } from '../auth/AuthContext';
 import { cancelReservation } from '../firebase/reservations';
 import { cancelAppointmentReminder } from '../services/notificationService';
+import { logError } from '../services/errorReporting';
 
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -107,7 +108,9 @@ export default function CitasScreen() {
         .map(d => ({ id: d.id, ...d.data() }))
         .sort((a, b) => (a.fecha + a.hora) > (b.fecha + b.hora) ? 1 : -1);
       setCitas(data);
-    } catch {}
+    } catch (error) {
+      logError(error, 'CitasScreen.fetchCitas');
+    }
     setLoading(false);
     setRefreshing(false);
   };
@@ -133,7 +136,9 @@ export default function CitasScreen() {
               await cancelReservation(cita.id, cita.storeId, cita.slotIds);
               cancelAppointmentReminder(cita.id).catch(() => {});
               setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, estado: 'cancelada' } : c));
-            } catch {}
+            } catch (error) {
+              logError(error, 'CitasScreen.cancelarCita');
+            }
           },
         },
       ]

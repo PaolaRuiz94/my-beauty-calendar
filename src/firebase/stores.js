@@ -1,6 +1,7 @@
 import { collection, getDocs, query, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from './config';
 import { CATEGORY_KEY } from '../utils/productScoring';
+import { priceTierForPrice } from '../utils/pricing';
 
 // Datos de contacto/tienda online (nombre, teléfono para WhatsApp, sitio web
 // para el flujo de "agregar al carrito" cuando la tienda tiene e-commerce
@@ -60,9 +61,7 @@ export async function fetchStoreProductDB(storeId) {
       weightClass: data.weightClass || null,
       image: data.image || null,
       price: data.price ?? null,
-      // TODO: derivar priceTier de price real cuando definamos los umbrales
-      // low/mid/high para productos de tienda (hoy solo Amazon los tiene).
-      priceTier: 'mid',
+      priceTier: priceTierForPrice(data.price),
       storeId,
       externalProductId: data.externalProductId || null,
     });

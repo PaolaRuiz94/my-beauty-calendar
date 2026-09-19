@@ -117,8 +117,13 @@ export default function DiagnosisScreen({ navigation }) {
     fetchStoresWithCatalog()
       .then((result) => {
         if (cancelled) return;
-        setStores(result);
-        if (result.length === 0) setSelectedStoreId(null);
+        // fetchStoresWithCatalog trae tiendas de cualquier país (no filtra por
+        // ubicación); acá nos quedamos solo con las del país elegido. Las que
+        // no tienen campo `pais` son datos de antes de que existiera (o de
+        // prueba) — se tratan como Colombia en vez de excluirlas.
+        const enPais = result.filter((s) => !s.pais || s.pais === country);
+        setStores(enPais);
+        if (enPais.length === 0) setSelectedStoreId(null);
       })
       .catch(() => {
         if (cancelled) return;

@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 
 // Obtén tu API key gratuita en https://openweathermap.org/api → "Current Weather Data"
-const OPENWEATHER_API_KEY = 'REDACTED';
+const OPENWEATHER_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
 export async function getWeatherContext() {
   let { status } = await Location.getForegroundPermissionsAsync();

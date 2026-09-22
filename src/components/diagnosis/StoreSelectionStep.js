@@ -42,6 +42,7 @@ function storeDesc(store, distancia) {
 export default function StoreSelectionStep({ country, stores, loadingStores, onSelectCountry, onSelectStore }) {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
+  const [selectedCity, setSelectedCity] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
 
   const showingCountry = !country;
@@ -79,12 +80,23 @@ export default function StoreSelectionStep({ country, stores, loadingStores, onS
       });
   }, [stores, userLocation]);
 
+  const cities = useMemo(() => {
+    const set = new Set(stores.map((s) => s.ciudad).filter(Boolean));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [stores]);
+
+  // Si cambia el país (u otro fetch de tiendas) y la ciudad elegida ya no
+  // aplica a la lista nueva, la limpiamos para no dejar un filtro fantasma.
+  useEffect(() => {
+    if (selectedCity && !cities.includes(selectedCity)) setSelectedCity(null);
+  }, [cities, selectedCity]);
+
   const query = search.trim().toLowerCase();
-  const storesFiltrados = query
-    ? storesConDistancia.filter((s) =>
-        (s.nombre || '').toLowerCase().includes(query) || (s.ciudad || '').toLowerCase().includes(query)
-      )
-    : storesConDistancia;
+  const storesFiltrados = storesConDistancia.filter((s) => {
+    const matchesCity = !selectedCity || s.ciudad === selectedCity;
+    const matchesQuery = !query || (s.nombre || '').toLowerCase().includes(query);
+    return matchesCity && matchesQuery;
+  });
 
   return (
     <View style={styles.screen}>
@@ -127,11 +139,11 @@ export default function StoreSelectionStep({ country, stores, loadingStores, onS
                   style={localStyles.searchInput}
                   value={search}
                   onChangeText={setSearch}
-                  placeholder="Buscar por nombre o ciudad"
+                  placeholder="Buscar por nombre"
                   placeholderTextColor="#BBB"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  accessibilityLabel="Buscar tienda por nombre o ciudad"
+                  accessibilityLabel="Buscar tienda por nombre"
                 />
                 {search.length > 0 && (
                   <TouchableOpacity
@@ -146,11 +158,45 @@ export default function StoreSelectionStep({ country, stores, loadingStores, onS
               </View>
             )}
 
-            {query && storesFiltrados.length === 0 && (
+            {cities.length > 1 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={localStyles.cityRow}
+              >
+                <TouchableOpacity
+                  style={[localStyles.cityChip, !selectedCity && localStyles.cityChipActive]}
+                  onPress={() => setSelectedCity(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Todas las ciudades"
+                >
+                  <Text style={[localStyles.cityChipText, !selectedCity && localStyles.cityChipTextActive]}>
+                    Todas
+                  </Text>
+                </TouchableOpacity>
+                {cities.map((city) => (
+                  <TouchableOpacity
+                    key={city}
+                    style={[localStyles.cityChip, selectedCity === city && localStyles.cityChipActive]}
+                    onPress={() => setSelectedCity(city === selectedCity ? null : city)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Filtrar por ciudad: ${city}`}
+                  >
+                    <Text style={[localStyles.cityChipText, selectedCity === city && localStyles.cityChipTextActive]}>
+                      {city}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {(query || selectedCity) && storesFiltrados.length === 0 && (
               <View style={localStyles.emptySearch}>
                 <Ionicons name="search-outline" size={32} color="#EDD0D8" />
                 <Text style={localStyles.emptySearchText}>
-                  No encontramos tiendas para "{search}".
+                  {query
+                    ? `No encontramos tiendas para "${search}"${selectedCity ? ` en ${selectedCity}` : ''}.`
+                    : `No hay tiendas en ${selectedCity}.`}
                 </Text>
               </View>
             )}
@@ -193,6 +239,30 @@ const localStyles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#2D2D2D',
+  },
+  cityRow: {
+    gap: 8,
+    paddingBottom: 14,
+  },
+  cityChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#F0DDE2',
+  },
+  cityChipActive: {
+    backgroundColor: '#BF789C',
+    borderColor: '#BF789C',
+  },
+  cityChipText: {
+    fontSize: 13,
+    color: '#8A8A8A',
+    fontWeight: '600',
+  },
+  cityChipTextActive: {
+    color: '#fff',
   },
   emptySearch: {
     alignItems: 'center',

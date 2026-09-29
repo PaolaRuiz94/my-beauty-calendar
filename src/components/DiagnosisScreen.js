@@ -34,6 +34,7 @@ import {
   buildHairProfile,
   getHairType,
   getObjectiveLabel,
+  getPrimaryNeed,
   getRoutinePlan,
   getRecommendedProducts,
   getCategorizedProducts,
@@ -342,6 +343,7 @@ export default function DiagnosisScreen({ navigation }) {
         scalpCondition: getScalpCondition(answersObject.scalp),
         damageLevel,
         stylingMethod,
+        primaryNeed: getPrimaryNeed(profile),
         recommendations: {
           routine: getRoutineSteps(profile),
           products: recommendedProducts,
@@ -461,6 +463,20 @@ export default function DiagnosisScreen({ navigation }) {
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 48 }]}
         >
           {image && <Image source={{ uri: image }} style={styles.hairImage} />}
+
+          {/* NECESIDAD PRINCIPAL — el resultado más importante, bien visible */}
+          {result.primaryNeed && (
+            <View style={[styles.primaryNeedCard, { backgroundColor: result.primaryNeed.bgColor }]}>
+              <View style={[styles.primaryNeedIconCircle, { backgroundColor: result.primaryNeed.color }]}>
+                <Ionicons name={result.primaryNeed.icon} size={32} color="#fff" />
+              </View>
+              <Text style={styles.primaryNeedLabel}>Tu cabello necesita</Text>
+              <Text style={[styles.primaryNeedTitle, { color: result.primaryNeed.color }]}>
+                {result.primaryNeed.label}
+              </Text>
+              <Text style={styles.primaryNeedDescription}>{result.primaryNeed.description}</Text>
+            </View>
+          )}
 
           {/* PERFIL CAPILAR */}
           <View style={[styles.sectionTitleRow, { marginTop: 24 }]}>

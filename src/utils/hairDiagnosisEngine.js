@@ -103,13 +103,75 @@ export const getObjectiveLabel = (value) => {
   return map[value] || 'Objetivo personalizado';
 };
 
+// El "trío" clásico del cuidado capilar (nutrición/hidratación/reconstrucción):
+// se elige un único resultado principal, priorizando la señal más directa de
+// daño estructural (elasticidad) antes que porosidad, para no diluir el
+// mensaje con varios "necesitas todo" a la vez.
+const PRIMARY_NEEDS = {
+  reconstruccion: {
+    key: 'reconstruccion',
+    label: 'Reconstrucción',
+    description: 'Tu cabello perdió proteína (química, calor o baja elasticidad) y necesita reforzar su estructura antes que nada.',
+    icon: 'shield-checkmark',
+    // Mismo rojo-rosado que "Nivel de daño: Alto" en este mismo resultado —
+    // coherente con el resto de la paleta de la app (rosa/mauve), no un
+    // semáforo genérico rojo/azul/verde.
+    color: '#E07A7A',
+    bgColor: '#FBEAEA',
+  },
+  hidratacion: {
+    key: 'hidratacion',
+    label: 'Hidratación',
+    description: 'Tu cabello tiene porosidad alta: pierde agua rápido y necesita hidratación constante para no sentirse seco ni frágil.',
+    icon: 'water',
+    color: '#BF789C', // rosa principal de la app (header, botones, badges)
+    bgColor: '#FDF0F6',
+  },
+  nutricion: {
+    key: 'nutricion',
+    label: 'Nutrición',
+    description: 'La cutícula está cerrada y le cuesta absorber agua: necesita aceites y grasas que la suavicen y sellen.',
+    icon: 'leaf',
+    color: '#D6A4A4', // rosa-mauve secundario, el mismo de los íconos de sección
+    bgColor: '#F5EBF0',
+  },
+};
+
+export const getPrimaryNeed = (profile) => {
+  const { lowElasticity, highPorosity, lowPorosity, needsProtein } = profile;
+
+  if (lowElasticity) return PRIMARY_NEEDS.reconstruccion;
+  if (highPorosity) return PRIMARY_NEEDS.hidratacion;
+  if (lowPorosity) return PRIMARY_NEEDS.nutricion;
+  if (needsProtein) return PRIMARY_NEEDS.reconstruccion;
+  return PRIMARY_NEEDS.hidratacion;
+};
+
+const PRIMARY_NEED_TO_TREATMENT_KEY = {
+  nutricion: 'nutritivo',
+  reconstruccion: 'reconstructor',
+  hidratacion: 'hidratante',
+};
+
+// Orden en el que se rotan los 3 tratamientos (nutritivo/reconstructor/
+// hidratante): el que resuelve la necesidad principal del diagnóstico va
+// primero — antes el orden era fijo (siempre nutritivo primero) sin importar
+// el resultado, lo que contradecía un diagnóstico de Reconstrucción o
+// Hidratación como prioridad. Los otros dos completan el ciclo detrás.
+export const getTreatmentOrder = (profile) => {
+  const primaryKey = PRIMARY_NEED_TO_TREATMENT_KEY[getPrimaryNeed(profile).key];
+  const rest = Object.values(PRIMARY_NEED_TO_TREATMENT_KEY).filter((k) => k !== primaryKey);
+  return [primaryKey, ...rest];
+};
+
 export const getRoutinePlan = (profile, { products = [], treatments = {} } = {}) => {
   const byCategory = {};
   products.forEach(p => { byCategory[p.category] = p; });
-  const tag = (text, category, specificProduct = undefined) => ({
+  const tag = (text, category, specificProduct = undefined, displayLabel = undefined) => ({
     text,
     category,
     product: specificProduct !== undefined ? specificProduct : (byCategory[category] || null),
+    displayLabel,
   });
   const tagGelOrMousse = (text) => {
     const category = byCategory['Gel'] ? 'Gel' : 'Espumas';
@@ -201,52 +263,61 @@ export const getRoutinePlan = (profile, { products = [], treatments = {} } = {})
 
   const nightSteps = [tag('Proteger el cabello con gorro de seda o pañuelo de satín', 'Accesorios', GORRO_SEDA_PRODUCT), nightOil];
 
-  // Tratamiento nutritivo — Día 1 (lavado A)
+  // Tratamiento nutritivo — Día 1 (lavado A): repone lípidos, ideal para
+  // cutícula cerrada/porosidad baja o mechón grueso que se siente áspero.
   const treatNutritivo = tag(
     highPorosity || isCoily
-      ? 'Aplicar de medios a puntas y dejar actuar 20 min bajo gorro de vapor (nutritivo)'
-      : 'Aplicar de medios a puntas y dejar actuar 15 min (nutritivo)',
+      ? 'Aplica de medios a puntas y deja actuar 20 min bajo gorro de vapor — repone lípidos y sella la fibra para que no pierda la hidratación'
+      : 'Aplica de medios a puntas y deja actuar 15 min — repone lípidos y suaviza el cabello áspero o seco',
     'Tratamiento',
-    treatments.nutritivo ?? null
+    treatments.nutritivo ?? null,
+    'Tratamiento nutritivo'
   );
 
-  // Tratamiento reparador — Día 3 (lavado B)
+  // Tratamiento reconstructor — Día 3 (lavado B): repone proteína, para
+  // cabello con química, calor frecuente o elasticidad baja (se estira y no
+  // vuelve a su forma, señal de que le falta proteína).
   const treatReparador = tag(
     needsProtein
-      ? `Aplicar de medios a puntas y dejar actuar ${isChemical ? '20' : '30'} min (reparador proteico)`
+      ? `Aplica de medios a puntas y deja actuar ${isChemical ? '20' : '30'} min — repone proteína y refuerza la fibra debilitada por química o calor`
       : highPorosity
-      ? 'Aplicar de medios a puntas y dejar actuar 20 min bajo calor (reparador)'
-      : 'Aplicar de medios a puntas y dejar actuar 15-20 min (reparador)',
+      ? 'Aplica de medios a puntas y deja actuar 20 min bajo calor — cierra la cutícula abierta y refuerza la fibra'
+      : 'Aplica de medios a puntas y deja actuar 15-20 min — refuerza la estructura del cabello',
     'Tratamiento',
-    treatments.reparador ?? null
+    treatments.reparador ?? null,
+    'Tratamiento reconstructor'
   );
 
-  // Tratamiento hidratante — Día 5 (lavado C)
+  // Tratamiento hidratante — Día 5 (lavado C): repone agua, para porosidad
+  // alta (pierde humedad rápido) o cuando el objetivo es hidratación.
   const treatHidratante = tag(
     highPorosity || isCoily
-      ? 'Aplicar de medios a puntas y dejar actuar 20 min bajo gorro de vapor (hidratante)'
+      ? 'Aplica de medios a puntas y deja actuar 20 min bajo gorro de vapor — repone el agua que tu cabello pierde rápido por su porosidad'
       : objective === 'hidratación'
-      ? 'Aplicar de medios a puntas y dejar actuar 20 min (hidratación profunda)'
-      : 'Aplicar de medios a puntas y dejar actuar 15 min (hidratante)',
+      ? 'Aplica de medios a puntas y deja actuar 20 min — hidratación profunda para cabello que se siente seco o sin brillo'
+      : 'Aplica de medios a puntas y deja actuar 15 min — repone agua y devuelve suavidad al cabello',
     'Tratamiento',
-    treatments.hidratante ?? null
+    treatments.hidratante ?? null,
+    'Tratamiento hidratante'
   );
 
-  // Pasos de lavado A (detox + nutritivo)
-  const washASteps = [tonicoPreWash, detoxShampoo, treatNutritivo, conditioner, ...stylingDaySteps];
+  // El lavado A siempre lleva el tratamiento que resuelve la necesidad
+  // principal del diagnóstico (ver getTreatmentOrder) — B y C completan la
+  // rotación con los otros dos, en el orden que quede.
+  const treatmentByKey = { nutritivo: treatNutritivo, reconstructor: treatReparador, hidratante: treatHidratante };
+  const titleByKey = { nutritivo: 'Nutritivo', reconstructor: 'Reconstructor', hidratante: 'Hidratante' };
+  const [keyA, keyB, keyC] = getTreatmentOrder(profile);
 
-  // Pasos de lavado B (hidratante + reparador)
-  const washBSteps = [tonicoPreWash, hydraShampoo, treatReparador, conditioner, ...stylingDaySteps];
-
-  // Pasos de lavado C (hidratante + hidratante)
-  const washCSteps = [tonicoPreWash, hydraShampoo, treatHidratante, conditioner, ...stylingDaySteps];
+  const washASteps = [tonicoPreWash, detoxShampoo, treatmentByKey[keyA], conditioner, ...stylingDaySteps];
+  const washBSteps = [tonicoPreWash, hydraShampoo, treatmentByKey[keyB], conditioner, ...stylingDaySteps];
+  const washCSteps = [tonicoPreWash, hydraShampoo, treatmentByKey[keyC], conditioner, ...stylingDaySteps];
 
   return [
-    { day: 1, title: 'Lavado A — Nutritivo',   daySteps: washASteps,     nightSteps },
+    { day: 1, title: `Lavado A — ${titleByKey[keyA]}`, daySteps: washASteps,     nightSteps },
     { day: 2, title: isCurlyOrWavy ? 'Refresco y activación' : 'Descanso', daySteps: refreshDaySteps, nightSteps },
-    { day: 3, title: 'Lavado B — Reparador',   daySteps: washBSteps,     nightSteps },
+    { day: 3, title: `Lavado B — ${titleByKey[keyB]}`, daySteps: washBSteps,     nightSteps },
     { day: 4, title: isCurlyOrWavy ? 'Refresco y activación' : 'Descanso', daySteps: refreshDaySteps, nightSteps },
-    { day: 5, title: 'Lavado C — Hidratante',  daySteps: washCSteps,     nightSteps },
+    { day: 5, title: `Lavado C — ${titleByKey[keyC]}`, daySteps: washCSteps,     nightSteps },
     { day: 6, title: isCurlyOrWavy ? 'Refresco y activación' : 'Descanso', daySteps: refreshDaySteps, nightSteps },
     { day: 7, title: 'Descanso profundo',       daySteps: ['Masaje suave en cuero cabelludo con yemas de los dedos por 3-5 min (sin productos)', 'Evitar calor, tintes o manipulación excesiva hoy'], nightSteps },
   ];
@@ -260,8 +331,19 @@ export const getRoutinePlan = (profile, { products = [], treatments = {} } = {})
 export const getRecommendedProducts = (profile, storeProductDB = null) => {
   const mergedDB = {};
   Object.keys(productDB).forEach((category) => {
-    const storeItems = storeProductDB?.[category];
-    mergedDB[category] = (storeItems && storeItems.length > 0) ? storeItems : productDB[category];
+    const storeItems = storeProductDB?.[category] || [];
+    if (category === 'tratamiento') {
+      // El ciclo semanal necesita 3 tratamientos distintos (nutritivo,
+      // reconstructor, hidratante). Si reemplazamos por completo con el
+      // catálogo de la tienda como en las demás categorías, una tienda con
+      // solo 1-2 productos de tratamiento hace que los 3 pasos terminen
+      // recomendando el mismo producto (no hay de dónde más escoger). Por
+      // eso acá el genérico siempre queda de respaldo para completar la
+      // variedad, en vez de ser reemplazado del todo.
+      mergedDB[category] = storeItems.length > 0 ? [...storeItems, ...productDB[category]] : productDB[category];
+    } else {
+      mergedDB[category] = storeItems.length > 0 ? storeItems : productDB[category];
+    }
   });
 
   const categoryEntries = Object.entries(mergedDB);
@@ -583,11 +665,20 @@ export const getFrequencyRecommendations = (profile) => {
     ? '3 veces/semana. Si el cuero cabelludo lo tolera, puedes reducir a 2 lavados ajustando los días de descanso.'
     : '3 veces/semana (días alternos). Mínimo día de por medio — no dejar pasar más de 2 días sin lavar.';
 
-  const treatNote = needsProtein
-    ? 'Nutritivo (Lav. A) → Reparador proteico (Lav. B, 20-30 min) → Hidratante (Lav. C). El reparador actúa como tratamiento proteico.'
+  // Mismo orden que arma getRoutinePlan para el calendario: el tratamiento
+  // que resuelve la necesidad principal del diagnóstico va primero.
+  const reconstructorDetail = needsProtein
+    ? 'Reconstructor proteico (20-30 min) — repone proteína y refuerza la fibra'
     : isChemical
-    ? 'Nutritivo (Lav. A) → Reparador bond-builder (Lav. B, 20 min) → Hidratante (Lav. C). Rotar en cada lavado.'
-    : 'Nutritivo (Lav. A) → Reparador (Lav. B) → Hidratante (Lav. C). Rotar en cada lavado, siempre que te laves.';
+    ? 'Reconstructor bond-builder (20 min) — refuerza la fibra teñida o alisada'
+    : 'Reconstructor — refuerza la fibra';
+  const treatmentDetailByKey = {
+    nutritivo: 'Nutritivo — repone lípidos',
+    reconstructor: reconstructorDetail,
+    hidratante: 'Hidratante — repone agua',
+  };
+  const treatOrder = getTreatmentOrder(profile);
+  const treatNote = `Rota estos 3 tratamientos en cada lavado, empezando por el más urgente:\n${treatOrder.map(k => treatmentDetailByKey[k]).join('\n')}`;
 
   const tonicoNote = hasHairLoss
     ? '3 veces/semana, 1 hora antes de cada lavado. Masajear 5 min para activar circulación.'
@@ -605,7 +696,7 @@ export const getFrequencyRecommendations = (profile) => {
 
   return [
     { label: 'Lavado',              value: washNote },
-    { label: 'Tratamiento',         value: treatNote },
+    { label: 'Tratamientos',        value: treatNote },
     { label: 'Tónico capilar',      value: tonicoNote },
     { label: 'Rutina nocturna',     value: nightNote },
     { label: 'Días de descanso',    value: refreshNote },

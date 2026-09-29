@@ -7,8 +7,9 @@ import styles from '../CalendarScreen.styles';
 export default function RoutineItem({ item, index, isCompleted, onToggle, accentColor, onProductPress }) {
   const raw     = typeof item === 'string' ? item : item.text;
   const category = typeof item === 'object' ? item.category : null;
+  const displayLabel = typeof item === 'object' ? item.displayLabel : null;
   const colonIdx = raw.indexOf(':');
-  const label = category || (colonIdx !== -1 ? raw.slice(0, colonIdx).trim() : '');
+  const label = displayLabel || category || (colonIdx !== -1 ? raw.slice(0, colonIdx).trim() : '');
   const name  = colonIdx !== -1 && !category ? raw.slice(colonIdx + 1).trim() : raw;
   const product = typeof item === 'object' ? item.product : undefined;
 

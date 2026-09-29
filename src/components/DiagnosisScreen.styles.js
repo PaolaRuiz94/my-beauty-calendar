@@ -373,6 +373,43 @@ export default StyleSheet.create({
     resizeMode: 'cover',
   },
 
+  // necesidad principal (nutrición / hidratación / reconstrucción)
+  primaryNeedCard: {
+    alignItems: 'center',
+    borderRadius: 24,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  primaryNeedIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  primaryNeedLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  primaryNeedTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  primaryNeedDescription: {
+    fontSize: 14,
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
   // card
   card: {
     backgroundColor: '#fff',

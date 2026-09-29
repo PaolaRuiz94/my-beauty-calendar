@@ -15,10 +15,11 @@ export function getCategoryForStep(stepText) {
 export function buildRoutineStep(s, products) {
   const text = typeof s === 'string' ? s : s.text;
   const category = typeof s === 'object' && s.category ? s.category : getCategoryForStep(text);
+  const displayLabel = typeof s === 'object' ? s.displayLabel : undefined;
   const product = (typeof s === 'object' && s.product)
     ? s.product
     : (category ? (products.find(p => p.category === category) ?? null) : null);
-  return { text, editable: false, category, product };
+  return { text, editable: false, category, product, displayLabel };
 }
 
 // El ciclo se reinicia en el día 0 de cada bloque de 14 días para mantener el

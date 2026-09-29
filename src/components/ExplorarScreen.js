@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, ActivityIndicator,
+  Modal, TextInput, ActivityIndicator, FlatList,
   Platform, TouchableWithoutFeedback, Linking, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -503,125 +503,133 @@ export default function ExplorarScreen({ navigation, route }) {
 
       {/* ── tab: peluquerías ── */}
       {activeTab === 'peluquerias' && (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.peluScroll}>
-
-          {/* peluquería elegida en el diagnóstico — fija arriba de todo, ajena
-              a los filtros de ciudad/tipo */}
-          {diagnosisStore && (
+        <FlatList
+          data={cercaDeTi}
+          keyExtractor={(p) => p.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.peluScroll}
+          renderItem={({ item: p }) => (
+            <PeluqueriaCard
+              peluqueria={p}
+              distancia={p.distancia}
+              onVerPerfil={p.isGooglePlace ? undefined : () => openPerfil(p)}
+              onReservar={p.isGooglePlace ? undefined : () => navigation.navigate('ReservarCita', {
+                storeId: p.id,
+                storeName: p.nombre,
+                horarios: p.horarios,
+              })}
+            />
+          )}
+          ListHeaderComponent={
             <>
-              <Text style={styles.misReservasTitle}>TU PELUQUERÍA DEL DIAGNÓSTICO</Text>
-              <PeluqueriaCard
-                peluqueria={diagnosisStore}
-                distancia={diagnosisStoreDistancia}
-                onVerPerfil={() => openPerfil(diagnosisStore)}
-                onReservar={() => navigation.navigate('ReservarCita', {
-                  storeId: diagnosisStore.id,
-                  storeName: diagnosisStore.nombre,
-                  horarios: diagnosisStore.horarios,
-                })}
-              />
+              {/* peluquería elegida en el diagnóstico — fija arriba de todo, ajena
+                  a los filtros de ciudad/tipo */}
+              {diagnosisStore && (
+                <>
+                  <Text style={styles.misReservasTitle}>TU PELUQUERÍA DEL DIAGNÓSTICO</Text>
+                  <PeluqueriaCard
+                    peluqueria={diagnosisStore}
+                    distancia={diagnosisStoreDistancia}
+                    onVerPerfil={() => openPerfil(diagnosisStore)}
+                    onReservar={() => navigation.navigate('ReservarCita', {
+                      storeId: diagnosisStore.id,
+                      storeName: diagnosisStore.nombre,
+                      horarios: diagnosisStore.horarios,
+                    })}
+                  />
+                </>
+              )}
+
+              {/* selector de ciudad */}
+              {availableCities.length > 0 && (
+                <TouchableOpacity
+                  style={styles.cityBanner}
+                  onPress={() => setCityModalVisible(true)}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cambiar ciudad"
+                >
+                  <Ionicons name="location" size={14} color="#BF789C" />
+                  <Text style={styles.cityBannerText} numberOfLines={1}>
+                    {selectedCity || 'Todas las ciudades'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={14} color="#BF789C" />
+                </TouchableOpacity>
+              )}
+
+              {/* banner de personalización */}
+              {filterPersonalizado && hairProfile && getHairTypeName(hairProfile) && (
+                <View style={styles.hairBanner}>
+                  <Ionicons name="sparkles-outline" size={13} color="#BF789C" />
+                  <Text style={styles.hairBannerText}>
+                    Mostrando peluquerías para cabello{' '}
+                    <Text style={styles.hairBannerBold}>{getHairTypeName(hairProfile)}</Text>
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => { setSelectedFilter('Tradicional'); setFilterPersonalizado(false); }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Quitar filtro personalizado"
+                  >
+                    <Ionicons name="close-circle-outline" size={16} color="#D6A4A4" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* filtros */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
+                {FILTERS.map(f => (
+                  <TouchableOpacity
+                    key={f}
+                    style={[styles.filterChip, selectedFilter === f && styles.filterChipActive]}
+                    onPress={() => { setSelectedFilter(f); setFilterPersonalizado(false); }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.filterChipText, selectedFilter === f && styles.filterChipTextActive]}>
+                      {f}
+                    </Text>
+                    {filterPersonalizado && selectedFilter === f && (
+                      <View style={styles.filterParaTiDot} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* lista única: tus peluquerías registradas + las cercanas de Google
+                  Maps, todas juntas y ordenadas por distancia real — sin separar
+                  en secciones que puedan verse como contradictorias entre sí. */}
+              <Text style={styles.misReservasTitle}>
+                {diagnosisStore ? 'OTRAS PELUQUERÍAS CERCA DE TI' : 'PELUQUERÍAS CERCA DE TI'}
+              </Text>
             </>
-          )}
-
-          {/* selector de ciudad */}
-          {availableCities.length > 0 && (
-            <TouchableOpacity
-              style={styles.cityBanner}
-              onPress={() => setCityModalVisible(true)}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Cambiar ciudad"
-            >
-              <Ionicons name="location" size={14} color="#BF789C" />
-              <Text style={styles.cityBannerText} numberOfLines={1}>
-                {selectedCity || 'Todas las ciudades'}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color="#BF789C" />
-            </TouchableOpacity>
-          )}
-
-          {/* banner de personalización */}
-          {filterPersonalizado && hairProfile && getHairTypeName(hairProfile) && (
-            <View style={styles.hairBanner}>
-              <Ionicons name="sparkles-outline" size={13} color="#BF789C" />
-              <Text style={styles.hairBannerText}>
-                Mostrando peluquerías para cabello{' '}
-                <Text style={styles.hairBannerBold}>{getHairTypeName(hairProfile)}</Text>
-              </Text>
-              <TouchableOpacity
-                onPress={() => { setSelectedFilter('Tradicional'); setFilterPersonalizado(false); }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityRole="button"
-                accessibilityLabel="Quitar filtro personalizado"
-              >
-                <Ionicons name="close-circle-outline" size={16} color="#D6A4A4" />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* filtros */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
-            {FILTERS.map(f => (
-              <TouchableOpacity
-                key={f}
-                style={[styles.filterChip, selectedFilter === f && styles.filterChipActive]}
-                onPress={() => { setSelectedFilter(f); setFilterPersonalizado(false); }}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.filterChipText, selectedFilter === f && styles.filterChipTextActive]}>
-                  {f}
+          }
+          ListEmptyComponent={
+            (loadingPelu || (userLocation && loadingGoogle)) ? (
+              <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 20 }} />
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="cut-outline" size={44} color="#EDD0D8" />
+                <Text style={styles.emptyText}>
+                  No encontramos peluquerías{selectedCity ? ` en ${selectedCity}` : ' cerca de ti'}.
                 </Text>
-                {filterPersonalizado && selectedFilter === f && (
-                  <View style={styles.filterParaTiDot} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* lista única: tus peluquerías registradas + las cercanas de Google
-              Maps, todas juntas y ordenadas por distancia real — sin separar
-              en secciones que puedan verse como contradictorias entre sí. */}
-          <Text style={styles.misReservasTitle}>
-            {diagnosisStore ? 'OTRAS PELUQUERÍAS CERCA DE TI' : 'PELUQUERÍAS CERCA DE TI'}
-          </Text>
-          {(loadingPelu || (userLocation && loadingGoogle)) ? (
-            <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 20 }} />
-          ) : cercaDeTi.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="cut-outline" size={44} color="#EDD0D8" />
-              <Text style={styles.emptyText}>
-                No encontramos peluquerías{selectedCity ? ` en ${selectedCity}` : ' cerca de ti'}.
-              </Text>
-            </View>
-          ) : (
+              </View>
+            )
+          }
+          ListFooterComponent={
             <>
-              {cercaDeTi.map(p => (
-                <PeluqueriaCard
-                  key={p.id}
-                  peluqueria={p}
-                  distancia={p.distancia}
-                  onVerPerfil={p.isGooglePlace ? undefined : () => openPerfil(p)}
-                  onReservar={p.isGooglePlace ? undefined : () => navigation.navigate('ReservarCita', {
-                    storeId: p.id,
-                    storeName: p.nombre,
-                    horarios: p.horarios,
-                  })}
-                />
-              ))}
-              {userLocation && googlePlaces.length > 0 && (
+              {cercaDeTi.length > 0 && userLocation && googlePlaces.length > 0 && (
                 <Text style={styles.googleAttrib}>Incluye resultados de Google Maps</Text>
               )}
+              {googleError && userLocation && (
+                <Text style={[styles.emptyText, { marginTop: 8 }]}>
+                  {['REQUEST_DENIED', 'INVALID_REQUEST', 'EXPO_PUBLIC_GOOGLE_PLACES_KEY no configurada'].includes(googleError)
+                    ? 'Falta configurar la Google Places API key.\nAbre el archivo .env y reemplaza TU_API_KEY_AQUI con tu clave de Google Cloud.'
+                    : `No se pudieron cargar peluquerías cercanas de Google Maps.\n(${googleError})`}
+                </Text>
+              )}
             </>
-          )}
-
-          {googleError && userLocation && (
-            <Text style={[styles.emptyText, { marginTop: 8 }]}>
-              {['REQUEST_DENIED', 'INVALID_REQUEST', 'EXPO_PUBLIC_GOOGLE_PLACES_KEY no configurada'].includes(googleError)
-                ? 'Falta configurar la Google Places API key.\nAbre el archivo .env y reemplaza TU_API_KEY_AQUI con tu clave de Google Cloud.'
-                : `No se pudieron cargar peluquerías cercanas de Google Maps.\n(${googleError})`}
-            </Text>
-          )}
-        </ScrollView>
+          }
+        />
       )}
 
       {/* ── Modal selector de ciudad ── */}
@@ -865,54 +873,61 @@ export default function ExplorarScreen({ navigation, route }) {
 
       {/* ── tab: catálogo ── */}
       {activeTab === 'catalogo' && (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.catalogScroll}>
-          <Text style={styles.catalogCount}>
-            {catalogLoading ? 'Cargando...' : `${catalogProducts.length} productos en total`}
-          </Text>
-          {catalogLoading ? (
-            <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 40 }} />
-          ) : (
-            catalogProducts.map(product => {
-              const hasImage = !!product.image;
-              const hasAsin = !!product.asin;
-              const fallbackUrl = product.sourceLink || product.link || null;
-              const hasLink = !!(product.amazonLink || product.asin || fallbackUrl);
-              const amazonUrl = buildAmazonUrl(product) || fallbackUrl;
+        <FlatList
+          data={catalogProducts}
+          keyExtractor={(product) => product.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.catalogScroll}
+          ListHeaderComponent={
+            <Text style={styles.catalogCount}>
+              {catalogLoading ? 'Cargando...' : `${catalogProducts.length} productos en total`}
+            </Text>
+          }
+          ListEmptyComponent={
+            catalogLoading ? (
+              <ActivityIndicator size="large" color="#D6A4A4" style={{ marginTop: 40 }} />
+            ) : null
+          }
+          renderItem={({ item: product }) => {
+            const hasImage = !!product.image;
+            const hasAsin = !!product.asin;
+            const fallbackUrl = product.sourceLink || product.link || null;
+            const hasLink = !!(product.amazonLink || product.asin || fallbackUrl);
+            const amazonUrl = buildAmazonUrl(product) || fallbackUrl;
 
-              const statusColor = hasImage ? '#7ADA7A' : hasAsin ? '#FFB347' : '#FF6B6B';
-              const statusLabel = hasImage ? 'imagen' : hasAsin ? 'solo ASIN' : 'sin imagen';
+            const statusColor = hasImage ? '#7ADA7A' : hasAsin ? '#FFB347' : '#FF6B6B';
+            const statusLabel = hasImage ? 'imagen' : hasAsin ? 'solo ASIN' : 'sin imagen';
 
-              return (
-                <View key={product.id} style={styles.catalogItem}>
-                  <CatalogImage product={product} />
-                  <View style={styles.catalogInfo}>
-                    <Text style={styles.catalogBrand} numberOfLines={1}>{product.brand}</Text>
-                    <Text style={styles.catalogName} numberOfLines={2}>{product.name}</Text>
-                    <View style={styles.catalogStatusRow}>
-                      <View style={[styles.catalogDot, { backgroundColor: statusColor }]} />
-                      <Text style={[styles.catalogStatus, { color: statusColor }]}>{statusLabel}</Text>
-                      {product.amazonLink && (
-                        <>
-                          <View style={styles.catalogDot2} />
-                          <Text style={styles.catalogLinkTag}>link propio</Text>
-                        </>
-                      )}
-                    </View>
+            return (
+              <View style={styles.catalogItem}>
+                <CatalogImage product={product} />
+                <View style={styles.catalogInfo}>
+                  <Text style={styles.catalogBrand} numberOfLines={1}>{product.brand}</Text>
+                  <Text style={styles.catalogName} numberOfLines={2}>{product.name}</Text>
+                  <View style={styles.catalogStatusRow}>
+                    <View style={[styles.catalogDot, { backgroundColor: statusColor }]} />
+                    <Text style={[styles.catalogStatus, { color: statusColor }]}>{statusLabel}</Text>
+                    {product.amazonLink && (
+                      <>
+                        <View style={styles.catalogDot2} />
+                        <Text style={styles.catalogLinkTag}>link propio</Text>
+                      </>
+                    )}
                   </View>
-                  <TouchableOpacity
-                    onPress={() => amazonUrl ? Linking.openURL(amazonUrl) : alert('Sin link de Amazon')}
-                    style={[styles.catalogOpenBtn, !hasLink && styles.catalogOpenBtnDisabled]}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityLabel="Abrir en Amazon"
-                  >
-                    <Ionicons name="open-outline" size={15} color={hasLink ? '#BF789C' : '#CCC'} />
-                  </TouchableOpacity>
                 </View>
-              );
-            })
-          )}
-        </ScrollView>
+                <TouchableOpacity
+                  onPress={() => amazonUrl ? Linking.openURL(amazonUrl) : alert('Sin link de Amazon')}
+                  style={[styles.catalogOpenBtn, !hasLink && styles.catalogOpenBtnDisabled]}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir en Amazon"
+                >
+                  <Ionicons name="open-outline" size={15} color={hasLink ? '#BF789C' : '#CCC'} />
+                </TouchableOpacity>
+              </View>
+            );
+          }}
+        />
       )}
     </View>
   );
